@@ -4,3 +4,4 @@ __pycache__/
 renders/*.blend
 renders/test_*
 renders/frames/
+*.blend1
