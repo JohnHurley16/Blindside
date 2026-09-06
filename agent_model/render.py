@@ -141,8 +141,12 @@ def render_video(path, start=None, end=None, fps=24):
     """An H.264 MP4. Blender's own encoder when it has one (a normal install);
     otherwise PNG frames stitched by imageio-ffmpeg (the pip bpy module has no FFmpeg)."""
     sc = bpy.context.scene
-    formats = {e.identifier for e in bpy.types.ImageFormatSettings.bl_rna.properties["file_format"].enum_items}
-    if "FFMPEG" not in formats:
+    try:
+        sc.render.image_settings.file_format = "FFMPEG"
+        has_ffmpeg = True
+    except TypeError:
+        has_ffmpeg = False
+    if not has_ffmpeg:
         import os
         frames_dir = os.path.splitext(path)[0] + "_frames"
         os.makedirs(frames_dir, exist_ok=True)
