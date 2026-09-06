@@ -1,22 +1,31 @@
-"""Assemble one agent: meshes, materials, armature with IK legs and a tracking head.
+"""Assemble one agent: meshes, materials, armature with IK legs and a pan-tilt head.
 
-Every part has a job. Nothing is decoration:
-  hull            sealed pressure body; the top rail is the module mount
-  head            the sensor mast; it turns. Sonar transducer strip and lamp live here
-  hydrophones     passive acoustic: a line array along each flank gives a bearing
-  beacon rack     rear dispenser; beacons are dropped behind you
-  magnetometer    on a tail boom, away from the actuators' magnetic noise
-  structural      contact geophone pucks at the ankles, where the machine touches rock
-  comms mast      the thin acoustic link to the surface
-  conduits        power to the leg actuators
-  running lights  so the machine is readable in the dark from its own light
+Design references: real quadruped robots (legs dominate, actuators visible at the hips,
+broad upper leg housing the knee drive, thin lower leg, rubber ball feet, knees back)
+and film droids (one silhouette, one dominant eye, two-tone panels with one accent,
+every detail a mechanism, a head on a real joint).
 
-Conventions (motion.py relies on these):
-  - The armature object AGENT_RIG is the body. Its origin is on the ground under the
-    hull centre. Root motion = keyframe the armature's location / rotation.
-  - Foot IK targets are empties FOOT.<i> in world space. Pole targets are bones
-    pole.<i>, children of the hip so the knee plane turns with the hip.
-  - LOOK is a world-space empty; the neck tracks it.
+Every part has a job:
+  lower chassis     sealed body: batteries, computer, IMU (dead reckoning lives here)
+  top shell         removable cover with hatches; the deck rail and handle are hardpoints
+  handle            recovery / carry hook: wrecks get salvaged
+  hip stacks        abduction motor on the body corner, flexion + knee motors at the femur top
+  femur blade       houses the knee belt drive; tibia is a thin strut with a rubber ball foot
+  head              pan-tilt yoke carrying the sonar transducer strip and the lamp / camera
+  hydrophones       line array along each flank: bearing from a line of elements
+  beacon rack       rear dispenser, drops behind the machine
+  magnetometer      pod on a tail boom, away from the actuators' magnetic noise
+  structural        geophone collars at the ankles, where the machine touches rock
+  comms mast        thin acoustic link to the surface
+  running lights    readable in the dark from its own light
+
+Rig conventions (motion.py relies on these):
+  - AGENT_RIG (armature object) is the body. Origin on the ground under the hull centre.
+  - FOOT.<i> empties are the IK targets in world space. pole.<i> bones are children of
+    the abduction bone so the knee plane rolls with the hip.
+  - coxa.<i> is the hip abduction joint: it rolls about X to keep the leg plane on the
+    foot. femur/tibia are a 2-bone IK chain inside that plane.
+  - LOOK empty: the head pans (yaw) then tilts (pitch) to track it.
   - arm["leg_neutral"] holds each foot's neutral position relative to the armature.
 """
 import math
@@ -27,12 +36,13 @@ from . import materials as M
 from .params import AgentConfig, CHASSIS, MODULES, validate
 
 
-def _bone(arm_data, name, head, tail, parent=None, roll=0.0):
+def _bone(arm_data, name, head, tail, parent=None, roll=0.0, connect=False):
     b = arm_data.edit_bones.new(name)
     b.head, b.tail = Vector(head), Vector(tail)
     b.roll = roll
     if parent:
         b.parent = arm_data.edit_bones[parent]
+        b.use_connect = connect
     return b
 
 
@@ -54,11 +64,6 @@ def _empty(name, loc, size=0.04, kind="PLAIN_AXES"):
     return e
 
 
-def _smoothstep(a, b, x):
-    t = max(0.0, min(1.0, (x - a) / (b - a)))
-    return t * t * (3 - 2 * t)
-
-
 class Built:
     def __init__(self):
         self.arm = None
@@ -70,6 +75,17 @@ class Built:
         self.head_center = None
 
 
+def _octagon(w, h, zc, chamfer=0.3, deck=0.78, belly=0.7):
+    return [(-w / 2 * deck, zc + h / 2), (-w / 2, zc + h / 2 * (1 - 2 * chamfer)), (-w / 2, zc - h / 2 * (1 - 2 * chamfer)),
+            (-w / 2 * belly, zc - h / 2), (w / 2 * belly, zc - h / 2), (w / 2, zc - h / 2 * (1 - 2 * chamfer)),
+            (w / 2, zc + h / 2 * (1 - 2 * chamfer)), (w / 2 * deck, zc + h / 2)]
+
+
+def _cap(w, z_seam, z_top, chamfer):
+    return [(-w / 2, z_seam), (-w / 2, z_top - chamfer), (-w / 2 + chamfer * 1.2, z_top),
+            (w / 2 - chamfer * 1.2, z_top), (w / 2, z_top - chamfer), (w / 2, z_seam)]
+
+
 def build_agent(cfg: AgentConfig, name="AGENT", at=(0, 0, 0)):
     ch = validate(cfg)
     skin = cfg.skin
@@ -77,10 +93,14 @@ def build_agent(cfg: AgentConfig, name="AGENT", at=(0, 0, 0)):
     out = Built()
     out.collection = col
     mats = {
-        "paint": M.painted_metal(skin), "accent": M.accent(skin), "metal": M.bare_metal(),
-        "dark": M.bare_metal("dark_metal", (0.10, 0.10, 0.11), 0.55), "carbon": M.bare_metal("carbon", (0.05, 0.05, 0.055), 0.4),
+        "shell": M.painted_metal(skin, "shell_paint"),
+        "chassis": M.painted_metal(skin.__class__(name="chassis", base=skin.chassis, accent=skin.accent, bare=skin.bare,
+                                                   light=skin.light, wear=skin.wear * 0.6, grime=skin.grime), "chassis_paint"),
+        "accent": M.accent(skin), "metal": M.bare_metal(),
+        "dark": M.bare_metal("dark_metal", (0.09, 0.09, 0.10), 0.5), "carbon": M.bare_metal("carbon", (0.04, 0.04, 0.045), 0.35),
         "rubber": M.rubber(), "light": M.emissive(skin), "eye": M.emissive(skin, "eye", skin.light_strength * 2.5),
         "lens": M.lens(), "glass": M.bare_metal("dark_glass", (0.02, 0.03, 0.04), 0.08),
+        "estop": M.bare_metal("estop_red", (0.6, 0.04, 0.03), 0.45),
     }
     L, W, H = ch.hull
     zc = ch.ride_height + H / 2
@@ -92,61 +112,116 @@ def build_agent(cfg: AgentConfig, name="AGENT", at=(0, 0, 0)):
         out.parts.append(obj)
         return obj
 
-    # ---- hull: a lofted, tapered body -------------------------------------------------
-    stations = []
-    N = 9
-    for k in range(N):
-        u = k / (N - 1)                                   # 0 tail .. 1 nose
-        x = -L / 2 + u * L
-        wf = 0.55 + 0.45 * math.sin(math.pi * (0.15 + 0.85 * u) ** 0.8) if u < 0.999 else 0.42
-        wf = min(1.0, max(0.42, wf))
-        hf = 0.5 + 0.5 * math.sin(math.pi * (0.1 + 0.9 * u) ** 0.9)
-        hf = min(1.0, max(0.45, hf))
-        drop = -H * 0.10 * _smoothstep(0.55, 1.0, u)      # nose dips a little
-        prof = [(y, z + zc + drop) for (y, z) in G.hull_profile(W * wf, H * hf)]
-        stations.append((x, prof))
-    add(G.loft("hull", stations, col=col, crease=0.55, subsurf=2), "paint")
-    # canopy seam: dark inset band where the top shell meets the lower body
-    seam_pts = [(-L / 2 + u * L, 0, 0) for u in (0.08, 0.3, 0.55, 0.8, 0.95)]
+    # ---- chassis: faceted lower body, pale top shell, seam between -------------------------
+    def width_at(u):                      # u: 0 tail .. 1 nose
+        return W * (0.9 + 0.1 * math.sin(math.pi * u)) * (1.0 - 0.18 * max(0.0, u - 0.75) / 0.25)
+    xs = [-L / 2, -L * 0.3, 0.0, L * 0.3, L * 0.42, L / 2]
+    lower = [(x, _octagon(width_at((x + L / 2) / L), H, zc)) for x in xs]
+    add(G.loft("chassis", lower, col=col, subsurf=0), "chassis")
+    bev = bpy.data.objects["chassis"].modifiers.new("bevel", "BEVEL"); bev.width = 0.006; bev.segments = 2; bev.limit_method = "ANGLE"
+    z_seam = zc + H * 0.05
+    z_top = zc + H / 2 + 0.012
+    shell = [(x, _cap(width_at((x + L / 2) / L) + 0.014, z_seam, z_top + (0.012 if abs(x) < L * 0.35 else 0.0), 0.02)) for x in xs]
+    shell[0] = (xs[0] + 0.01, shell[0][1]); shell[-1] = (xs[-1] - 0.02, shell[-1][1])
+    add(G.loft("shell", shell, col=col, subsurf=0), "shell")
+    bev = bpy.data.objects["shell"].modifiers.new("bevel", "BEVEL"); bev.width = 0.008; bev.segments = 3; bev.limit_method = "ANGLE"
+    # hatches on the shell: battery (mid) and computer (rear). Proud by 1.5 mm, so they read as panels
+    add(G.box("hatch_battery", (L * 0.26, W * 0.5, 0.004), (0.02, 0, z_top + 0.0125), bevel=0.002, col=col), "shell")
+    add(G.box("hatch_compute", (L * 0.14, W * 0.4, 0.004), (-L * 0.28, 0, z_top + 0.0005), bevel=0.002, col=col), "shell")
     for side in (1, -1):
-        pts = []
-        for (x, prof) in stations[1:-1]:
-            y = prof[1][0] if side < 0 else prof[6][0]
-            z = (prof[1][1] + prof[0][1]) / 2
-            pts.append(Vector((x, y * 1.005, z)))
-        add(G.tube_along(f"seam.{side}", pts, 0.004, verts=6, col=col), "carbon")
-        # running light: a short strip low on the flank, purposeful and dim
-        lp = [Vector((p.x, p.y, p.z - H * 0.33)) for p in pts[1:-2]]
-        add(G.tube_along(f"strip.{side}", lp, 0.004, verts=6, col=col), "light")
-    # deck rail: the module mount
-    if ch.spine_rail:
-        add(G.box("rail", (L * 0.7, W * 0.22, 0.014), (-0.02, 0, zc + H / 2 + 0.004), bevel=0.004, col=col), "carbon")
-        for s in ch.slots:
-            if s.facing[2] > 0.5:
-                add(G.box(f"pad.{s.name}", (W * 0.26, W * 0.3, 0.01), (s.pos[0], s.pos[1], zc + s.pos[2] + 0.005), bevel=0.003, col=col), "dark")
-    # rear: service hatch and a status light
-    add(G.box("hatch", (0.03, W * 0.3, H * 0.35), (-L / 2 + 0.02, 0, zc - H * 0.05), bevel=0.005, col=col), "dark")
-    add(G.sphere("status_light", 0.008, (-L / 2 + 0.005, 0, zc + H * 0.2), col=col, seg=12), "light")
+        add(G.box(f"latch.{side}", (0.012, 0.006, 0.004), (0.02 + L * 0.13 * side, side * W * 0.27, z_top + 0.0145), col=col), "dark")
+    # deck rail and hardpoint pads
+    add(G.box("rail", (L * 0.62, 0.012, 0.014), (-0.04, 0, z_top + 0.012 + 0.006), bevel=0.003, col=col), "carbon")
+    # recovery handle: a bar on two posts
+    hx = 0.02
+    for dx in (-0.05, 0.05):
+        add(G.cyl(f"handle_post{dx:+.2f}", 0.005, 0.005, 0.03, (hx + dx, 0, z_top + 0.03), verts=8, col=col), "metal")
+    add(G.cyl("handle_bar", 0.007, 0.007, 0.13, (hx, 0, z_top + 0.045), rot=(0, math.pi / 2, 0), verts=10, col=col), "rubber")
+    # running lights: a slit each side just under the seam. Status light at the tail
+    for side in (1, -1):
+        add(G.box(f"strip.{side}", (L * 0.32, 0.004, 0.006), (0.04, side * (width_at(0.55) / 2 + 0.001), z_seam - 0.012), col=col), "light")
+    add(G.box("hatch_service", (0.006, W * 0.4, H * 0.5), (-L / 2 - 0.002, 0, zc), bevel=0.003, col=col), "dark")
+    add(G.sphere("status_light", 0.006, (-L / 2 - 0.004, W * 0.15, zc + H * 0.3), col=col, seg=10), "light")
+    # front face: a recessed dark sensor bay the yoke sits on; vents on the flanks near the hips
+    add(G.box("front_bay", (0.02, W * 0.6, H * 0.55), (L / 2 - 0.005, 0, zc - H * 0.05), bevel=0.004, col=col), "dark")
 
-    # ---- head: sensor mast on a neck ------------------------------------------------------
-    nx, ny, nz = ch.head_pos
-    neck_root = Vector((nx, ny, zc + nz))
+    # ---- legs: hip stacks, femur blade, tibia strut ------------------------------------
+    neutral, leg_geom = [], []
+    rh = H * 0.34                                       # hip motor radius
+    for i, leg in enumerate(ch.legs):
+        s = leg.side
+        wx = width_at((leg.hip[0] + L / 2) / L) / 2
+        Hp = Vector((leg.hip[0], s * (wx + 0.03), zc + leg.hip[2]))          # abduction axis (along X) at the housing face
+        P = Hp + Vector((0, s * (leg.coxa), 0))                              # flexion pivot, outboard
+        kdir = Vector((leg.knee_back, 0, leg.knee_rise)).normalized()
+        K = P + kdir * leg.femur
+        F = Vector((leg.hip[0] + leg.foot_fwd, P.y + s * leg.foot_out, 0.0))
+        neutral.append((F.x, F.y, F.z)); leg_geom.append((Hp, P, K, F))
+        # abduction motor: cylinder along X on the chassis corner, with a heat-sink ring
+        add(G.cyl(f"abd_motor.{i}", rh, rh, 0.06, Hp - Vector((0, s * 0.03, 0)), rot=(0, math.pi / 2, 0), verts=24, col=col), "dark")
+        add(G.torus(f"abd_ring.{i}", rh * 0.9, 0.004, Hp - Vector((0, s * 0.055, 0)), rot=(0, math.pi / 2, 0), col=col), "accent")
+        # abduction link: short yoke from the housing face out to the flexion stack (rolls with coxa)
+        add(G.box(f"abd_link.{i}", (rh * 1.3, leg.coxa + 0.01, rh * 0.9), (Hp + P) / 2, bevel=0.004, col=col), "chassis", f"coxa.{i}")
+        # flexion + knee motor stack: a fat cylinder along Y at the femur top
+        add(G.cyl(f"hip_stack.{i}", rh * 0.95, rh * 0.95, 0.055, P + Vector((0, s * 0.02, 0)), rot=(math.pi / 2, 0, 0), verts=24, col=col), "dark", f"coxa.{i}")
+        add(G.cyl(f"hip_cap.{i}", rh * 0.6, rh * 0.6, 0.008, P + Vector((0, s * 0.05, 0)), rot=(math.pi / 2, 0, 0), verts=24, col=col), "accent", f"coxa.{i}")
+        # femur: broad blade with the belt cover on its outer face
+        add(G.strut(f"femur.{i}", P, K, rh * 0.9, rh * 1.6, rh * 0.7, rh * 1.0, col=col, bevel=0.005), "shell", f"femur.{i}")
+        add(G.strut(f"belt_cover.{i}", P.lerp(K, 0.05) + Vector((0, s * rh * 0.55, 0)), K + Vector((0, s * rh * 0.45, 0)),
+                    rh * 0.3, rh * 0.9, rh * 0.25, rh * 0.55, col=col, bevel=0.003), "carbon", f"femur.{i}")
+        # knee: pivot drum and bolt
+        add(G.cyl(f"knee.{i}", rh * 0.55, rh * 0.55, rh * 1.5, K, rot=(math.pi / 2, 0, 0), verts=20, col=col), "dark", f"femur.{i}")
+        add(G.cyl(f"knee_bolt.{i}", rh * 0.25, rh * 0.25, rh * 0.2, K + Vector((0, s * rh * 0.85, 0)), rot=(math.pi / 2, 0, 0), verts=8, col=col), "accent", f"femur.{i}")
+        # tibia: thin tapered strut, ankle and rubber ball foot
+        add(G.strut(f"tibia.{i}", K, F + Vector((0, 0, 0.02)), rh * 0.55, rh * 0.8, rh * 0.3, rh * 0.35, col=col, bevel=0.003), "carbon", f"tibia.{i}")
+        add(G.sphere(f"foot.{i}", 0.022, F + Vector((0, 0, 0.018)), col=col, seg=16), "rubber", f"tibia.{i}")
+        if "structural_monitor" in cfg.modules.values():
+            add(G.cyl(f"geophone.{i}", rh * 0.45, rh * 0.45, 0.012, F + Vector((0, 0, 0.055)), verts=12, col=col), "accent", f"tibia.{i}")
+        # cable from the chassis into the hip stack
+        c0 = Hp - Vector((0.0, s * 0.02, rh * 0.9)); c1 = P + Vector((0, s * 0.02, -rh * 0.95))
+        add(G.tube_along(f"cable.{i}", [c0, (c0 + c1) / 2 + Vector((0, 0, -0.012)), c1], 0.004, verts=6, col=col), "rubber", f"coxa.{i}")
+
+    # ---- head: pan-tilt unit on a chassis prow bracket -------------------------------------
+    # Mounted on structure, not on the removable shell. The payload block is centred on the
+    # tilt axis so the tilt motor carries no static moment; the unit can look down at its
+    # own footing.
     hr = ch.head_radius
-    head_c = neck_root + Vector((ch.head_neck + hr * 0.7, 0, hr * 0.1))
-    add(G.segment("neck", neck_root, head_c - Vector((hr * 0.5, 0, 0)), hr * 0.42, hr * 0.36, verts=8, col=col), "dark", "neck")
-    add(G.torus("neck_ring", hr * 0.46, hr * 0.06, neck_root + Vector((0.015, 0, 0)), rot=(0, math.pi / 2, 0), col=col), "metal", "neck")
-    hs = []
-    for k in range(6):
-        u = k / 5
-        x = head_c.x - hr * 0.8 + u * hr * 1.7
-        wf = 1.0 - 0.45 * u ** 2
-        hf = 1.0 - 0.35 * u ** 2
-        prof = [(y, z + head_c.z) for (y, z) in G.hull_profile(hr * 1.9 * wf, hr * 1.35 * hf, chamfer=0.4, belly=0.65, deck=0.75)]
-        hs.append((x, prof))
-    add(G.loft("head", hs, col=col, crease=0.5, subsurf=2), "paint", "neck")
-    face_x = head_c.x + hr * 0.9
-    out.head_center = head_c
-    eye_c = Vector((face_x, 0, head_c.z))
+    prow_z = zc + H / 2 - 0.012
+    add(G.box("prow_bracket", (0.09, W * 0.55, 0.022), (L / 2 + 0.02, 0, prow_z), bevel=0.004, col=col), "chassis")
+    for s in (1, -1):
+        add(G.box(f"prow_gusset.{s}", (0.05, 0.006, 0.05), (L / 2 + 0.005, s * W * 0.2, prow_z - 0.035), rot=(0, -0.5, 0), col=col), "chassis")
+    B = Vector((L / 2 + 0.035, 0, prow_z + 0.011))                          # pan axis base
+    add(G.cyl("pan_motor", hr * 0.62, hr * 0.62, 0.028, B + Vector((0, 0, 0.014)), verts=28, col=col), "dark")
+    add(G.torus("pan_ring", hr * 0.6, 0.003, B + Vector((0, 0, 0.0285)), col=col), "accent")
+    add(G.cyl("pan_plate", hr * 0.58, hr * 0.5, 0.012, B + Vector((0, 0, 0.034)), verts=28, col=col), "dark", "pan")
+    T = B + Vector((0.01, 0, 0.04 + hr * 0.7))                              # tilt axis centre
+    yw = hr * 0.8
+    for s in (1, -1):
+        a0 = B + Vector((-0.01, s * yw * 0.55, 0.04)); a1 = T + Vector((0, s * yw, 0))
+        add(G.strut(f"yoke.{s}", a0, a1, 0.018, 0.04, 0.018, 0.03, col=col, bevel=0.003), "dark", "pan")
+        add(G.box(f"yoke_foot.{s}", (0.05, 0.02, 0.01), a0 + Vector((0, 0, 0.005)), bevel=0.002, col=col), "dark", "pan")
+    # tilt motor lives on the right arm; the left arm carries the bearing
+    add(G.cyl("tilt_motor", hr * 0.38, hr * 0.38, 0.026, T + Vector((0, -(yw + 0.02), 0)), rot=(math.pi / 2, 0, 0), verts=24, col=col), "dark", "pan")
+    add(G.cyl("tilt_motor_cap", hr * 0.25, hr * 0.25, 0.006, T + Vector((0, -(yw + 0.036), 0)), rot=(math.pi / 2, 0, 0), verts=24, col=col), "accent", "pan")
+    add(G.cyl("tilt_bearing", hr * 0.3, hr * 0.3, 0.012, T + Vector((0, yw + 0.012, 0)), rot=(math.pi / 2, 0, 0), verts=24, col=col), "accent", "pan")
+    Hc = T
+    head = G.box("head", (hr * 1.5, yw * 2 - 0.012, hr * 1.2), Hc, bevel=hr * 0.22, col=col)
+    add(head, "shell", "tilt")
+    face_x = Hc.x + hr * 0.75
+    add(G.box("face_plate", (0.006, yw * 2 - 0.03, hr * 1.0), (face_x, 0, Hc.z), bevel=0.003, col=col), "dark", "tilt")
+    add(G.box("head_vent", (hr * 0.5, yw * 2 - 0.02, 0.004), Hc + Vector((-hr * 0.3, 0, hr * 0.6)), col=col), "dark", "tilt")
+    # cable loop from the chassis into the head: slack for the pan/tilt travel
+    add(G.tube_along("head_cable", [Vector((L / 2 - 0.02, W * 0.18, z_top - 0.01)), B + Vector((-0.02, yw * 0.9, 0.02)),
+                                     T + Vector((-hr * 0.5, yw * 0.9, -hr * 0.2))], 0.004, verts=6, col=col), "rubber")
+    eye_c = Vector((face_x, 0, Hc.z))
+    out.head_center = Hc
+    # rear: E-stop, charge port, flank cooling grilles
+    add(G.cyl("estop_collar", 0.016, 0.016, 0.008, (-L * 0.35, W * 0.3, z_top + 0.004), verts=20, col=col), "accent")
+    add(G.cyl("estop", 0.012, 0.011, 0.012, (-L * 0.35, W * 0.3, z_top + 0.014), verts=20, col=col), "estop")
+    add(G.box("charge_port", (0.004, 0.03, 0.02), (-L / 2 - 0.006, -W * 0.15, zc - H * 0.15), bevel=0.002, col=col), "accent")
+    for side in (1, -1):
+        for k in range(5):
+            add(G.box(f"vent.{side}.{k}", (0.004, 0.004, H * 0.38), (-0.024 + k * 0.012, side * (width_at(0.5) / 2 + 0.001), zc - H * 0.08), col=col), "carbon")
 
     # ---- modules ------------------------------------------------------------------------
     u = W
@@ -155,62 +230,18 @@ def build_agent(cfg: AgentConfig, name="AGENT", at=(0, 0, 0)):
         if not mod:
             continue
         if slot.name == "face":
-            base = Vector((face_x - hr * 0.05, 0, head_c.z + hr * 0.28)); f = Vector((1, 0, 0)); bone = "neck"; u_ = hr * 2
+            base = Vector((face_x, 0, Hc.z + hr * 0.3)); f = Vector((1, 0, 0)); bone = "tilt"; u_ = hr * 2.2
         elif slot.name == "eye":
-            base = Vector((face_x - hr * 0.1, 0, head_c.z - hr * 0.15)); f = Vector((1, 0, 0)); bone = "neck"; u_ = hr * 2
+            base = Vector((face_x, 0, Hc.z - hr * 0.15)); f = Vector((1, 0, 0)); bone = "tilt"; u_ = hr * 2.2
         else:
             base = Vector((slot.pos[0], slot.pos[1], zc + slot.pos[2])); f = Vector(slot.facing).normalized(); bone = None; u_ = u
         rot = f.to_track_quat("Z", "Y").to_euler()
-        for o, mat in _module(mod, slot.name, u_, col, hull=(L, W, H, zc)):
+        for o, mat in _module(mod, slot.name, u_, col):
             o.matrix_world = Matrix.Translation(base) @ rot.to_matrix().to_4x4() @ o.matrix_world
             add(o, mat, bone)
-    # comms mast: acoustic modem to the surface. Short, stiff, at the tail
-    mast_base = Vector((-L * 0.38, 0, zc + H / 2))
-    add(G.cyl("comms_mast", 0.006, 0.004, hr * 1.4, mast_base + Vector((0, 0, hr * 0.7)), verts=8, col=col), "metal")
-    add(G.cyl("comms_head", 0.012, 0.012, 0.02, mast_base + Vector((0, 0, hr * 1.4)), verts=12, col=col), "dark")
-
-    # ---- legs ---------------------------------------------------------------------------
-    neutral, leg_geom = [], []
-    for i, leg in enumerate(ch.legs):
-        s = leg.side
-        Hp = Vector((leg.hip[0], leg.hip[1], zc + leg.hip[2]))
-        C = Hp + Vector((0, s * leg.coxa, 0))
-        kdir = Vector((leg.knee_back, s * leg.splay, leg.knee_rise)).normalized()
-        K = C + kdir * leg.femur
-        F = Vector((Hp.x + leg.foot_fwd, K.y + s * leg.foot_out, 0.0))
-        neutral.append((F.x, F.y, F.z))
-        leg_geom.append((Hp, C, K, F))
-        r = W * 0.085
-        # hip: a hinge housing that yaws (coxa) and a pitch actuator inside it
-        add(G.cyl(f"hip.{i}", r * 1.3, r * 1.3, r * 1.6, Hp, rot=(0, math.pi / 2, 0), verts=12, col=col), "dark")
-        add(G.cyl(f"coxa.{i}", r * 0.9, r * 0.9, leg.coxa + r, (Hp + C) / 2, rot=(math.pi / 2, 0, 0), verts=12, col=col), "metal", f"coxa.{i}")
-        add(G.torus(f"hip_ring.{i}", r * 1.05, r * 0.12, C, rot=(math.pi / 2, 0, 0), col=col), "accent", f"coxa.{i}")
-        # femur: tapered strut plus a linear actuator on its outer face
-        add(G.strut(f"femur.{i}", C, K, r * 2.0, r * 1.6, r * 1.5, r * 1.2, col=col), "paint", f"femur.{i}")
-        fa, fb = C.lerp(K, 0.15), C.lerp(K, 0.85)
-        off = Vector((0, s * r * 1.15, 0))
-        add(G.segment(f"femur_cyl.{i}", fa + off, fa.lerp(fb, 0.55) + off, r * 0.42, r * 0.42, verts=10, col=col), "dark", f"femur.{i}")
-        add(G.segment(f"femur_rod.{i}", fa.lerp(fb, 0.5) + off, fb + off, r * 0.2, r * 0.2, verts=8, col=col), "metal", f"femur.{i}")
-        # knee: hinge with a bolt head each side
-        add(G.cyl(f"knee.{i}", r * 1.05, r * 1.05, r * 2.6, K, rot=(math.pi / 2, 0, 0), verts=16, col=col), "dark", f"femur.{i}")
-        add(G.cyl(f"knee_bolt.{i}", r * 0.5, r * 0.5, r * 0.3, K + Vector((0, s * r * 1.4, 0)), rot=(math.pi / 2, 0, 0), verts=6, col=col), "accent", f"femur.{i}")
-        # tibia: slimmer strut, actuator rod down its back, ankle, rubber pad
-        add(G.strut(f"tibia.{i}", K, F + Vector((0, 0, r * 1.2)), r * 1.5, r * 1.3, r * 0.9, r * 0.8, col=col), "carbon", f"tibia.{i}")
-        ta, tb = K.lerp(F, 0.12), K.lerp(F, 0.72)
-        back = Vector((-r * 0.9, 0, 0))
-        add(G.segment(f"tibia_cyl.{i}", ta + back, ta.lerp(tb, 0.5) + back, r * 0.35, r * 0.35, verts=10, col=col), "dark", f"tibia.{i}")
-        add(G.segment(f"tibia_rod.{i}", ta.lerp(tb, 0.45) + back, tb + back, r * 0.16, r * 0.16, verts=8, col=col), "metal", f"tibia.{i}")
-        add(G.sphere(f"ankle.{i}", r * 0.7, F + Vector((0, 0, r * 1.25)), col=col, seg=12), "dark", f"tibia.{i}")
-        foot = G.sphere(f"foot.{i}", r * 0.95, F + Vector((0, 0, r * 0.55)), col=col, seg=16)
-        foot.scale = (1.4, 1.15, 0.6)
-        add(foot, "rubber", f"tibia.{i}")
-        if "structural_monitor" in cfg.modules.values():
-            add(G.torus(f"geophone.{i}", r * 0.85, r * 0.22, F + Vector((0, 0, r * 1.6)), col=col), "accent", f"tibia.{i}")
-        # power conduit from the hull to the hip actuator
-        p0 = Vector((Hp.x, s * (W * 0.42), zc - H * 0.1))
-        p1 = Hp + Vector((0, s * r * 0.4, r * 1.2))
-        mid = (p0 + p1) / 2 + Vector((0, s * 0.01, 0.02))
-        add(G.tube_along(f"conduit.{i}", [p0, mid, p1], 0.005, verts=6, col=col), "rubber")
+    mast = Vector((-L * 0.42, -W * 0.25, z_top + 0.012))
+    add(G.cyl("comms_mast", 0.005, 0.0035, hr * 1.6, mast + Vector((0, 0, hr * 0.8)), verts=8, col=col), "metal")
+    add(G.cyl("comms_head", 0.01, 0.01, 0.018, mast + Vector((0, 0, hr * 1.6)), verts=12, col=col), "dark")
 
     # ---- armature -----------------------------------------------------------------------
     arm_data = bpy.data.armatures.new("AGENT_RIG")
@@ -218,34 +249,33 @@ def build_agent(cfg: AgentConfig, name="AGENT", at=(0, 0, 0)):
     col.objects.link(arm)
     bpy.context.view_layer.objects.active = arm
     bpy.ops.object.mode_set(mode="EDIT")
-    _bone(arm_data, "neck", neck_root, head_c)
-    _bone(arm_data, "head", head_c, eye_c + Vector((hr * 0.2, 0, 0)), parent="neck")
-    for i, (Hp, C, K, F) in enumerate(leg_geom):
-        _bone(arm_data, f"coxa.{i}", Hp, C)
-        _bone(arm_data, f"femur.{i}", C, K, parent=f"coxa.{i}")
-        _bone(arm_data, f"tibia.{i}", K, F, parent=f"femur.{i}")
-        pole = K + (K - (C + F) / 2).normalized() * 0.25
+    _bone(arm_data, "pan", B + Vector((0, 0, 0.028)), B + Vector((0.05, 0, 0.028)))
+    _bone(arm_data, "tilt", T, T + Vector((0.06, 0, 0)), parent="pan")
+    for i, (Hp, P, K, F) in enumerate(leg_geom):
+        _bone(arm_data, f"coxa.{i}", Hp, Hp + Vector((0, 0, -0.04)))         # abduction: rolls about X
+        _bone(arm_data, f"femur.{i}", P, K, parent=f"coxa.{i}")
+        _bone(arm_data, f"tibia.{i}", K, F, parent=f"femur.{i}", connect=True)
+        pole = K + (K - (P + F) / 2).normalized() * 0.3
         _bone(arm_data, f"pole.{i}", pole, pole + Vector((0, 0, 0.03)), parent=f"coxa.{i}")
     bpy.ops.object.mode_set(mode="OBJECT")
     arm.data.display_type = "STICK"
 
-    feet = [_empty(f"FOOT.{i}", F, size=0.05, kind="SPHERE") for i, (Hp, C, K, F) in enumerate(leg_geom)]
-    look = _empty("LOOK", head_c + Vector((2.0, 0, 0)), size=0.08, kind="CUBE")
+    feet = [_empty(f"FOOT.{i}", F, size=0.05, kind="SPHERE") for i, (Hp, P, K, F) in enumerate(leg_geom)]
+    look = _empty("LOOK", Hc + Vector((2.0, 0, 0)), size=0.08, kind="CUBE")
     out.feet, out.look, out.arm = feet, look, arm
 
     pb = arm.pose.bones
     for i in range(len(leg_geom)):
         c = pb[f"coxa.{i}"].constraints.new("LOCKED_TRACK")
-        c.target = feet[i]; c.track_axis = "TRACK_Y"; c.lock_axis = "LOCK_Z"
+        c.target = feet[i]; c.track_axis = "TRACK_Y"; c.lock_axis = "LOCK_X"
         ik = pb[f"tibia.{i}"].constraints.new("IK")
         ik.target = feet[i]; ik.pole_target = arm; ik.pole_subtarget = f"pole.{i}"
         ik.chain_count = 2; ik.use_tail = True
-    trk = pb["neck"].constraints.new("DAMPED_TRACK")
-    trk.target = look; trk.track_axis = "TRACK_Y"
-    lim = pb["neck"].constraints.new("LIMIT_ROTATION")
-    lim.use_limit_x = lim.use_limit_z = True
-    lim.min_x, lim.max_x = -0.7, 0.7
-    lim.min_z, lim.max_z = -1.0, 1.0
+    pan = pb["pan"].constraints.new("LOCKED_TRACK"); pan.target = look; pan.track_axis = "TRACK_Y"; pan.lock_axis = "LOCK_Z"
+    tilt = pb["tilt"].constraints.new("DAMPED_TRACK"); tilt.target = look; tilt.track_axis = "TRACK_Y"
+    lim = pb["tilt"].constraints.new("LIMIT_ROTATION")
+    lim.use_limit_x = True; lim.min_x, lim.max_x = -0.6, 0.6
+    lim.use_limit_z = True; lim.min_z, lim.max_z = -0.2, 0.2
     lim.owner_space = "LOCAL"
     _settle_pole_angles(arm, leg_geom)
 
@@ -263,15 +293,15 @@ def build_agent(cfg: AgentConfig, name="AGENT", at=(0, 0, 0)):
         lamp_data.shadow_soft_size = 0.04
         lamp = bpy.data.objects.new("HEAD_LAMP", lamp_data)
         col.objects.link(lamp)
-        lamp.location = eye_c + Vector((hr * 0.15, 0, -hr * 0.15))
+        lamp.location = eye_c + Vector((0.02, 0, -hr * 0.15))
         lamp.rotation_euler = Euler((0, math.pi / 2, 0))
-        _parent_to_bone(lamp, arm, "neck")
+        _parent_to_bone(lamp, arm, "tilt")
         out.lamp = lamp
 
     arm["leg_neutral"] = [list(n) for n in neutral]
     arm["chassis"] = ch.name
     arm["hull_center_z"] = zc
-    arm["step_height"] = 0.35 * ch.ride_height
+    arm["step_height"] = 0.3 * ch.ride_height
     arm.location = Vector(at)
     for e in feet:
         e.location = Vector(e.location) + Vector(at)
@@ -281,7 +311,7 @@ def build_agent(cfg: AgentConfig, name="AGENT", at=(0, 0, 0)):
 
 def _settle_pole_angles(arm, leg_geom):
     dg = bpy.context.evaluated_depsgraph_get()
-    for i, (Hp, C, K, F) in enumerate(leg_geom):
+    for i, (Hp, P, K, F) in enumerate(leg_geom):
         ik = arm.pose.bones[f"tibia.{i}"].constraints[-1]
         best, best_err = 0.0, 1e9
         for deg in range(-180, 180, 15):
@@ -296,51 +326,43 @@ def _settle_pole_angles(arm, leg_geom):
     bpy.context.view_layer.update()
 
 
-def _module(kind, slot, u, col, hull):
+def _module(kind, slot, u, col):
     """Build a module at the origin pointing +Z. Returns [(object, material_key)]."""
-    L, W, H, zc = hull
     objs = []
     if kind == "active_sonar":
-        # forward-looking transducer array: a wide flat strip of elements behind a dark window
-        objs.append((G.box(f"{slot}_sonar_window", (u * 0.62, u * 0.11, u * 0.03), (0, 0, u * 0.012), bevel=0.003, col=col), "glass"))
+        objs.append((G.box(f"{slot}_sonar_window", (u * 0.6, u * 0.12, u * 0.03), (0, 0, u * 0.012), bevel=0.003, col=col), "glass"))
         for k in range(7):
-            objs.append((G.box(f"{slot}_sonar_el{k}", (u * 0.06, u * 0.07, u * 0.02), (-u * 0.24 + k * u * 0.08, 0, u * 0.02), col=col), "light"))
+            objs.append((G.box(f"{slot}_sonar_el{k}", (u * 0.055, u * 0.075, u * 0.02), (-u * 0.235 + k * u * 0.078, 0, u * 0.022), col=col), "light"))
     elif kind == "optical":
-        # lamp reflector with lens, and a camera beside it
-        objs.append((G.cyl(f"{slot}_reflector", u * 0.16, u * 0.13, u * 0.06, (0, 0, u * 0.0), verts=24, col=col), "dark"))
-        objs.append((G.cyl(f"{slot}_lamp", u * 0.13, u * 0.13, u * 0.015, (0, 0, u * 0.035), verts=24, col=col), "eye"))
-        objs.append((G.cyl(f"{slot}_lens", u * 0.14, u * 0.14, u * 0.01, (0, 0, u * 0.045), verts=24, col=col), "lens"))
-        objs.append((G.cyl(f"{slot}_camera", u * 0.045, u * 0.045, u * 0.06, (0, u * 0.24, u * 0.0), verts=16, col=col), "dark"))
-        objs.append((G.cyl(f"{slot}_camera_lens", u * 0.035, u * 0.035, u * 0.01, (0, u * 0.24, u * 0.035), verts=16, col=col), "glass"))
+        objs.append((G.cyl(f"{slot}_reflector", u * 0.14, u * 0.11, u * 0.05, (0, 0, u * 0.0), verts=24, col=col), "dark"))
+        objs.append((G.cyl(f"{slot}_lamp", u * 0.11, u * 0.11, u * 0.012, (0, 0, u * 0.03), verts=24, col=col), "eye"))
+        objs.append((G.cyl(f"{slot}_lens", u * 0.12, u * 0.12, u * 0.008, (0, 0, u * 0.04), verts=24, col=col), "lens"))
+        objs.append((G.cyl(f"{slot}_camera", u * 0.04, u * 0.04, u * 0.05, (0, u * 0.22, u * 0.0), verts=16, col=col), "dark"))
+        objs.append((G.cyl(f"{slot}_camera_lens", u * 0.03, u * 0.03, u * 0.008, (0, u * 0.22, u * 0.03), verts=16, col=col), "glass"))
     elif kind == "passive_acoustic":
-        # hydrophone line array: a rail of small domes along the flank
-        n = 5
-        objs.append((G.box(f"{slot}_rail", (u * 0.9, u * 0.06, u * 0.025), (0, 0, u * 0.012), bevel=0.003, col=col), "carbon"))
-        for k in range(n):
-            x = -u * 0.36 + k * u * 0.18
-            objs.append((G.hemisphere(f"{slot}_hydrophone{k}", u * 0.035, (x, 0, u * 0.025), col=col), "rubber"))
+        objs.append((G.box(f"{slot}_rail", (u * 0.8, u * 0.07, u * 0.02), (0, 0, u * 0.01), bevel=0.003, col=col), "carbon"))
+        for k in range(5):
+            objs.append((G.hemisphere(f"{slot}_hydrophone{k}", u * 0.03, (-u * 0.32 + k * u * 0.16, 0, u * 0.02), col=col), "rubber"))
     elif kind == "beacon_rack":
-        # dispenser: magazine of beacon tubes angled to drop behind the machine
-        objs.append((G.box(f"{slot}_magazine", (u * 0.36, u * 0.26, u * 0.07), (0, 0, u * 0.035), bevel=0.004, col=col), "dark"))
+        objs.append((G.box(f"{slot}_magazine", (u * 0.34, u * 0.26, u * 0.06), (0, 0, u * 0.03), bevel=0.004, col=col), "dark"))
         for k in range(4):
-            x = -u * 0.135 + k * u * 0.09
-            objs.append((G.cyl(f"{slot}_beacon{k}", u * 0.03, u * 0.03, u * 0.12, (x, 0, u * 0.11), verts=10, col=col), "metal"))
-            objs.append((G.cyl(f"{slot}_beacon_cap{k}", u * 0.032, u * 0.024, u * 0.025, (x, 0, u * 0.18), verts=10, col=col), "accent"))
-        objs.append((G.box(f"{slot}_chute", (u * 0.12, u * 0.1, u * 0.05), (-u * 0.24, 0, u * 0.02), rot=(0, 0.6, 0), bevel=0.003, col=col), "carbon"))
+            x = -u * 0.12 + k * u * 0.08
+            objs.append((G.cyl(f"{slot}_beacon{k}", u * 0.028, u * 0.028, u * 0.11, (x, 0, u * 0.1), verts=10, col=col), "metal"))
+            objs.append((G.cyl(f"{slot}_beacon_cap{k}", u * 0.03, u * 0.022, u * 0.022, (x, 0, u * 0.165), verts=10, col=col), "accent"))
+        objs.append((G.box(f"{slot}_chute", (u * 0.1, u * 0.1, u * 0.05), (-u * 0.22, 0, u * 0.02), rot=(0, 0.6, 0), bevel=0.003, col=col), "carbon"))
     elif kind == "magnetometer":
-        # sensor pod on a boom, as far from the actuators as the hull allows
-        objs.append((G.box(f"{slot}_mag_base", (u * 0.14, u * 0.14, u * 0.04), (0, 0, u * 0.02), bevel=0.003, col=col), "dark"))
-        tip = Vector((-u * 1.0, 0, u * 0.55))
-        objs.append((G.segment(f"{slot}_boom", (0, 0, u * 0.03), tip, u * 0.018, u * 0.012, verts=8, col=col), "carbon"))
-        objs.append((G.cyl(f"{slot}_pod", u * 0.04, u * 0.04, u * 0.1, tip, rot=(0, -0.5, 0), verts=12, col=col), "accent"))
+        objs.append((G.box(f"{slot}_mag_base", (u * 0.12, u * 0.12, u * 0.035), (0, 0, u * 0.017), bevel=0.003, col=col), "dark"))
+        objs.append((G.cyl(f"{slot}_mag_hinge", u * 0.03, u * 0.03, u * 0.08, (0, 0, u * 0.045), rot=(math.pi / 2, 0, 0), verts=12, col=col), "metal"))
+        tip = Vector((-u * 0.95, 0, u * 0.5))
+        objs.append((G.segment(f"{slot}_boom", (0, 0, u * 0.03), tip, u * 0.016, u * 0.011, verts=8, col=col), "carbon"))
+        objs.append((G.cyl(f"{slot}_pod", u * 0.035, u * 0.035, u * 0.09, tip, rot=(0, -0.5, 0), verts=12, col=col), "accent"))
     elif kind == "cargo_bay":
-        objs.append((G.box(f"{slot}_bay", (u * 1.0, u * 0.62, u * 0.22), (0, 0, u * 0.11), bevel=u * 0.04, col=col), "paint"))
-        objs.append((G.box(f"{slot}_hatch", (u * 0.55, u * 0.45, u * 0.015), (0, 0, u * 0.225), bevel=0.003, col=col), "dark"))
+        objs.append((G.box(f"{slot}_bay", (u * 0.95, u * 0.6, u * 0.2), (0, 0, u * 0.1), bevel=u * 0.035, col=col), "chassis"))
+        objs.append((G.box(f"{slot}_hatch", (u * 0.5, u * 0.42, u * 0.012), (0, 0, u * 0.205), bevel=0.003, col=col), "dark"))
         for side in (1, -1):
-            objs.append((G.box(f"{slot}_latch{side}", (u * 0.08, u * 0.04, u * 0.03), (u * 0.2 * side, u * 0.28, u * 0.2), col=col), "accent"))
+            objs.append((G.box(f"{slot}_latch{side}", (u * 0.07, u * 0.035, u * 0.03), (u * 0.18 * side, u * 0.27, u * 0.18), col=col), "accent"))
     elif kind == "structural_monitor":
-        # the geophones are at the ankles (see legs); this is the signal conditioner
-        objs.append((G.box(f"{slot}_sm_box", (u * 0.14, u * 0.12, u * 0.04), (0, 0, u * 0.02), bevel=0.003, col=col), "dark"))
+        objs.append((G.box(f"{slot}_sm_box", (u * 0.12, u * 0.1, u * 0.035), (0, 0, u * 0.017), bevel=0.003, col=col), "dark"))
     else:
         raise ValueError(f"unknown module {kind}")
     return objs

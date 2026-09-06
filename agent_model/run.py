@@ -24,9 +24,9 @@ from agent_model import render as R  # noqa: E402
 
 SKINS = {
     "team_a": P.Skin("team_a"),
-    "team_b": P.Skin("team_b", base=(0.12, 0.10, 0.08), accent=(0.2, 0.75, 0.35), light=(1.0, 0.55, 0.15)),
-    "salvage": P.Skin("salvage", base=(0.06, 0.07, 0.07), accent=(0.5, 0.45, 0.3), light=(0.9, 0.2, 0.2), wear=0.85, grime=0.8),
-    "fresh": P.Skin("fresh", base=(0.16, 0.18, 0.2), accent=(0.95, 0.5, 0.1), wear=0.05, grime=0.1),
+    "team_b": P.Skin("team_b", base=(0.55, 0.30, 0.10), chassis=(0.06, 0.06, 0.06), accent=(0.85, 0.85, 0.8), light=(1.0, 0.55, 0.15)),
+    "salvage": P.Skin("salvage", base=(0.35, 0.33, 0.28), accent=(0.5, 0.45, 0.3), light=(0.9, 0.2, 0.2), wear=0.85, grime=0.8),
+    "fresh": P.Skin("fresh", base=(0.7, 0.68, 0.62), accent=(0.95, 0.5, 0.1), wear=0.05, grime=0.1),
 }
 
 

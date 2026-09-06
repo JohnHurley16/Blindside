@@ -14,12 +14,11 @@ Vec = Tuple[float, float, float]
 class LegSpec:
     hip: Vec                 # hip position on the hull, body frame
     side: int                # +1 left, -1 right
-    coxa: float = 0.05       # horizontal hip segment, outward
-    femur: float = 0.16      # upper segment, outward and up. Tibia length follows from ride height.
-    splay: float = 0.05      # knee outboard of the coxa tip
-    knee_rise: float = -0.09 # knee above (+) or below (-) the hip. Below reads as a dog, above as a spider
-    knee_back: float = -0.10 # knee behind (-) or ahead (+) of the hip
-    foot_out: float = 0.0    # foot outboard (+) or inboard (-) of the knee
+    coxa: float = 0.045      # abduction axis to flexion pivot, outward
+    femur: float = 0.20      # upper leg length. Tibia length follows from ride height
+    knee_rise: float = -0.14 # knee below the hip (negative): a dog
+    knee_back: float = -0.11 # knee behind the hip (negative): knees back, like a robot dog
+    foot_out: float = 0.0    # foot outboard (+) or inboard (-) of the flexion pivot
     foot_fwd: float = 0.0    # foot ahead of the hip in the neutral stance
 
 
@@ -56,7 +55,8 @@ class ModuleSpec:
 @dataclass
 class Skin:
     name: str = "team_a"
-    base: Vec = (0.035, 0.045, 0.06)        # painted hull: deep blue-black
+    base: Vec = (0.62, 0.60, 0.55)          # top shell: pale, so the machine reads in the dark
+    chassis: Vec = (0.05, 0.055, 0.065)     # lower body and blades: graphite
     accent: Vec = (0.85, 0.45, 0.10)        # stripes and pads
     bare: Vec = (0.45, 0.45, 0.47)          # worn-through metal
     light: Vec = (0.2, 0.9, 1.0)            # emissive strips and the eye
@@ -78,7 +78,7 @@ def _quad_legs(L, W, front_x, rear_x, **kw):
     legs = []
     for x in (front_x, rear_x):
         for side in (1, -1):
-            legs.append(LegSpec(hip=(x, side * W / 2, -0.02), side=side, foot_fwd=(0.06 if x > 0 else 0.0), **kw))
+            legs.append(LegSpec(hip=(x, side * W / 2, -0.01), side=side, foot_fwd=(0.02 if x > 0 else -0.03), **kw))
     return legs
 
 
@@ -86,39 +86,39 @@ def _hex_legs(L, W, **kw):
     legs = []
     for i, x in enumerate((L * 0.36, 0.0, -L * 0.36)):
         for side in (1, -1):
-            legs.append(LegSpec(hip=(x, side * W / 2, -0.02), side=side, foot_fwd=(0.06, 0.0, -0.06)[i], **kw))
+            legs.append(LegSpec(hip=(x, side * W / 2, -0.01), side=side, foot_fwd=(0.03, 0.0, -0.03)[i], **kw))
     return legs
 
 
 CHASSIS: Dict[str, ChassisSpec] = {
     "scout": ChassisSpec(
-        name="scout", hull=(0.46, 0.16, 0.10), hull_bevel=0.03, ride_height=0.17,
-        legs=_quad_legs(0.42, 0.18, 0.14, -0.14, coxa=0.035, femur=0.11, splay=0.04, knee_rise=-0.06, knee_back=-0.07),
-        slots=[SlotSpec("eye", (0, 0, 0), (1, 0, 0), "s"), SlotSpec("top_r", (-0.12, 0, 0.05), (0, 0, 1), "m"),
-               SlotSpec("side_l", (0.0, 0.08, -0.01), (0, 1, 0), "s"), SlotSpec("side_r", (0.0, -0.08, -0.01), (0, -1, 0), "s")],
+        name="scout", hull=(0.40, 0.15, 0.085), hull_bevel=0.03, ride_height=0.25,
+        legs=_quad_legs(0.40, 0.15, 0.15, -0.15, coxa=0.035, femur=0.15, knee_rise=-0.11, knee_back=-0.08),
+        slots=[SlotSpec("eye", (0, 0, 0), (1, 0, 0), "s"), SlotSpec("top_r", (-0.12, 0, 0.055), (0, 0, 1), "m"),
+               SlotSpec("side_l", (0.0, 0.075, -0.012), (0, 1, 0), "s"), SlotSpec("side_r", (0.0, -0.075, -0.012), (0, -1, 0), "s")],
         head_neck=0.07, head_radius=0.045, head_pos=(0.21, 0, 0.02), noise_label="quiet"),
     "surveyor": ChassisSpec(
-        name="surveyor", hull=(0.66, 0.26, 0.15), hull_bevel=0.045, ride_height=0.24,
-        legs=_quad_legs(0.62, 0.28, 0.20, -0.20),
+        name="surveyor", hull=(0.58, 0.21, 0.12), hull_bevel=0.045, ride_height=0.32,
+        legs=_quad_legs(0.58, 0.21, 0.21, -0.21),
         slots=[SlotSpec("face", (0, 0, 0), (1, 0, 0), "m"), SlotSpec("eye", (0, 0, 0), (1, 0, 0), "s"),
-               SlotSpec("top_m", (0.02, 0, 0.075), (0, 0, 1), "m"), SlotSpec("top_r", (-0.2, 0, 0.075), (0, 0, 1), "m"),
-               SlotSpec("side_l", (0.02, 0.125, 0.0), (0, 1, 0), "s"), SlotSpec("side_r", (0.02, -0.125, 0.0), (0, -1, 0), "s"),
-               SlotSpec("belly", (-0.02, 0, -0.075), (0, 0, -1), "l")],
+               SlotSpec("top_m", (-0.10, 0, 0.085), (0, 0, 1), "m"), SlotSpec("top_r", (-0.22, 0, 0.085), (0, 0, 1), "m"),
+               SlotSpec("side_l", (0.0, 0.105, -0.015), (0, 1, 0), "s"), SlotSpec("side_r", (0.0, -0.105, -0.015), (0, -1, 0), "s"),
+               SlotSpec("belly", (-0.02, 0, -0.06), (0, 0, -1), "l")],
         head_neck=0.10, head_radius=0.065, head_pos=(0.31, 0, 0.03), noise_label="moderate"),
     "hauler": ChassisSpec(
-        name="hauler", hull=(0.95, 0.38, 0.24), hull_bevel=0.06, ride_height=0.24,
-        legs=_hex_legs(0.90, 0.42, coxa=0.06, femur=0.22, splay=0.17, knee_rise=0.03, knee_back=0.0, foot_out=-0.04),
+        name="hauler", hull=(0.90, 0.32, 0.18), hull_bevel=0.06, ride_height=0.34,
+        legs=_hex_legs(0.90, 0.32, coxa=0.05, femur=0.22, knee_rise=-0.15, knee_back=-0.12),
         slots=[SlotSpec("face", (0, 0, 0), (1, 0, 0), "m"), SlotSpec("eye", (0, 0, 0), (1, 0, 0), "s")] +
-              [SlotSpec(f"top_{i}", (0.22 - 0.17 * i, 0, 0.12), (0, 0, 1), "m") for i in range(4)] +
-              [SlotSpec("side_l", (0.1, 0.18, 0.0), (0, 1, 0), "s"), SlotSpec("side_r", (0.1, -0.18, 0.0), (0, -1, 0), "s"),
-               SlotSpec("belly", (-0.05, 0, -0.12), (0, 0, -1), "l")],
+              [SlotSpec(f"top_{i}", (0.1 - 0.15 * i, 0, 0.115), (0, 0, 1), "m") for i in range(4)] +
+              [SlotSpec("side_l", (0.1, 0.16, -0.02), (0, 1, 0), "s"), SlotSpec("side_r", (0.1, -0.16, -0.02), (0, -1, 0), "s"),
+               SlotSpec("belly", (-0.05, 0, -0.09), (0, 0, -1), "l")],
         head_neck=0.12, head_radius=0.08, head_pos=(0.45, 0, 0.04), noise_label="loud"),
     "swimmer": ChassisSpec(
-        name="swimmer", hull=(0.74, 0.20, 0.13), hull_bevel=0.07, ride_height=0.19,
-        legs=_quad_legs(0.70, 0.22, 0.20, -0.22, coxa=0.04, femur=0.15, splay=0.13, knee_rise=0.0, knee_back=0.0, foot_out=-0.04),
+        name="swimmer", hull=(0.66, 0.18, 0.10), hull_bevel=0.07, ride_height=0.27,
+        legs=_quad_legs(0.66, 0.18, 0.22, -0.22, coxa=0.04, femur=0.17, knee_rise=-0.12, knee_back=-0.10),
         slots=[SlotSpec("face", (0, 0, 0), (1, 0, 0), "m"), SlotSpec("eye", (0, 0, 0), (1, 0, 0), "s"),
-               SlotSpec("side_l", (0.04, 0.095, 0.0), (0, 1, 0), "s"), SlotSpec("side_r", (0.04, -0.095, 0.0), (0, -1, 0), "s"),
-               SlotSpec("top_r", (-0.16, 0, 0.065), (0, 0, 1), "m"), SlotSpec("belly", (0.0, 0, -0.065), (0, 0, -1), "l")],
+               SlotSpec("side_l", (0.04, 0.09, -0.012), (0, 1, 0), "s"), SlotSpec("side_r", (0.04, -0.09, -0.012), (0, -1, 0), "s"),
+               SlotSpec("top_r", (-0.18, 0, 0.075), (0, 0, 1), "m"), SlotSpec("belly", (0.0, 0, -0.05), (0, 0, -1), "l")],
         head_neck=0.08, head_radius=0.06, head_pos=(0.35, 0, 0.0), spine_rail=False, noise_label="quiet"),
 }
 
@@ -142,10 +142,10 @@ def default_config(chassis="surveyor"):
     loadouts = {
         # scout: quiet. Listens, looks, carries nothing, no sonar to give it away
         "scout": {"eye": "optical", "side_l": "passive_acoustic", "side_r": "passive_acoustic", "top_r": "structural_monitor"},
-        "surveyor": {"face": "active_sonar", "eye": "optical", "top_m": "beacon_rack", "top_r": "magnetometer",
+        "surveyor": {"face": "active_sonar", "eye": "optical", "top_m": "magnetometer", "top_r": "beacon_rack",
                      "side_l": "passive_acoustic", "side_r": "passive_acoustic", "belly": "cargo_bay"},
-        "hauler": {"face": "active_sonar", "eye": "optical", "top_0": "beacon_rack", "top_1": "beacon_rack",
-                   "top_2": "structural_monitor", "top_3": "magnetometer", "side_l": "passive_acoustic",
+        "hauler": {"face": "active_sonar", "eye": "optical", "top_0": "structural_monitor", "top_1": "magnetometer",
+                   "top_2": "beacon_rack", "top_3": "beacon_rack", "side_l": "passive_acoustic",
                    "side_r": "passive_acoustic", "belly": "cargo_bay"},
         "swimmer": {"face": "active_sonar", "side_l": "passive_acoustic", "side_r": "passive_acoustic",
                     "top_r": "beacon_rack", "belly": "cargo_bay"},
