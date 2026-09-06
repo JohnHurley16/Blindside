@@ -1,33 +1,83 @@
-"""Entry point.
+"""Run the spectator test.
 
-    python -m phase1              headless timeline, no recall
-    python -m phase1 --recall 300 headless timeline, recall sent at 5:00
-    python -m phase1 --invariant  check that belief and policy cannot reach truth
+    python -m phase1                      play: window and sound, R sends Recall
+    python -m phase1 --headless           timeline only, no window, ~2 s
+    python -m phase1 --headless --recall 300
+    python -m phase1 --snap 60,200,400    write belief-view PNGs at those times
+    python -m phase1 --invariant          prove belief and policy cannot reach truth
 """
 from __future__ import annotations
 
 import argparse
 
-from .match.headless import run_headless
-from .match.invariant import assert_clean
+from . import tuning as T
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(prog="phase1")
+    parser.add_argument("--seed", type=int, default=T.SEED)
     parser.add_argument("--recall", type=float, default=None,
-                        help="send the single Recall command at this time, in seconds")
-    parser.add_argument("--seed", type=int, default=None)
+                        help="send the single Recall command at this many seconds")
+    parser.add_argument("--headless", action="store_true",
+                        help="run the match with no window and print the timeline")
+    parser.add_argument("--snap", type=str, default=None,
+                        help="comma-separated sim times; render PNGs with no window")
+    parser.add_argument("--no-audio", action="store_true")
     parser.add_argument("--invariant", action="store_true",
                         help="check the truth/belief boundary and exit")
     args = parser.parse_args()
 
     if args.invariant:
+        from .match.invariant import assert_clean
         assert_clean()
         print("invariant holds: belief and policy cannot reach truth")
         return
 
-    from . import tuning as T
-    run_headless(recall_at=args.recall, seed=args.seed if args.seed is not None else T.SEED)
+    if args.headless:
+        from .match.headless import run_headless
+        run_headless(recall_at=args.recall, seed=args.seed)
+        return
+
+    from .match.sim import Sim
+    from .view.backend import pick_backend
+
+    backend = pick_backend()
+    from vispy import app
+    from .view.view import View
+
+    sim = Sim(args.seed)
+
+    if args.snap:
+        view = View(sim, audio=None, show=False)
+        for at in sorted(float(x) for x in args.snap.split(",")):
+            while sim.t < at and not sim.over:
+                if args.recall is not None and sim.t >= args.recall and not sim.recall_used:
+                    sim.recall()
+                sim.step()
+                if sim.tick % 10 == 0:
+                    sim.record_truth_trail()
+            path = f"snap_{int(at):03d}.png"
+            view.snapshot(path)
+            print(f"wrote {path}  sim t={sim.t:.1f}{'  (over)' if sim.over else ''}")
+        return
+
+    audio = None
+    if not args.no_audio:
+        from .audio.mixer import Mixer
+        audio = Mixer()
+    view = View(sim, audio=audio, show=True)
+
+    if args.recall is not None:
+        def auto_recall(ev: object) -> None:
+            if sim.t >= args.recall and not sim.recall_used:
+                sim.recall()
+        app.Timer(interval=0.5, connect=auto_recall, start=True)
+
+    print(f"backend {backend}; audio {'on' if audio is not None and audio.ok else 'silent'}. "
+          f"R = Recall, left drag orbits, wheel zooms.")
+    app.run()
+    if audio is not None:
+        audio.close()
 
 
 if __name__ == "__main__":
