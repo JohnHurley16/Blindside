@@ -3,7 +3,9 @@ __pycache__/
 .venv/
 renders/*.blend
 renders/test_*
-renders/frames/
 *.blend1
 renders/*.log
 renders/*_frames/
+*.mp4
+*.wav
+snap_*.png
