@@ -12,6 +12,7 @@ from .. import tuning as T
 from ..belief.belief import Belief
 from ..motor_command import MotorCommand
 from ..sound_character import SoundCharacter
+from .decision_node import DecisionNode
 from .policy_mode import PolicyMode
 from .waypoint import Waypoint
 
@@ -86,46 +87,110 @@ class Policy:
         self.escapes = 0
         self.mode = PolicyMode.HOME
 
-    def active_nodes(self) -> set[str]:
-        """Which branches of the policy are firing right now, by id.
+    def decision_report(self, t: float) -> list[DecisionNode]:
+        """The policy as a graph of tests and actions, with live values.
 
-        This is the Phase 1 stand-in for the execution trace Phase 4 will capture from
-        the behaviour-tree VM: which nodes fired, in what order. Exposing it lets the
-        display show the machine thinking rather than only the result of it thinking.
+        Read from Belief only. This is the Phase 1 stand-in for the execution trace
+        Phase 4 captures from the behaviour-tree VM -- which nodes fired, on what
+        predicate values -- and it is what lets the display show the machine deciding
+        rather than only the result of a decision.
         """
-        live: set[str] = {"root"}
-        if self.done:
-            live.add("done")
-            return live
-        if self.mode is PolicyMode.LOAD:
-            live |= {"load", "load.wait"}
-            return live
-        if self.mode is PolicyMode.SEARCH:
-            live |= {"search", "search.spiral"}
-            return live
-        if self.recalled:
-            live.add("recalled")
-        if self.hold:
-            live |= {"hold"}
-            return live
-        if self.mode is PolicyMode.HOME:
-            live.add("home")
-        else:
-            live.add("survey")
-        live.add("drive")
-        if self.escape_heading is not None and self.escapes > 0:
-            live.add("drive.escape")
-        else:
-            live.add("drive.steer")
         b = self.b
-        if self.cautious and b.sigma_pos() > T.CAUTIOUS_RETURN_SIGMA * 0.75:
-            live.add("guard.uncertain")
-        if b.dist_since_drop >= T.BEACON_DROP_EVERY_CELLS * 0.8:
-            live.add("drive.beacon")
+        nodes: list[DecisionNode] = [
+            DecisionNode("root", self._root_text(), kind="action", active=True, fired=True)
+        ]
+
+        # test: is it getting lost? the bar is how close the ellipse is to the limit
+        sigma = b.sigma_pos()
+        limit = T.CAUTIOUS_RETURN_SIGMA
+        lost = self.mode is PolicyMode.HOME and not self.recalled
+        nodes.append(DecisionNode(
+            "guard.lost", "am I getting lost?", "test",
+            answer="yes" if lost else "no",
+            detail=f"{sigma:.0f} of {limit:.0f} cells adrift",
+            fill=min(sigma / limit, 1.0), active=True, fired=lost))
+
+        # test: can it hear the machinery?
+        sig = b.signature
+        strength = sig.quality if (sig is not None and t - sig.t < 1.5) else 0.0
+        nodes.append(DecisionNode(
+            "guard.machinery", "can I hear machinery?", "test",
+            answer="yes" if self.hold else "no",
+            detail="holding still" if self.hold else (
+                "faint" if strength > 0 else "nothing"),
+            fill=min(strength / max(T.ANCIENT_HOLD_QUALITY, 1e-6), 1.0),
+            active=not lost, fired=self.hold))
+
+        # test: has it arrived at whatever it is making for?
+        if self.route and self.i < len(self.route):
+            wp = self.route[self.i]
+            gap = G.dist(b.x, b.y, wp.x, wp.y)
+            reach = self._reach_radius(wp)
+            close = max(0.0, 1.0 - min(gap / 60.0, 1.0))
+            detail = f"{gap:.0f} cells to go"
+        else:
+            gap, reach, close, detail = 0.0, 1.0, 1.0, "nowhere to go"
+        arrived = self.mode in (PolicyMode.LOAD, PolicyMode.SEARCH) or self.done
+        nodes.append(DecisionNode(
+            "guard.arrived", "have I got there yet?", "test",
+            answer="yes" if arrived else "no", detail=detail, fill=close,
+            active=not lost and not self.hold, fired=arrived))
+
+        nodes.extend(self._action_nodes(t))
+        return nodes
+
+    def _root_text(self) -> str:
+        if self.done:
+            return "IT THINKS IT IS HOME"
+        if self.recalled:
+            return "RECALLED"
+        if self.mode is PolicyMode.HOME:
+            return "TURNING BACK"
+        return "RUNNING THE SURVEY"
+
+    def _action_nodes(self, t: float) -> list[DecisionNode]:
+        b = self.b
+        if self.done:
+            return [DecisionNode("act.done", "WAIT TO BE COLLECTED", "action",
+                                 active=True, fired=True)]
+        if self.mode is PolicyMode.LOAD:
+            left = max(0.0, self.load_until - t)
+            return [DecisionNode("act.load", "LOAD CARGO", "action", active=True, fired=True),
+                    DecisionNode("act.load.wait", "filling up", "sub",
+                                 detail=f"{left:.0f}s left",
+                                 fill=1.0 - left / max(T.LOAD_SECONDS, 1e-6), active=True)]
+        if self.mode is PolicyMode.SEARCH:
+            spread = (t - self.search_t0) * T.RECALL_SEARCH_RADIUS_RATE
+            return [DecisionNode("act.search", "SEARCH FOR THE SHAFT", "action",
+                                 active=True, fired=True),
+                    DecisionNode("act.search.spiral", "widening the circle", "sub",
+                                 detail=f"{spread:.0f} cells out",
+                                 fill=min(spread / 60.0, 1.0), active=True)]
+        if self.hold:
+            return [DecisionNode("act.hold", "FREEZE UNTIL IT PASSES", "action",
+                                 active=True, fired=True)]
+
+        target = "nothing"
+        if self.route and self.i < len(self.route):
+            target = self.route[self.i].label
+        drive = DecisionNode("act.drive", "DRIVE TO", "action",
+                             active=True, fired=True, target=target)
+        escaping = self.escape_heading is not None and t < self.escape_until
+        subs = [
+            DecisionNode("act.drive.steer",
+                         "following the wall out" if escaping else "steering round what it feels",
+                         "sub", detail="stuck" if escaping else "", active=True),
+            DecisionNode("act.drive.beacon", "drop a beacon", "sub",
+                         detail=f"{b.dist_since_drop:.0f} of {T.BEACON_DROP_EVERY_CELLS:.0f} cells",
+                         fill=min(b.dist_since_drop / T.BEACON_DROP_EVERY_CELLS, 1.0),
+                         active=True),
+        ]
         cooldown = T.CAUTIOUS_PING_COOLDOWN_S if self.cautious else T.AGGRESSIVE_PING_COOLDOWN_S
-        if b.ticks_since_ping * T.DT >= cooldown * 0.8:
-            live.add("drive.ping")
-        return live
+        since = b.ticks_since_ping * T.DT
+        subs.append(DecisionNode("act.drive.ping", "ping", "sub",
+                                 detail=f"{min(since, cooldown):.0f} of {cooldown:.0f}s",
+                                 fill=min(since / cooldown, 1.0), active=True))
+        return [drive, *subs]
 
     def heard_shaft(self) -> bool:
         """Has the survey-placed transponder actually answered? Belief knows this."""

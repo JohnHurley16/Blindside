@@ -23,7 +23,7 @@ from ..belief.belief import Belief
 from ..match.sim import Sim
 from ..sound_character import SoundCharacter
 from . import palette
-from .decision_tree import DecisionTreeView
+from .decision_graph import DecisionGraphView
 from .event_feed import EventFeed
 from .map_key import MapKey
 from .shapes import ring, to_segments, wedge
@@ -103,10 +103,10 @@ class View:
                                          anchor_x="right", anchor_y="center",
                                          color=palette.BANNER, font_size=10, bold=True)
 
-        self.tree = DecisionTreeView(overlay, 8.0, HEADER_H + 30.0, PANEL_W - 16)
-        rule_y = HEADER_H + 30.0 + self.tree.height + 8
-        self._rule(overlay, 14, rule_y, PANEL_W - 28)
-        self.status = StatusPanel(overlay, 8.0, rule_y + 26, PANEL_W - 16, STATUS_LABELS)
+        self.graph = DecisionGraphView(overlay, 16.0, HEADER_H + 18.0, PANEL_W - 32)
+        self._rule(overlay, 14, h - TIMELINE_H - 176, PANEL_W - 28)
+        self.status = StatusPanel(overlay, 8.0, h - TIMELINE_H - 150, PANEL_W - 16,
+                                  STATUS_LABELS)
         self.key = MapKey(overlay, PANEL_W + 24, h - TIMELINE_H - 140)
         self.timeline = TimelineView(overlay, PANEL_W + 18, h - TIMELINE_H + 6,
                                      w - PANEL_W - 36, TIMELINE_H - 12)
@@ -415,7 +415,11 @@ class View:
     def _draw_panels(self, b: Belief, t: float) -> None:
         sim = self.sim
         policy = sim.policies["player"]
-        self.tree.update(policy.active_nodes(), self._root_label(policy))
+        report = policy.decision_report(t)
+        for node in report:
+            if node.target:
+                node.label = f"{node.label} {self._place_name(node.target).upper()}"
+        self.graph.update(report)
 
         since = b.ticks_since_fix * T.DT
         fix = b.last_fix
@@ -427,7 +431,7 @@ class View:
             fix_text = f"{ago}, moved it {fix.jump:.0f} cells"
         self.status.set((
             f"{b.cargo} of {T.CARGO_CAPACITY}",
-            f"within {b.sigma_pos():.0f} cells",
+            f"within {b.sigma_pos():.0f} cell" + ("" if round(b.sigma_pos()) == 1 else "s"),
             fix_text,
             f"{b.cloud.n} points, {len(b.own_pings)} pings",
             "spent" if sim.recall_used else "ready - press R",
@@ -450,28 +454,17 @@ class View:
             self._header_cache = header
             self.header_right.text = header
 
-    def _root_label(self, policy: object) -> str:
-        mode = str(getattr(policy, "mode", ""))
-        if getattr(policy, "done", False):
-            return "IT THINKS IT IS HOME"
-        if getattr(policy, "recalled", False):
-            return "RECALLED - RUNNING FOR THE SHAFT"
-        if mode == "home":
-            return "TURNING BACK"
-        if mode == "search":
-            return "LOOKING FOR THE SHAFT"
-        if mode == "load":
-            return "LOADING CARGO"
-        return f"MAKING FOR {self._target_name().upper()}"
+    @staticmethod
+    def _place_name(label: str) -> str:
+        if label in FRIENDLY:
+            return FRIENDLY[label]
+        return "its own beacon" if label.startswith("player_") else f"survey point {label}"
 
     def _target_name(self) -> str:
         policy = self.sim.policies["player"]
         if policy.done or not policy.route or policy.i >= len(policy.route):
             return "nothing"
-        label = policy.route[policy.i].label
-        if label in FRIENDLY:
-            return FRIENDLY[label]
-        return "its own beacon" if label.startswith("player_") else f"survey point {label}"
+        return self._place_name(policy.route[policy.i].label)
 
     # ---- after the end ------------------------------------------------------------------------
     def _reveal(self) -> None:

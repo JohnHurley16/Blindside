@@ -1,0 +1,137 @@
+"""One box in the decision graph: a test or an action, drawn with its live value."""
+from __future__ import annotations
+
+from vispy.scene import visuals
+
+from ..policy.decision_node import DecisionNode
+from . import palette
+
+BAR_HEIGHT: float = 5.0
+
+
+class NodeBox:
+    """A rounded box holding a label, an answer, and a bar showing how close the
+    condition is to firing.
+
+    The bar is the part that matters. A row of labels is a diagram of the policy; a
+    bar creeping toward its threshold is the policy about to make up its mind, and
+    you can see it coming several seconds out.
+    """
+
+    def __init__(self, parent: object) -> None:
+        self.frame = visuals.Rectangle(center=(0.0, 0.0), width=10.0, height=10.0,
+                                       radius=4.0, color=palette.NODE_FILL,
+                                       border_color=palette.NODE_EDGE,
+                                       border_width=1, parent=parent)
+        self.label = visuals.Text("", parent=parent, anchor_x="left", anchor_y="center",
+                                  color=palette.HUD, font_size=9)
+        self.answer = visuals.Text("", parent=parent, anchor_x="right", anchor_y="center",
+                                   color=palette.DIM, font_size=8.5, bold=True)
+        self.detail = visuals.Text("", parent=parent, anchor_x="left", anchor_y="center",
+                                   color=palette.DIM, font_size=7.5)
+        # Square ends: vispy refuses a corner radius larger than half the shorter
+        # side, and an almost-empty bar is only a pixel or two wide.
+        self.bar_track = visuals.Rectangle(center=(0.0, 0.0), width=10.0,
+                                           height=BAR_HEIGHT, radius=0.0,
+                                           color=palette.BAR_TRACK, parent=parent)
+        self.bar_fill = visuals.Rectangle(center=(0.0, 0.0), width=2.0,
+                                          height=BAR_HEIGHT, radius=0.0,
+                                          color=palette.BAR_FILL, parent=parent)
+        self._cache: tuple = ()
+        self.set_visible(False)
+
+    def set_visible(self, visible: bool) -> None:
+        for v in (self.frame, self.label, self.answer, self.detail):
+            v.visible = visible
+        if not visible:
+            self.bar_track.visible = False
+            self.bar_fill.visible = False
+
+    def place(self, x: float, y: float, width: float, height: float) -> None:
+        self.x, self.y, self.width, self.height = x, y, width, height
+        self.frame.center = (x + width / 2, y + height / 2)
+        self.frame.width = width
+        self.frame.height = height
+
+    def show(self, node: DecisionNode) -> None:
+        key = (node.label, node.answer, node.detail, round(node.fill, 3),
+               node.active, node.fired, node.kind)
+        if key == self._cache:
+            return
+        self._cache = key
+        self.set_visible(True)
+        x, y, w, h = self.x, self.y, self.width, self.height
+        pad = 10.0
+
+        if node.kind == "action":
+            self.frame.color = palette.NODE_ACTION_FILL if node.fired else palette.NODE_FILL
+            self.frame.border_color = palette.NODE_ACTION_EDGE
+            self.label.color = palette.TREE_LIVE
+            self.label.font_size = 9.5
+            self.label.bold = True
+        elif node.kind == "sub":
+            self.frame.color = palette.NODE_SUB_FILL
+            self.frame.border_color = palette.NODE_SUB_EDGE
+            self.label.color = palette.HUD if node.active else palette.DIM
+            self.label.font_size = 8
+            self.label.bold = False
+        else:
+            fired = node.fired
+            self.frame.color = palette.NODE_TEST_HOT if fired else palette.NODE_FILL
+            self.frame.border_color = palette.NODE_EDGE_HOT if fired else palette.NODE_EDGE
+            self.label.color = palette.TITLE if node.active else palette.DIM
+            self.label.font_size = 9
+            self.label.bold = False
+
+        has_bar = node.fill >= 0.0
+        # Explicit rows. Deriving these from the box height packed the detail line
+        # into the bar and, in the short sub boxes, on top of the label itself.
+        if node.kind == "sub":
+            label_y = y + 11.0
+            detail_text, detail_y = "", 0.0
+            right_text, right_y = node.detail, y + 11.0
+            bar_y = y + 24.0
+        elif node.kind == "action":
+            label_y = y + h / 2
+            detail_text, detail_y = "", 0.0
+            right_text, right_y = node.answer, y + h / 2
+            bar_y = y + h - 7.0
+        else:
+            label_y = y + 15.0
+            detail_text, detail_y = node.detail, y + 31.0
+            right_text, right_y = node.answer, y + 15.0
+            bar_y = y + 43.0
+
+        self.label.text = node.label
+        self.label.pos = (x + pad, label_y)
+
+        self.answer.text = right_text
+        self.answer.pos = (x + w - pad, right_y)
+        if node.answer == "yes":
+            self.answer.color = palette.BANNER
+        elif node.answer == "no":
+            self.answer.color = palette.DIM
+        else:
+            self.answer.color = palette.DIM
+
+        if detail_text:
+            self.detail.visible = True
+            self.detail.text = detail_text
+            self.detail.pos = (x + pad, detail_y)
+        else:
+            self.detail.visible = False
+
+        if has_bar:
+            bar_w = w - pad * 2
+            bar_y = y + h - 8.0
+            self.bar_track.center = (x + pad + bar_w / 2, bar_y)
+            self.bar_track.width = bar_w
+            self.bar_track.visible = True
+            fill_w = max(bar_w * min(max(node.fill, 0.0), 1.0), 1.5)
+            self.bar_fill.center = (x + pad + fill_w / 2, bar_y)
+            self.bar_fill.width = fill_w
+            self.bar_fill.color = palette.BAR_HOT if node.fill >= 0.999 else palette.BAR_FILL
+            self.bar_fill.visible = True
+        else:
+            self.bar_track.visible = False
+            self.bar_fill.visible = False
