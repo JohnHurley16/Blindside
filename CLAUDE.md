@@ -59,6 +59,7 @@ document apply from Phase 3 onward.
 | `docs/DETERMINISM.md` | Hard constraints on the sim crate |
 | `docs/ROADMAP.md` | All phases, risk register, deferred work |
 | `docs/DESIGN.html` | Full game design. Background, not spec. |
+| `docs/DESIGN-PRINCIPLES.md` | Designer's decisions larger than one phase, dated, in their words. Win over `DESIGN.html`. |
 
 Where `DESIGN.html` and a phase spec disagree, **the phase spec wins.** The design
 document is a snapshot of intent; specs are current.
