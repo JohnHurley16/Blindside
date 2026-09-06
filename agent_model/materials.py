@@ -19,8 +19,10 @@ def painted_metal(skin: Skin, name="hull_paint"):
     m, nt, out = _new(name)
     n = nt.nodes
     bsdf = n.new("ShaderNodeBsdfPrincipled")
-    bsdf.inputs["Metallic"].default_value = 0.85
+    bsdf.inputs["Metallic"].default_value = 0.3
     bsdf.inputs["Roughness"].default_value = 0.45
+    bsdf.inputs["Coat Weight"].default_value = 0.35
+    bsdf.inputs["Coat Roughness"].default_value = 0.15
     # wear mask: noise + pointiness-ish via ambient occlusion inverse
     tex = n.new("ShaderNodeTexNoise"); tex.inputs["Scale"].default_value = 70.0; tex.inputs["Detail"].default_value = 8.0
     tex.inputs["Roughness"].default_value = 0.7
@@ -41,7 +43,7 @@ def painted_metal(skin: Skin, name="hull_paint"):
     grimemix.inputs["B"].default_value = (0.02, 0.018, 0.015, 1)
     grimefac = n.new("ShaderNodeMath"); grimefac.operation = "MULTIPLY"; grimefac.inputs[1].default_value = skin.grime
     rough = n.new("ShaderNodeMath"); rough.operation = "MULTIPLY_ADD"
-    rough.inputs[1].default_value = 0.35; rough.inputs[2].default_value = 0.3
+    rough.inputs[1].default_value = 0.3; rough.inputs[2].default_value = 0.35
     bump = n.new("ShaderNodeBump"); bump.inputs["Strength"].default_value = 0.08
     L = nt.links.new
     L(tex.outputs["Fac"], ramp.inputs["Fac"])
@@ -125,8 +127,9 @@ def wet_rock(name="wet_rock"):
     ramp = n.new("ShaderNodeValToRGB")
     ramp.color_ramp.elements[0].color = (0.015, 0.014, 0.013, 1); ramp.color_ramp.elements[0].position = 0.3
     ramp.color_ramp.elements[1].color = (0.11, 0.10, 0.09, 1); ramp.color_ramp.elements[1].position = 0.8
-    wet = n.new("ShaderNodeValToRGB"); wet.color_ramp.elements[0].position = 0.35; wet.color_ramp.elements[1].position = 0.55
-    rough = n.new("ShaderNodeMath"); rough.operation = "MULTIPLY_ADD"; rough.inputs[1].default_value = -0.6; rough.inputs[2].default_value = 0.75
+    b.inputs["Specular IOR Level"].default_value = 0.15
+    wet = n.new("ShaderNodeValToRGB"); wet.color_ramp.elements[0].position = 0.2; wet.color_ramp.elements[1].position = 0.7
+    rough = n.new("ShaderNodeMath"); rough.operation = "MULTIPLY_ADD"; rough.inputs[1].default_value = -0.2; rough.inputs[2].default_value = 0.95
     bump = n.new("ShaderNodeBump"); bump.inputs["Strength"].default_value = 0.6
     bump2 = n.new("ShaderNodeBump"); bump2.inputs["Strength"].default_value = 0.25
     L = nt.links.new

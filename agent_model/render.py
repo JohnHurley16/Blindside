@@ -20,7 +20,7 @@ def cave(radius=3.4, seed=3):
     floor = G.plane("floor", radius * 3, (0, 0, 0), col=col, subdiv=60)
     disp = floor.modifiers.new("disp", "DISPLACE")
     tex = bpy.data.textures.new("floor_noise", "CLOUDS"); tex.noise_scale = 0.9; tex.noise_depth = 4
-    disp.texture = tex; disp.strength = 0.14; disp.mid_level = 0.72
+    disp.texture = tex; disp.strength = 0.10; disp.mid_level = 0.72
     floor.data.shade_smooth()
     G.set_material(floor, rock)
     # a flattened patch so the feet sit on something level near the origin
@@ -63,7 +63,7 @@ def cave(radius=3.4, seed=3):
     bg.inputs["Color"].default_value = (0.004, 0.006, 0.01, 1); bg.inputs["Strength"].default_value = 1.0
     out = nt.nodes.get("World Output") or nt.nodes.new("ShaderNodeOutputWorld")
     nt.links.new(bg.outputs[0], out.inputs["Surface"])
-    vol = nt.nodes.new("ShaderNodeVolumeScatter"); vol.inputs["Density"].default_value = 0.012
+    vol = nt.nodes.new("ShaderNodeVolumeScatter"); vol.inputs["Density"].default_value = 0.006
     vol.inputs["Anisotropy"].default_value = 0.4
     nt.links.new(vol.outputs[0], out.inputs["Volume"])
     return col
@@ -80,9 +80,10 @@ def lights(target=(0.1, 0, 0.35)):
         tr.target = tgt
         return o
     t = Vector(target)
-    area("rim", t + Vector((-2.0, 1.4, 1.5)), 260, (0.55, 0.75, 1.0), 0.8)     # cold rim from behind-left
-    area("key", t + Vector((1.4, -1.8, 1.6)), 40, (1.0, 0.85, 0.7), 1.2)       # faint warm key
-    area("fill", t + Vector((0.3, 2.2, 0.4)), 12, (0.4, 0.6, 0.9), 2.5)
+    area("rim", t + Vector((-2.0, 1.4, 1.5)), 320, (0.55, 0.75, 1.0), 0.6)     # cold rim from behind-left
+    area("key", t + Vector((1.4, -1.8, 1.6)), 22, (1.0, 0.85, 0.7), 1.0)       # faint warm key
+    area("fill", t + Vector((0.3, 2.2, 0.4)), 6, (0.4, 0.6, 0.9), 2.5)
+    area("under", t + Vector((0.8, -0.6, -0.1)), 4, (0.3, 0.8, 1.0), 1.5)      # a little bounce off the floor
     return col
 
 

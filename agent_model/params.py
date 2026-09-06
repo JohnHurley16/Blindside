@@ -56,9 +56,9 @@ class ModuleSpec:
 @dataclass
 class Skin:
     name: str = "team_a"
-    base: Vec = (0.10, 0.11, 0.12)          # painted hull
+    base: Vec = (0.035, 0.045, 0.06)        # painted hull: deep blue-black
     accent: Vec = (0.85, 0.45, 0.10)        # stripes and pads
-    bare: Vec = (0.55, 0.55, 0.58)          # worn-through metal
+    bare: Vec = (0.45, 0.45, 0.47)          # worn-through metal
     light: Vec = (0.2, 0.9, 1.0)            # emissive strips and the eye
     light_strength: float = 8.0
     wear: float = 0.35                      # 0 factory fresh .. 1 salvage
@@ -92,27 +92,29 @@ def _hex_legs(L, W, **kw):
 
 CHASSIS: Dict[str, ChassisSpec] = {
     "scout": ChassisSpec(
-        name="scout", hull=(0.42, 0.18, 0.13), hull_bevel=0.03, ride_height=0.17,
+        name="scout", hull=(0.46, 0.16, 0.10), hull_bevel=0.03, ride_height=0.17,
         legs=_quad_legs(0.42, 0.18, 0.14, -0.14, coxa=0.035, femur=0.11, splay=0.04, knee_rise=-0.06, knee_back=-0.07),
-        slots=[SlotSpec("top_f", (0.06, 0, 0.065), (0, 0, 1), "s"), SlotSpec("top_r", (-0.10, 0, 0.065), (0, 0, 1), "s"),
-               SlotSpec("belly", (0.0, 0, -0.065), (0, 0, -1), "s")],
+        slots=[SlotSpec("eye", (0, 0, 0), (1, 0, 0), "s"), SlotSpec("top_r", (-0.12, 0, 0.05), (0, 0, 1), "m"),
+               SlotSpec("side_l", (0.0, 0.08, -0.01), (0, 1, 0), "s"), SlotSpec("side_r", (0.0, -0.08, -0.01), (0, -1, 0), "s")],
         head_neck=0.07, head_radius=0.045, head_pos=(0.21, 0, 0.02), noise_label="quiet"),
     "surveyor": ChassisSpec(
-        name="surveyor", hull=(0.62, 0.28, 0.20), hull_bevel=0.045, ride_height=0.23,
+        name="surveyor", hull=(0.66, 0.26, 0.15), hull_bevel=0.045, ride_height=0.24,
         legs=_quad_legs(0.62, 0.28, 0.20, -0.20),
-        slots=[SlotSpec("top_f", (0.12, 0, 0.10), (0, 0, 1), "m"), SlotSpec("top_m", (-0.02, 0, 0.10), (0, 0, 1), "m"),
-               SlotSpec("top_r", (-0.17, 0, 0.10), (0, 0, 1), "m"), SlotSpec("side_l", (0.0, 0.14, 0.02), (0, 1, 0), "s"),
-               SlotSpec("side_r", (0.0, -0.14, 0.02), (0, -1, 0), "s"), SlotSpec("belly", (-0.04, 0, -0.10), (0, 0, -1), "l")],
+        slots=[SlotSpec("face", (0, 0, 0), (1, 0, 0), "m"), SlotSpec("eye", (0, 0, 0), (1, 0, 0), "s"),
+               SlotSpec("top_m", (0.02, 0, 0.075), (0, 0, 1), "m"), SlotSpec("top_r", (-0.2, 0, 0.075), (0, 0, 1), "m"),
+               SlotSpec("side_l", (0.02, 0.125, 0.0), (0, 1, 0), "s"), SlotSpec("side_r", (0.02, -0.125, 0.0), (0, -1, 0), "s"),
+               SlotSpec("belly", (-0.02, 0, -0.075), (0, 0, -1), "l")],
         head_neck=0.10, head_radius=0.065, head_pos=(0.31, 0, 0.03), noise_label="moderate"),
     "hauler": ChassisSpec(
-        name="hauler", hull=(0.90, 0.42, 0.30), hull_bevel=0.06, ride_height=0.26,
+        name="hauler", hull=(0.95, 0.38, 0.24), hull_bevel=0.06, ride_height=0.27,
         legs=_hex_legs(0.90, 0.42, coxa=0.06, femur=0.22, splay=0.20, knee_rise=0.13, knee_back=0.0, foot_out=-0.05),
-        slots=[SlotSpec(f"top_{i}", (0.30 - 0.15 * i, 0, 0.15), (0, 0, 1), "m") for i in range(5)] +
-              [SlotSpec("side_l", (0.1, 0.21, 0.02), (0, 1, 0), "s"), SlotSpec("side_r", (0.1, -0.21, 0.02), (0, -1, 0), "s"),
-               SlotSpec("belly", (-0.05, 0, -0.15), (0, 0, -1), "l")],
+        slots=[SlotSpec("face", (0, 0, 0), (1, 0, 0), "m"), SlotSpec("eye", (0, 0, 0), (1, 0, 0), "s")] +
+              [SlotSpec(f"top_{i}", (0.22 - 0.17 * i, 0, 0.12), (0, 0, 1), "m") for i in range(4)] +
+              [SlotSpec("side_l", (0.1, 0.18, 0.0), (0, 1, 0), "s"), SlotSpec("side_r", (0.1, -0.18, 0.0), (0, -1, 0), "s"),
+               SlotSpec("belly", (-0.05, 0, -0.12), (0, 0, -1), "l")],
         head_neck=0.12, head_radius=0.08, head_pos=(0.45, 0, 0.04), noise_label="loud"),
     "swimmer": ChassisSpec(
-        name="swimmer", hull=(0.70, 0.22, 0.16), hull_bevel=0.07, ride_height=0.22,
+        name="swimmer", hull=(0.74, 0.20, 0.13), hull_bevel=0.07, ride_height=0.22,
         legs=_quad_legs(0.70, 0.22, 0.20, -0.22, coxa=0.04, femur=0.15, splay=0.13, knee_rise=0.06, knee_back=0.0, foot_out=-0.04),
         slots=[SlotSpec("top_f", (0.14, 0, 0.08), (0, 0, 1), "m"), SlotSpec("top_r", (-0.14, 0, 0.08), (0, 0, 1), "m"),
                SlotSpec("belly", (0.0, 0, -0.08), (0, 0, -1), "m")],
@@ -131,17 +133,21 @@ MODULES: Dict[str, ModuleSpec] = {
 }
 
 SIZE_ORDER = {"s": 0, "m": 1, "l": 2}
+MODULES["structural_monitor"].size = "s"
 
 
 def default_config(chassis="surveyor"):
     """A sensible loadout for a first look at each class."""
     loadouts = {
-        "scout": {"top_f": "passive_acoustic", "top_r": "optical", "belly": "structural_monitor"},
-        "surveyor": {"top_f": "active_sonar", "top_m": "beacon_rack", "top_r": "magnetometer",
+        # scout: quiet. Listens, looks, carries nothing, no sonar to give it away
+        "scout": {"eye": "optical", "side_l": "passive_acoustic", "side_r": "passive_acoustic", "top_r": "structural_monitor"},
+        "surveyor": {"face": "active_sonar", "eye": "optical", "top_m": "beacon_rack", "top_r": "magnetometer",
                      "side_l": "passive_acoustic", "side_r": "passive_acoustic", "belly": "cargo_bay"},
-        "hauler": {"top_0": "active_sonar", "top_1": "beacon_rack", "top_2": "beacon_rack", "top_3": "magnetometer",
-                   "top_4": "structural_monitor", "side_l": "passive_acoustic", "side_r": "optical", "belly": "cargo_bay"},
-        "swimmer": {"top_f": "active_sonar", "top_r": "passive_acoustic", "belly": "cargo_bay"},
+        "hauler": {"face": "active_sonar", "eye": "optical", "top_0": "beacon_rack", "top_1": "beacon_rack",
+                   "top_2": "structural_monitor", "top_3": "magnetometer", "side_l": "passive_acoustic",
+                   "side_r": "passive_acoustic", "belly": "cargo_bay"},
+        "swimmer": {"face": "active_sonar", "side_l": "passive_acoustic", "side_r": "passive_acoustic",
+                    "top_r": "beacon_rack", "belly": "cargo_bay"},
     }
     return AgentConfig(chassis=chassis, modules=loadouts[chassis])
 

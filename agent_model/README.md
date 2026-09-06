@@ -69,11 +69,24 @@ Open the `.blend`, grab a `FOOT.*` empty, and drag: that is the whole rig.
 | `render.py` | cave, lights, camera, Cycles settings, still / animation output |
 | `run.py` | CLI |
 
-## Design notes
+## Anatomy: every part has a job
 
-- Leg configuration is two numbers per class: `knee_rise` below the hip reads as a dog,
-  above reads as a spider. Quadrupeds are dog-like; the Hauler is a six-legged insect.
-- The head is a face on purpose (DESIGN.html): one big eye (sonar/optical lens with
-  the headlamp behind it), two vanes as ears, and it turns to look at things.
-- Running-light strips along the hull sides are part of the silhouette and are
-  emissive, so the agent is readable in the dark from its own light.
+| part | job | where |
+|---|---|---|
+| hull | sealed pressure body; the deck rail is the module mount | lofted, tapered |
+| sensor head | turns to attend to things; carries the face slots | on the neck, damped-tracks `LOOK` |
+| active sonar | forward-looking transducer strip | `face` slot, across the head |
+| optical | lamp reflector + lens, small camera beside it; the only light the agent emits forward | `eye` slot, under the sonar strip |
+| passive acoustic | hydrophone line array; a line of elements is how you get a bearing | `side_l` / `side_r`, along each flank |
+| beacon rack | dispenser magazine with a chute; beacons drop behind you | rear deck |
+| magnetometer | sensor pod on a boom, away from the leg actuators' magnetic noise | rear deck, boom aft and up |
+| structural monitor | contact geophone pucks at the ankles (the feet already touch rock) plus a conditioner box | ankles + a deck slot |
+| cargo bay | belly bay with a hatch | `belly` slot |
+| comms mast | acoustic modem to the surface | tail |
+| conduits | power to the hip actuators | hull to each hip |
+| running lights | readable in the dark from its own light; part of the honest silhouette | low on each flank |
+| legs | hex-section struts, linear actuators on femur and tibia, ankle joint, rubber pad | IK-driven |
+
+Leg configuration is a few numbers per class: `knee_rise` below the hip reads as a dog,
+above reads as a spider. Quadrupeds are dog-like; the Hauler is a six-legged insect.
+A Scout with no optical module has no lamp: a quiet loadout looks quiet.

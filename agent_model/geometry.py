@@ -109,3 +109,106 @@ def new_collection(name, parent=None):
     col = bpy.data.collections.new(name)
     (parent or bpy.context.scene.collection).children.link(col)
     return col
+
+
+# ---- lofts and tubes (bmesh) ---------------------------------------------------------------
+import bmesh
+
+
+def _mesh_object(name, bm, col=None, smooth=True):
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me)
+    bm.free()
+    o = bpy.data.objects.new(name, me)
+    (col or bpy.context.scene.collection).objects.link(o)
+    if smooth:
+        me.shade_smooth()
+    return o
+
+
+def loft(name, stations, col=None, cap=True, crease=0.0, subsurf=2):
+    """stations: list of (x, [(y, z), ...]) rings with the same point count.
+    Rings are bridged along X. Longitudinal edges get `crease` so a subsurf keeps
+    soft panel edges instead of turning the body into a blob."""
+    bm = bmesh.new()
+    cl = bm.edges.layers.float.new("crease_edge") if crease > 0 else None
+    rings = []
+    for x, prof in stations:
+        rings.append([bm.verts.new((x, y, z)) for (y, z) in prof])
+    n = len(rings[0])
+    long_edges = []
+    for r0, r1 in zip(rings, rings[1:]):
+        for i in range(n):
+            f = bm.faces.new((r0[i], r0[(i + 1) % n], r1[(i + 1) % n], r1[i]))
+    for r0, r1 in zip(rings, rings[1:]):
+        for i in range(n):
+            e = bm.edges.get((r0[i], r1[i]))
+            if e:
+                long_edges.append(e)
+    if cap:
+        bm.faces.new(list(reversed(rings[0])))
+        bm.faces.new(rings[-1])
+    bm.normal_update()
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    if cl is not None:
+        for e in long_edges:
+            e[cl] = crease
+    o = _mesh_object(name, bm, col)
+    if subsurf:
+        m = o.modifiers.new("subsurf", "SUBSURF")
+        m.levels = m.render_levels = subsurf
+        m.use_creases = True
+    return o
+
+
+def tube_along(name, pts, r, verts=8, col=None, closed=False):
+    """A tube of radius r following a polyline (list of Vectors)."""
+    pts = [Vector(p) for p in pts]
+    bm = bmesh.new()
+    rings = []
+    up = Vector((0, 0, 1))
+    for i, p in enumerate(pts):
+        t = (pts[min(i + 1, len(pts) - 1)] - pts[max(i - 1, 0)]).normalized()
+        n1 = t.cross(up if abs(t.dot(up)) < 0.95 else Vector((1, 0, 0))).normalized()
+        n2 = t.cross(n1).normalized()
+        ring = []
+        for k in range(verts):
+            a = 2 * math.pi * k / verts
+            ring.append(bm.verts.new(p + (n1 * math.cos(a) + n2 * math.sin(a)) * r))
+        rings.append(ring)
+    for r0, r1 in zip(rings, rings[1:]):
+        for i in range(verts):
+            bm.faces.new((r0[i], r0[(i + 1) % verts], r1[(i + 1) % verts], r1[i]))
+    if closed:
+        bm.faces.new(list(reversed(rings[0]))); bm.faces.new(rings[-1])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    return _mesh_object(name, bm, col)
+
+
+def strut(name, a, b, w0, h0, w1, h1, col=None, bevel=0.004):
+    """A tapered rectangular strut from a to b; w is across the leg's hinge axis (Y),
+    h is fore-aft. Reads as a machined limb rather than a pipe."""
+    a, b = Vector(a), Vector(b)
+    d = b - a
+    L = d.length
+    bm = bmesh.new()
+    prof = lambda w, h, z: [bm.verts.new((sx * h / 2, sy * w / 2, z)) for sx, sy in ((-1, -1), (1, -1), (1, 1), (-1, 1))]
+    r0, r1 = prof(w0, h0, 0.0), prof(w1, h1, L)
+    for i in range(4):
+        bm.faces.new((r0[i], r0[(i + 1) % 4], r1[(i + 1) % 4], r1[i]))
+    bm.faces.new(list(reversed(r0))); bm.faces.new(r1)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    o = _mesh_object(name, bm, col, smooth=False)
+    o.matrix_world = Matrix.Translation(a) @ d.to_track_quat("Z", "Y").to_matrix().to_4x4()
+    if bevel:
+        m = o.modifiers.new("bevel", "BEVEL"); m.width = bevel; m.segments = 3; m.limit_method = "ANGLE"; m.harden_normals = True
+    return o
+
+
+def hull_profile(w, h, chamfer=0.35, belly=0.6, deck=0.7):
+    """Chamfered octagon: flat deck on top, tucked belly. Points go around
+    counter-clockwise seen from +X. Same point count for every station."""
+    return [
+        (-w / 2 * deck, h / 2), (-w / 2, h / 2 * chamfer), (-w / 2, -h / 2 * chamfer), (-w / 2 * belly, -h / 2),
+        (w / 2 * belly, -h / 2), (w / 2, -h / 2 * chamfer), (w / 2, h / 2 * chamfer), (w / 2 * deck, h / 2),
+    ]
