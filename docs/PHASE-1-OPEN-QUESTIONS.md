@@ -4,7 +4,9 @@ Written before any Phase 1 code. Two parts: things I think the spec gets wrong o
 leaves load-bearing gaps in, and numbers I need. Nothing here has been assumed and
 built; answer inline and I will treat the answered file as the tuning sheet.
 
-The design doc (`DESIGN.html`) and `ROADMAP.md` were not in the handoff archive.
+`ROADMAP.md` and `DESIGN.html` arrived after the first draft. Where they settle a
+question it is marked **[settled]** with the source; the spec still wins where they
+disagree with it.
 
 ---
 
@@ -90,6 +92,13 @@ points so walls read as curtains and orbiting is not pointless. If you actually 
 3D cave sim (voxels, sonar cones in 3D), that is a different and much larger Phase 1.
 I recommend 2D sim with fake height. Confirm.
 
+**[partly settled]** ROADMAP Phase 1 says "2D top-down cave, hardcoded" and DESIGN says
+milestones one to three are "coloured dots on a black background". So the sim is 2D.
+What remains open is only whether the *view* is a 3D scatter with fake wall height
+(orbitable, as the spec says) or a plain 2D scatter (as ROADMAP implies). I will build
+the 3D scatter unless you say otherwise; the accumulation-in-belief-frame mechanism is
+identical either way and the camera is free in vispy.
+
 The waterline has the same problem: in a top-down grid it is a region (flooded cells),
 in a side view it is a height. Which, and what does it do in Phase 1 — impassable,
 acoustic conduit, visual only?
@@ -102,6 +111,9 @@ bearing points down the passage the sound arrived through, range attenuates with
 length, and "is that a rival or an echo?" is an emergent question rather than a
 scripted one. The second is far more interesting and is roughly a BFS on the grid. It
 also gives the echo a mechanism: a loud ping arriving by two paths gives two bearings.
+DESIGN already commits to this ("reflective rock produces echoes that look like
+contacts"; "decoys don't move naturally"), so the echo's tell should be that it does
+not move and does not repeat.
 
 I would still script the required echo event so the timeline is guaranteed, but the
 propagation model decides whether bearings mean anything. Choose.
@@ -121,6 +133,10 @@ both are legal (both are derived from belief):
   player leaves not knowing whether they were fooled, and you lose the playtest signal.
 
 I would like to build both. Say no if you disagree.
+
+**[settled for the reveal]** DESIGN: "Ground truth appears in exactly two places: the
+post-match replay, where both layers are drawn together, and the spectator view." The
+post-run reveal is in scope. The fix-jump overlay is still my proposal.
 
 ### 9. The rival needs its own Belief
 
@@ -165,7 +181,7 @@ column means it is a straightforward tuning knob.
 |---|---|---|
 | T1 | Tick rate (Hz) | Sim resolution; everything below in ticks or seconds, your choice |
 | T2 | Agent speed (cells/s) | At 1 cell/s the agent covers 480 cells in a match: two or three cave crossings. Sets how much of the cave gets seen |
-| T3 | Extraction deadline (s) and what happens to an agent not at the shaft | The Recall tension is entirely this number |
+| T3 | Extraction window: DESIGN says the last 90 s, and anything not back through a shaft is lost. Confirm 90 s of an 8:00 match, so the window opens at 6:30 | The Recall tension is entirely this number |
 | T4 | Does the match include the 20 s descent before commit, or start at commit? | — |
 | T5 | Match seed fixed for reproducible tuning? (I assume yes, with a flag) | — |
 
@@ -244,7 +260,7 @@ column means it is a straightforward tuning knob.
 | # | Quantity | Why it matters |
 |---|---|---|
 | R1 | Behaviour: retrace the believed beacon chain in reverse, or path through the believed occupancy map to the believed shaft? | Retracing is simpler and self-heals via beacons; pathing on a torn map fails in interesting ways |
-| R2 | Delivery: instant, delayed by N s, or a chance to fail? Spec says "unreliable"; Phase 1 spec is silent | — |
+| R2 | Delivery: instant, delayed by N s, or a chance to fail? DESIGN says latency proportional to depth and blocked in acoustic shadow; Phase 1 spec is silent. A fixed delay of a few seconds is the cheapest version of that tension | — |
 | R3 | If the agent cannot find a believed path home, what does it do? | Edge case that will happen after the spoof |
 | R4 | Number and position of shafts | "Nearest shaft" |
 

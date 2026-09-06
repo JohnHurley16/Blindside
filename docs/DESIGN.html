@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deadwater — prototype design document</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Spectral:ital,wght@0,300;0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --abyss:#070D14;
+  --hull:#0F1A24;
+  --hull-hi:#17262F;
+  --line:#22333F;
+  --bone:#E9E5DB;
+  --bone-dim:#8B9CAA;
+  --bone-faint:#5C6E7C;
+  --sodium:#F2A03F;   /* ground truth — the world as it is */
+  --ping:#54D9CE;     /* belief — what the agent thinks */
+  --rust:#C04A38;     /* loss, sabotage, destruction */
+  --violet:#9A8CD8;   /* player-authored / marketplace */
+  --mono:"JetBrains Mono",ui-monospace,monospace;
+  --disp:"Space Grotesk",system-ui,sans-serif;
+  --body:"Spectral",Georgia,serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--abyss);color:var(--bone);
+  font-family:var(--body);font-weight:300;font-size:17px;line-height:1.72;
+  -webkit-font-smoothing:antialiased;
+}
+::selection{background:var(--sodium);color:var(--abyss)}
+
+/* ---------- shell ---------- */
+.shell{display:grid;grid-template-columns:230px minmax(0,1fr);gap:0;max-width:1240px;margin:0 auto}
+.rail{
+  position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;
+  padding:38px 22px 40px 24px;border-right:1px solid var(--line);
+}
+.rail-mark{font-family:var(--disp);font-weight:700;font-size:19px;letter-spacing:-.02em;margin:0 0 4px}
+.rail-sub{font-family:var(--mono);font-size:10.5px;color:var(--bone-faint);margin:0 0 26px;line-height:1.5}
+.rail a{
+  display:block;font-family:var(--disp);font-size:13px;font-weight:400;
+  color:var(--bone-dim);text-decoration:none;padding:5px 0;border-left:2px solid transparent;
+  padding-left:10px;margin-left:-12px;transition:color .15s,border-color .15s;
+}
+.rail a:hover,.rail a:focus-visible{color:var(--bone);border-left-color:var(--sodium)}
+.rail hr{border:0;border-top:1px solid var(--line);margin:16px 0 14px}
+
+main{padding:0 46px 140px;min-width:0}
+section{padding:64px 0 8px;scroll-margin-top:20px}
+section+section{border-top:1px solid var(--line)}
+
+/* ---------- type ---------- */
+h1{font-family:var(--disp);font-weight:700;font-size:clamp(38px,6vw,60px);line-height:1.02;letter-spacing:-.035em;margin:0 0 18px}
+h2{font-family:var(--disp);font-weight:500;font-size:clamp(24px,3.4vw,31px);letter-spacing:-.02em;line-height:1.14;margin:0 0 6px}
+h3{font-family:var(--disp);font-weight:500;font-size:17px;letter-spacing:-.01em;margin:34px 0 8px;color:var(--bone)}
+h4{font-family:var(--mono);font-weight:500;font-size:11.5px;color:var(--sodium);margin:22px 0 6px;letter-spacing:.04em}
+p{max-width:68ch;margin:0 0 17px}
+.lede{font-size:19px;color:var(--bone-dim);max-width:62ch;line-height:1.62;margin-bottom:26px}
+.kicker{font-family:var(--mono);font-size:11px;color:var(--bone-faint);margin:0 0 12px}
+strong{font-weight:600;color:#fff}
+em{font-style:italic;color:var(--bone)}
+code{font-family:var(--mono);font-size:.86em;background:var(--hull);padding:1px 5px;border-radius:2px;color:var(--ping)}
+a.inline{color:var(--sodium);text-decoration-thickness:1px;text-underline-offset:3px}
+ul,ol{max-width:68ch;padding-left:19px;margin:0 0 18px}
+li{margin-bottom:9px}
+li::marker{color:var(--bone-faint)}
+
+/* ---------- hero ---------- */
+.hero{padding-top:56px;border-top:0}
+.hero-stage{
+  position:relative;margin:30px 0 14px;border:1px solid var(--line);
+  background:linear-gradient(180deg,#0B141C,#070D14);border-radius:3px;overflow:hidden;
+}
+.hero-stage canvas{display:block;width:100%;height:auto}
+.legend{display:flex;flex-wrap:wrap;gap:20px;font-family:var(--mono);font-size:11px;color:var(--bone-dim);margin:14px 0 0}
+.legend span{display:flex;align-items:center;gap:7px}
+.dot{width:9px;height:9px;border-radius:50%;flex:none}
+
+/* ---------- panels ---------- */
+.panel{
+  background:var(--hull);border:1px solid var(--line);border-radius:3px;
+  padding:22px 24px;margin:26px 0;
+}
+.panel canvas{display:block;width:100%;height:auto;border-radius:2px;background:#080F16}
+.panel-head{display:flex;justify-content:space-between;align-items:baseline;gap:16px;margin-bottom:14px}
+.panel-head h3{margin:0}
+.panel p{max-width:64ch}
+.panel p:last-child{margin-bottom:0}
+
+button.act{
+  font-family:var(--mono);font-size:11px;background:transparent;color:var(--sodium);
+  border:1px solid var(--sodium);border-radius:2px;padding:6px 13px;cursor:pointer;
+  transition:background .15s,color .15s;
+}
+button.act:hover,button.act:focus-visible{background:var(--sodium);color:var(--abyss)}
+button.act:focus-visible{outline:2px solid var(--ping);outline-offset:2px}
+
+/* ---------- data blocks ---------- */
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:0 34px}
+.spec{border-top:1px solid var(--line);padding:15px 0 4px}
+.spec h4{margin-top:0}
+.spec p{font-size:15.5px;line-height:1.62;color:var(--bone-dim);max-width:46ch}
+.spec p strong{color:var(--bone)}
+
+table{width:100%;border-collapse:collapse;margin:20px 0 24px;font-size:15px}
+th{
+  font-family:var(--mono);font-weight:500;font-size:10.5px;color:var(--sodium);
+  text-align:left;padding:0 14px 8px 0;border-bottom:1px solid var(--line);letter-spacing:.04em;vertical-align:bottom;
+}
+td{padding:12px 14px 12px 0;border-bottom:1px solid var(--line);vertical-align:top;color:var(--bone-dim);line-height:1.55}
+td:first-child{color:var(--bone);font-family:var(--disp);font-size:14.5px;font-weight:500;width:1%;white-space:nowrap;padding-right:26px}
+tr:last-child td{border-bottom:0}
+
+.note{
+  border-left:2px solid var(--sodium);padding:2px 0 2px 18px;margin:24px 0;
+  color:var(--bone-dim);font-size:16px;max-width:64ch;
+}
+.note strong{color:var(--sodium);font-weight:500}
+.warn{border-left-color:var(--rust)}
+.warn strong{color:var(--rust)}
+
+.pill{font-family:var(--mono);font-size:10px;padding:2px 7px;border:1px solid var(--line);border-radius:2px;color:var(--bone-faint);white-space:nowrap}
+
+.decide{border-left:2px solid var(--violet);padding:14px 0 14px 18px;margin:22px 0}
+.decide h4{color:var(--violet);margin-top:0}
+.decide p{margin-bottom:0;font-size:15.5px;color:var(--bone-dim);max-width:62ch}
+
+@media (max-width:900px){
+  .shell{grid-template-columns:1fr}
+  .rail{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line);padding:26px 22px}
+  .rail nav{display:flex;flex-wrap:wrap;gap:2px 16px}
+  .rail hr{display:none}
+  main{padding:0 22px 100px}
+  body{font-size:16px}
+  section{padding-top:48px}
+}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<aside class="rail">
+  <p class="rail-mark">Deadwater</p>
+  <p class="rail-sub">Prototype design document<br>Working title · v0.1</p>
+  <nav>
+    <a href="#premise">The premise</a>
+    <a href="#belief">Belief and truth</a>
+    <a href="#loop">The core loop</a>
+    <hr>
+    <a href="#world">The world</a>
+    <a href="#agent">The agent</a>
+    <a href="#sensors">Sensors</a>
+    <a href="#teaching">Teaching behavior</a>
+    <hr>
+    <a href="#match">The match</a>
+    <a href="#contact">Contact and sabotage</a>
+    <a href="#modes">Modes</a>
+    <a href="#loss">Loss and salvage</a>
+    <hr>
+    <a href="#market">The behavior market</a>
+    <a href="#seasons">Seasons</a>
+    <hr>
+    <a href="#tech">Engine and architecture</a>
+    <a href="#scope">What to build first</a>
+    <a href="#open">Open decisions</a>
+  </nav>
+</aside>
+
+<main>
+
+<section class="hero" id="top">
+  <p class="kicker">Working title</p>
+  <h1>Deadwater</h1>
+  <p class="lede">A competitive game about teaching machines to work alone in the dark, then losing contact with them. Every world is generated. Every failure is legible. The best behaviors are written by players and sold to other players.</p>
+
+  <div class="hero-stage">
+    <canvas id="c-hero" width="1000" height="380" aria-label="An agent moving through a cave passage. Its estimated position drifts away from its true position until a beacon fix corrects it."></canvas>
+  </div>
+  <div class="legend">
+    <span><i class="dot" style="background:var(--sodium)"></i> where the agent is</span>
+    <span><i class="dot" style="background:var(--ping)"></i> where the agent believes it is</span>
+    <span><i class="dot" style="background:var(--bone-faint)"></i> mapped passage</span>
+  </div>
+  <p style="margin-top:22px">That gap is the game. Everything below exists to make it matter.</p>
+</section>
+
+<section id="premise">
+  <h2>The premise</h2>
+  <p class="lede">Four teams. One cave system nobody has mapped. No comms, no positioning, no second chances.</p>
+
+  <p>You are not down there. You never are. You build small machines on the surface, teach them how to work, drop them through the entry shaft, and lose contact within seconds. From that point you are reading telemetry through a thin acoustic link and hoping you built them right.</p>
+
+  <p>The cave holds things worth recovering — the game is deliberately vague about what, because it doesn't matter mechanically and specificity ages badly. What matters is that value is buried, unevenly distributed, and unknown until someone finds it. Knowledge of the cave <em>is</em> the resource.</p>
+
+  <p>The other teams are down there too, in the same water, running their own machines. You will hear them before you see them. They will hear you. Going quiet costs you your own senses. That single tradeoff generates most of the tension in a match.</p>
+
+  <div class="note">
+    <strong>There is no story and no ending.</strong> Deadwater has the structure of a fishing trip, not a campaign: you go out, something happens, you come back with less equipment and more knowledge. Sessions are self-contained. Progression is what you learned and what you built, not a level number.
+  </div>
+
+  <h3>Why the setting is a cave and not the ocean</h3>
+  <p>Ocean is the more authentic version and the harder one to look at. Open water is visually monotonous — grey-brown murk in every direction — which is a real problem for a game that lives or dies on watchable clips. Caves give you the identical sensing constraints (darkness, no positioning fixes, sound propagation, comms shadow) with far more visual variety: chambers, constrictions, flooded sumps, crystal, ice, collapse debris. Different rock reads differently on sonar, which turns a visual variety problem into a gameplay axis.</p>
+  <p>Some passages are flooded and some are dry. That's not a compromise — it's a free axis of variation that changes which locomotion and which sensors work, and it lets you keep the underwater material you know best without committing the whole game to murk.</p>
+</section>
+
+<section id="belief">
+  <h2>Belief and truth</h2>
+  <p class="lede">The single most important system in the game, and the one that has to be built first.</p>
+
+  <p>The simulation holds two separate things: the world as it actually is, and the agent's model of the world. They are different objects. They are rendered in different colors. They diverge constantly.</p>
+
+  <p>The agent never has access to ground truth. It has sensor returns — noisy, incomplete, sometimes wrong — and a position estimate it maintains by integrating its own motion. That estimate drifts. Not as a punishment, but because that is what dead reckoning does. Over minutes, an agent can be confidently, catastrophically wrong about where it is.</p>
+
+  <p>Everything else in this document hangs off that. Sabotage works because belief is corruptible. Sensors are interesting because each one trades a different kind of certainty. Marketplace behaviors are valuable because handling uncertainty well is a genuine skill. And the moment a player understands that <strong>the machine's picture of the world is not the world</strong>, they have learned the most transferable idea in the entire domain — without anyone telling them they were learning something.</p>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h3>Drift, and what corrects it</h3>
+      <button class="act" id="btn-drift">Run again</button>
+    </div>
+    <canvas id="c-drift" width="1000" height="300" aria-label="Position uncertainty growing over time and collapsing when a fix is obtained."></canvas>
+    <p style="margin-top:16px">Uncertainty grows as the agent moves. A beacon fix, or recognising terrain it has already mapped, collapses it. An agent that never gets a fix is not lost immediately — it just becomes progressively less able to tell you anything true.</p>
+  </div>
+
+  <h3>How the player sees it</h3>
+  <p>The operator view shows belief, not truth. You see the map your agent has built, the position it thinks it holds, the contacts it thinks it has. When it is wrong, you are wrong with it — and you often won't know until the numbers stop making sense.</p>
+  <p>Ground truth appears in exactly two places: the post-match replay, where both layers are drawn together and you can finally see where your machine's picture came apart, and the spectator view. This is deliberate. The replay is where the learning happens, and it is also where the shareable clip comes from.</p>
+
+  <div class="decide">
+    <h4>Decision you should weigh in on</h4>
+    <p>Whether live spectators see ground truth or only belief. Truth makes matches far more watchable — the audience knows the trap is there and the operator doesn't. Belief-only is more honest and more tense. I lean truth for spectators, belief for players.</p>
+  </div>
+</section>
+
+<section id="loop">
+  <h2>The core loop</h2>
+  <p class="lede">Preparation, commitment, helplessness, forensics. Then you change one thing and go again.</p>
+
+  <div class="panel">
+    <canvas id="c-loop" width="1000" height="330" aria-label="The five-stage core loop: build, teach, commit, watch, salvage."></canvas>
+  </div>
+
+  <p>The load-bearing beat is <strong>commit</strong> — the moment control leaves your hands. Before it, you have total authority and no information. After it, you have total information and no authority. Games that let you keep intervening lose this entirely, which is why every existing game in this space feels like a debugger with scenery.</p>
+
+  <p>Time budget for one match, roughly: two to four minutes preparing, six to ten minutes running, two minutes of replay. Short enough that losing everything is survivable, long enough that the drift matters.</p>
+</section>
+
+<section id="world">
+  <h2>The world</h2>
+  <p class="lede">Generated every time, with enough independent axes that seasons can change it without you authoring content.</p>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h3>Cave generation</h3>
+      <button class="act" id="btn-cave">Generate new cave</button>
+    </div>
+    <canvas id="c-cave" width="1000" height="400" aria-label="A procedurally generated cave system with chambers and passages."></canvas>
+    <p style="margin-top:16px">Chambers connected by passages of varying width, generated by cellular automata over a seeded noise field, then carved into a connectivity graph. Wide passages are fast and loud. Constrictions block larger chassis entirely. Dead ends are real and unmarked.</p>
+  </div>
+
+  <h3>The axes that vary</h3>
+  <p>Each of these changes which sensors and which behaviors are correct. Together they give you a season system that costs nothing to author.</p>
+
+  <table>
+    <thead><tr><th>Axis</th><th>Range</th><th>What it changes</th></tr></thead>
+    <tbody>
+      <tr><td>Flooding</td><td>Dry to fully submerged</td><td>Locomotion viability, sound propagation speed, whether a chassis can pass at all</td></tr>
+      <tr><td>Passage width</td><td>Cathedral to crawl</td><td>Chassis size limits, detection range, whether you can turn around</td></tr>
+      <tr><td>Rock type</td><td>Absorbent to reflective</td><td>Sonar return quality, false echoes, how far your own noise carries</td></tr>
+      <tr><td>Sediment</td><td>Clear to silt-out</td><td>Optical range, and whether moving stirs up a cloud that blinds you behind you</td></tr>
+      <tr><td>Magnetic character</td><td>Quiet to noisy rock</td><td>Anomaly detection reliability — noisy rock produces false finds</td></tr>
+      <tr><td>Structural integrity</td><td>Stable to failing</td><td>Collapse risk, which is the main environmental kill vector</td></tr>
+      <tr><td>Depth profile</td><td>Shallow to deep</td><td>Comms link quality, pressure limits, ambient temperature</td></tr>
+      <tr><td>Thermal layering</td><td>Uniform to stratified</td><td>Sound refraction — creates shadow zones you can hide in</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    <strong>Shadow zones are the best of these.</strong> Thermal layering bends sound, which means some parts of the cave are acoustically invisible from some other parts. A player who understands this can position to stay unheard, or lie in wait somewhere a rival's passive sensing cannot reach. It is real physics, it is learnable, and it rewards exactly the kind of thinking the game is trying to teach.
+  </div>
+
+  <h3>Seeding and fairness</h3>
+  <p>All four teams get the same seed and the same cave. Entry points are distributed around the perimeter. Value deposits are placed by the generator with a guaranteed rough parity of total worth per region, but not of accessibility — some are behind a constriction, some behind a flooded sump, some under a ceiling that will come down.</p>
+  <p>The seed is published after the match. That matters more than it sounds: it means anyone can re-run a scenario, test a behavior against a known cave, and share a seed that produced something remarkable. It turns worlds into a shareable object.</p>
+</section>
+
+<section id="agent">
+  <h2>The agent</h2>
+  <p class="lede">Small, modular, and legible at a glance. What it looks like tells you what it can do.</p>
+
+  <div class="panel">
+    <canvas id="c-chassis" width="1000" height="420" aria-label="An agent chassis with labelled module mount points."></canvas>
+  </div>
+
+  <h3>Form factor</h3>
+  <p>Roughly dog-sized. Small enough that the cave feels enormous and losing one is survivable, big enough to read on screen and carry meaningful modules. You own several at once and you expect to lose some. The emotional register is <em>my drone</em>, not <em>my vehicle</em>.</p>
+
+  <p>A walker, not a hovering pod. Legs cost more to build and animate, but they give you three things a pod cannot: terrain interaction that is genuinely interesting (footing, slope, loose debris), noise that varies with gait so movement style becomes an acoustic decision, and character. Nobody buys a skin for a floating cylinder.</p>
+
+  <p>It needs something that functions as a face — a sensor head that turns to look at what it is attending to. This is the single detail that converts a machine into <em>your</em> machine, and it is also functional: a spectator can see what the agent is paying attention to, which makes the replay readable.</p>
+
+  <h3>Chassis classes</h3>
+  <table>
+    <thead><tr><th>Class</th><th>Character</th><th>Trades</th></tr></thead>
+    <tbody>
+      <tr><td>Scout</td><td>Small, quiet, fast, three module slots</td><td>Fits anywhere; almost no carry capacity; fragile</td></tr>
+      <tr><td>Surveyor</td><td>Mid-size, six slots, stable sensor platform</td><td>The default; good at everything, best at nothing</td></tr>
+      <tr><td>Hauler</td><td>Large, heavy carry, eight slots, loud</td><td>Blocked by constrictions; audible across half the cave</td></tr>
+      <tr><td>Swimmer</td><td>Flooded passage specialist</td><td>Useless on dry rock; unmatched below the waterline</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Skins, and the constraint on them</h3>
+  <p>Cosmetic-only monetisation is the right model here. It doesn't collide with the player-run behavior market, and it doesn't sell advantage. But in a game where silhouette carries information, skins cannot change silhouette.</p>
+  <p>So: chassis class and mounted modules determine the outline, and that outline is always honest. If you can see it, you can read its loadout. Skins vary material, wear, paint, markings, light color, decals, and the trail it leaves in silt. Same rule Fortnite uses — hitbox locked, everything else free.</p>
+
+  <div class="decide">
+    <h4>Decision you should weigh in on</h4>
+    <p>Whether modules are visible on the model. Visible modules make the game far more readable for spectators and add real information warfare — you can identify a rival's build on sight. The cost is art: every module needs a mesh that reads at distance in the dark. I think it's worth it, but it roughly doubles the module art budget.</p>
+  </div>
+</section>
+
+<section id="sensors">
+  <h2>Sensors</h2>
+  <p class="lede">Every sensor gives you something and takes something. If a sensor is strictly good, it isn't a choice — it's just equipment.</p>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h3>Passive acoustic — bearing without range</h3>
+      <span class="pill">always on · silent</span>
+    </div>
+    <canvas id="c-passive" width="1000" height="330" aria-label="Bearing lines to unseen contacts, with no range information."></canvas>
+    <p style="margin-top:16px">You hear something, and you know which direction it came from. You do not know how far. Two bearings taken from different positions over time give you a solution — which means passive tracking is an active skill involving deliberate movement, not a readout. This is the primary way you learn other teams exist.</p>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h3>Active sonar — truth, at a price</h3>
+      <button class="act" id="btn-ping">Ping</button>
+    </div>
+    <canvas id="c-active" width="1000" height="330" aria-label="An active sonar pulse revealing cave geometry and simultaneously revealing the agent's position to others."></canvas>
+    <p style="margin-top:16px">Range and bearing, real geometry, actual map data. And you have just announced your exact position to every passive listener in the basin. <strong>Do I ping?</strong> is the central decision of the game, and almost every good moment comes back to it.</p>
+  </div>
+
+  <div class="grid2">
+    <div class="spec">
+      <h4>Dead reckoning · IMU and odometry</h4>
+      <p>Position without emitting anything. <strong>Drifts continuously.</strong> This is the real clock in the game — not a timer you impose, but accumulated error. The longer an agent runs without a fix, the less its own reports are worth.</p>
+    </div>
+    <div class="spec">
+      <h4>Terrain-relative navigation</h4>
+      <p>Matches what it senses against terrain it has already mapped and collapses the drift. <strong>Only works in surveyed ground</strong>, which makes your own map a resource and makes new territory genuinely dangerous.</p>
+    </div>
+    <div class="spec">
+      <h4>Deployable beacons</h4>
+      <p>Absolute fixes you drop as you go. Cheap, limited in number, and <strong>spoofable</strong>. Building a good beacon network is a real skill, and it is also a liability you leave behind you.</p>
+    </div>
+    <div class="spec">
+      <h4>Optical · camera and light</h4>
+      <p>High detail, tiny radius, needs illumination that gives you away in the dark. <strong>Identification, not detection</strong> — this is what tells you what a thing actually is once something else has found it.</p>
+    </div>
+    <div class="spec">
+      <h4>Magnetic anomaly</h4>
+      <p>Long range, no emission, extremely coarse. Tells you <strong>something is roughly over there</strong> without saying what or exactly where. This is the treasure sense, and the reason to commit to a direction.</p>
+    </div>
+    <div class="spec">
+      <h4>Structural acoustic monitor</h4>
+      <p>Listens to the rock itself. Warns of a collapse a few seconds before it happens. <strong>Costs a slot to survive things</strong> that would otherwise simply kill you without explanation.</p>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>No sensor returns raw truth.</strong> Every reading is a return: noisy, sometimes ambiguous, occasionally false. Reflective rock produces echoes that look like contacts. Noisy magnetic ground produces finds that aren't there. The agent's belief is assembled from these, and it is the belief that drives behavior. This is the difference between a game about robots and a game about autonomy.
+  </div>
+
+  <h3>The loadout tension</h3>
+  <p>Power, mass, and slots are finite, and the choice is locked at launch. A quiet agent heavy on passive sensing is safe and slow to find anything. A loud agent with active sonar maps three times faster and gets hunted. You cannot change your mind once contact is lost — that is the preparation game paying off.</p>
+</section>
+
+<section id="teaching">
+  <h2>Teaching behavior</h2>
+  <p class="lede">Three rungs. Text scripting is the top of the ladder, never the price of admission.</p>
+
+  <div class="panel">
+    <canvas id="c-ladder" width="1000" height="300" aria-label="Three tiers of authoring: demonstration, module composition, and scripting."></canvas>
+  </div>
+
+  <h3>Rung one — demonstration</h3>
+  <p>You drive the agent yourself, in its body, doing the task by hand. The system records the trace and generalises it into a policy. Then you promote it, step out, and watch it do the thing you just showed it.</p>
+  <p>When it fails, you rewind the replay and drop back into its body at the moment of failure to correct it. You never write anything. You <em>teach</em>, and then you let go.</p>
+  <p>This rung has to be complete on its own. A player who never touches the other two should have a full game — that is the only thing keeping the audience ceiling off the floor. It also reads as a superpower rather than as programming, which is exactly the framing you want at the top of the funnel.</p>
+
+  <h3>Rung two — composition</h3>
+  <p>Behavior is built as a physical object, not typed. Modules bolt together: a navigation layer, a threat response, a search pattern, a fallback. Wiring them is spatial, and the assembly lives in the world rather than in a text buffer.</p>
+  <p>Critically, <strong>a purchased behavior is a component, not a black box</strong>. You slot someone else's search pattern into your own architecture and it becomes part of a thing you built. This is the difference between a marketplace that makes everyone a consumer and one that makes everyone a better builder.</p>
+
+  <h3>Rung three — script</h3>
+  <p>Real text authoring, in a small purpose-built language, for the players who go deep. This is the redstone tier: used by a small fraction of players, responsible for most of what the game becomes famous for, and the source of nearly everything worth selling on the market.</p>
+  <p>Deliberately gated behind the first two rungs. Nobody should hit a text editor in their first session.</p>
+
+  <div class="warn note">
+    <strong>The trap to avoid.</strong> Every existing game in this genre is an IDE with a viewport bolted on: you type in the left panel and watch in the right. Code and world are separate objects. If Deadwater ends up there, it has failed regardless of how good the systems are. The test is whether authoring happens <em>in</em> the world.
+  </div>
+
+  <h3>Debugging as a place you go</h3>
+  <p>When an agent fails, you do not read a stack trace. You enter its perception in the replay and watch the world through its degraded senses — the false echo it trusted, the beacon that lied to it, the moment its position estimate and its actual position parted company.</p>
+  <p>This is the best teaching mechanism in the design and it should be the most polished thing in the game. It is also, incidentally, the smallest shippable version of the whole concept.</p>
+</section>
+
+<section id="match">
+  <h2>The match</h2>
+
+  <div class="panel">
+    <canvas id="c-timeline" width="1000" height="240" aria-label="Match timeline: prep, descent, blackout, run, extraction window."></canvas>
+  </div>
+
+  <table>
+    <thead><tr><th>Phase</th><th>Duration</th><th>What happens</th></tr></thead>
+    <tbody>
+      <tr><td>Prep</td><td>2–4 min</td><td>Chassis selection, module loadout, behavior assignment. You see the entry shaft and nothing else. All teams prep simultaneously.</td></tr>
+      <tr><td>Descent</td><td>~20 s</td><td>Agents enter. Full telemetry. The last moment of certainty.</td></tr>
+      <tr><td>Blackout</td><td>—</td><td>Comms degrade to a thin acoustic trickle. Position estimates begin to drift. Control is gone.</td></tr>
+      <tr><td>Run</td><td>6–10 min</td><td>Agents execute. You watch belief-space telemetry, send occasional low-bandwidth commands, and cannot drive.</td></tr>
+      <tr><td>Extraction</td><td>Last 90 s</td><td>A window opens. Anything not back through a shaft is lost with everything it carries.</td></tr>
+      <tr><td>Replay</td><td>~2 min</td><td>Both layers drawn together. Ground truth revealed. Seed published. This is where the clip comes from.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>The command channel</h3>
+  <p>You are not completely mute during the run. You have a handful of very low-bandwidth messages — a few bytes, delivered with latency proportional to depth and blocked entirely in acoustic shadow. Recall. Hold. Go quiet. Abort to nearest shaft.</p>
+  <p>This is a deliberate pressure valve. Total helplessness for ten minutes is frustrating; a scarce, unreliable, high-stakes channel is drama. The commands are blunt on purpose — you are shouting at something that may not hear you and cannot ask for clarification.</p>
+</section>
+
+<section id="contact">
+  <h2>Contact and sabotage</h2>
+  <p class="lede">Agents can destroy each other, but never directly. Every kill is a navigation failure, which means every kill is a readable story about whose logic was worse.</p>
+
+  <p>Direct combat is excluded by design. The moment agents can shoot, combat becomes the dominant strategy in every match — it is the fastest reliable way to stop a rival — and the behavior market collapses into combat policies while every other module becomes a niche pick. It would also put the game in direct competition with every shooter ever made, on the one axis where systems depth doesn't help.</p>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h3>Beacon spoofing</h3>
+      <button class="act" id="btn-spoof">Run again</button>
+    </div>
+    <canvas id="c-spoof" width="1000" height="340" aria-label="An agent accepting a false beacon fix and walking confidently into a wall."></canvas>
+    <p style="margin-top:16px">A false beacon does not damage anything. It convinces an agent that it is somewhere it is not — and the agent then acts, correctly and confidently, on a wrong premise. Watching a rival march into a trench because it trusted the wrong fix is exactly the attributable, thirty-second, clippable failure the game needs to spread.</p>
+  </div>
+
+  <h3>The interference toolkit</h3>
+  <table>
+    <thead><tr><th>Method</th><th>Effect</th><th>Counter</th></tr></thead>
+    <tbody>
+      <tr><td>False beacon</td><td>Corrupts a rival's position estimate</td><td>Cross-check fixes against terrain; distrust lone beacons</td></tr>
+      <tr><td>Noise flooding</td><td>Blinds passive listeners in a region</td><td>Blinds you too; also announces that someone is doing it</td></tr>
+      <tr><td>Decoy emitter</td><td>Fake contact draws agents toward nothing</td><td>Bearing-only tracking over time; decoys don't move naturally</td></tr>
+      <tr><td>Silt clouding</td><td>Destroys optical range in a passage</td><td>Non-optical sensing; wait it out</td></tr>
+      <tr><td>Induced collapse</td><td>Closes a route, possibly onto something</td><td>Structural monitor; route diversity</td></tr>
+      <tr><td>Beacon theft</td><td>Removes a rival's navigation network</td><td>Redundancy; terrain-relative fallback</td></tr>
+      <tr><td>Following</td><td>Trail a rival's agent to whatever it found</td><td>Notice you're being followed; go quiet; lead them wrong</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    <strong>Sabotage must be visible and attributable.</strong> Interference between autonomous agents is inherently hard to follow. If a spectator cannot instantly see <em>why</em> the machine drove into a wall, there is no clip, and without clips there is no growth engine. Every interference method needs a distinct, obvious visual signature in the replay.
+  </div>
+</section>
+
+<section id="modes">
+  <h2>Modes and win conditions</h2>
+  <p class="lede">Multiple objectives, on purpose. A single objective produces a single optimal policy, and the market dies with it.</p>
+
+  <table>
+    <thead><tr><th>Mode</th><th>Win condition</th><th>What it rewards</th></tr></thead>
+    <tbody>
+      <tr><td>Extraction</td><td>Most value recovered and brought back through a shaft</td><td>The baseline. Balanced builds, route planning, knowing when to turn around.</td></tr>
+      <tr><td>Survey</td><td>Most cave area accurately mapped — accuracy scored against ground truth</td><td>Fast, quiet, wide-ranging builds. Punishes drift directly and explicitly.</td></tr>
+      <tr><td>Race</td><td>First to reach a single anomaly placed somewhere in the system</td><td>Long-range detection, aggressive commitment, high-risk routing.</td></tr>
+      <tr><td>Endurance</td><td>No opponents. How deep and how long before you lose everything.</td><td>Solo, meditative, unbounded. This is the mode with no point, and it is the one people will play at 2am.</td></tr>
+    </tbody>
+  </table>
+
+  <p>Survey mode is worth calling out. Scoring map accuracy against ground truth makes the game's central idea into the literal win condition — you are graded on how closely your machine's belief matched reality. It is the purest expression of the design and it should exist even if it never becomes the popular mode.</p>
+</section>
+
+<section id="loss">
+  <h2>Loss and salvage</h2>
+  <p class="lede">Losing agents is the default state, not a fail condition.</p>
+
+  <p>Agents that don't come back should be routine and expected. That does three things at once: it makes bringing one home an actual achievement, it makes sending one deep a real bet, and it keeps constant demand flowing through the market because inventory is continuously consumed.</p>
+
+  <p>When an agent dies, it stays where it fell, with everything it was carrying and everything it was running. Wrecks persist for the remainder of the match.</p>
+
+  <h3>Reading the dead</h3>
+  <p>Any agent can salvage a wreck — yours or a rival's. Recovering one gets you its cargo, and, if you carry the module for it, <strong>its behavior</strong>. You can read the policy off a machine you did not build.</p>
+  <p>This is the best single idea in the design and it needs protecting. It makes the market two-sided: behaviors can be earned or stolen, not only bought. It gives losses a second life. It creates a reason to go somewhere dangerous that has nothing to do with treasure. And it produces the best stories the game will generate — the team that lost every machine but came home with the winner's navigation stack.</p>
+
+  <div class="decide">
+    <h4>Decision you should weigh in on</h4>
+    <p>Whether a stolen behavior can be resold on the market, or only used privately. Resale is more dramatic and more chaotic; private-use-only protects authors and keeps the market functioning. I lean private-use-only with an attribution trail, so the original author is visible on any derivative.</p>
+  </div>
+</section>
+
+<section id="market">
+  <h2>The behavior market</h2>
+  <p class="lede">Players sell policies to other players. The game gets deeper as the playerbase gets better, and you author none of it.</p>
+
+  <div class="panel">
+    <canvas id="c-market" width="1000" height="330" aria-label="The market cycle: author, prove, publish, adopt, counter."></canvas>
+  </div>
+
+  <p>Nobody has built a user-generated economy where the commodity is a <em>policy</em> rather than a cosmetic or a level. That is the genuinely novel thing in this design, and it solves the content problem structurally — the game's depth becomes a function of player count rather than of your development time.</p>
+
+  <h3>What is actually sold</h3>
+  <p>Not whole agents. Composable modules: a search pattern, a threat response, a navigation stack, a fallback ladder, a sonar discipline policy. Each one slots into a buyer's own architecture and keeps them a builder rather than a consumer.</p>
+
+  <h3>Proof of performance</h3>
+  <p>A listing carries verified statistics, not seller claims. Because the simulation is deterministic and seeds are published, every behavior can be re-run automatically against a rotating benchmark set of caves. A listing shows how it actually performed, on which cave types, against which competition, with the replays attached.</p>
+  <p>This is only possible because of the determinism requirement, which is the main reason that requirement is non-negotiable.</p>
+
+  <h3>Keeping the metagame from calcifying</h3>
+  <p>The obvious failure mode: a dominant behavior gets published, everyone buys it, it stays dominant, the game dies inside a month. Three things prevent it.</p>
+  <ul>
+    <li><strong>Counters are profitable.</strong> The counter to a top-selling behavior is itself a valuable listing. Dominance creates a market opportunity to destroy that dominance.</li>
+    <li><strong>The world moves.</strong> Seasonal changes to generation parameters mean no policy stays optimal across seasons. Nobody got nerfed — the cave changed.</li>
+    <li><strong>Objectives vary.</strong> Four modes with genuinely different demands means a library of situational behaviors beats one dominant build.</li>
+  </ul>
+
+  <div class="warn note">
+    <strong>Real money is a decision, not a default.</strong> Roblox's payout loop is the most effective thing about it, and it is also a regulatory and moderation surface that will consume a solo developer. For the prototype and probably well past it, the market should run on in-game currency only. Revisit real payouts when there is a company, not before.
+  </div>
+</section>
+
+<section id="seasons">
+  <h2>Seasons</h2>
+  <p class="lede">The balance mechanism, not the monetisation gimmick.</p>
+
+  <p>In any competitive game with a solvable strategy space, periodic disruption is what prevents calcification. The unusual advantage here is that your rebalancing does not have to take anything away from anyone. Most games nerf, and players experience it as punishment for having invested well. Deadwater changes the world instead — a new season shifts the generation parameters, and yesterday's optimal policy is now merely good. Nothing was taken. The cave is different.</p>
+
+  <h3>What a season changes</h3>
+  <ul>
+    <li>Generation weights across the eight world axes — a season of deeply flooded, thermally stratified systems plays nothing like a season of dry, collapsing, magnetically noisy rock</li>
+    <li>Which chassis classes and modules are viable, as a downstream consequence rather than a direct edit</li>
+    <li>The benchmark set that market listings are scored against</li>
+    <li>A new module or chassis class, occasionally — but the world change should do most of the work</li>
+  </ul>
+
+  <h3>Two rules</h3>
+  <p><strong>Preserve the archive.</strong> Old behaviors stay usable, just no longer optimal. Players who kept a library of situational policies from past seasons then hold a real advantage — which rewards exactly the collecting-and-understanding behavior you want to encourage.</p>
+  <p><strong>Don't over-tune to telemetry.</strong> You will have extraordinary data about how agents perform. The temptation is to smooth everything toward a target engagement curve, and games tuned that way feel synthetic. Use the data to find what players have <em>solved</em>, then introduce a condition that solved policy cannot handle. Not to adjust a difficulty slider.</p>
+
+  <div class="note">
+    <strong>Run season transitions as shared events.</strong> If a season opens with something visible happening that every player experiences at once — a system-wide collapse, a flood, a thermal shift — you get the live-event effect without the production budget, because the world is generated rather than authored. A reason to be present, and a reason to talk about it.
+  </div>
+</section>
+
+<section id="tech">
+  <h2>Engine and architecture</h2>
+  <p class="lede">Not Unreal. The reason is determinism, not graphics.</p>
+
+  <p>The design rests on replays, spectating, and a marketplace where players buy behaviors and need to trust the performance numbers attached to them. That requires a simulation producing bit-identical results from identical inputs on every machine. Unreal's physics does not offer that, and making it do so is a multi-year fight against the engine. Unreal's actual strengths — Nanite, Lumen, photoreal pipelines — are worth nothing to a game set in the dark with small stylised robots, and its costs are steep for a solo developer: heavy iteration times, C++ build cycles, and a hostile environment for hot-reloadable user-authored logic.</p>
+
+  <p>Unreal Engine 5.8 shipped in June 2026 and is the last planned UE5 release. UE6 merges the engine with the Fortnite editor and moves the gameplay model to Verse, but early access is targeted at late 2027 with a stable release 12 to 18 months after that. It is not something you can build on now, and by the time it arrives you should already have a prototype answering the questions that matter.</p>
+
+  <h3>The architecture that fits</h3>
+  <div class="panel">
+    <canvas id="c-arch" width="1000" height="360" aria-label="Layered architecture: deterministic sim core, behavior VM, renderer, netcode."></canvas>
+  </div>
+
+  <p>A headless deterministic simulation core is the product. Everything else is a viewer attached to it.</p>
+
+  <table>
+    <thead><tr><th>Layer</th><th>Choice</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>Sim core</td><td>Rust, fixed timestep, fixed-point or strictly controlled float</td><td>Deterministic, headless, testable, runs a thousand matches an hour on a laptop for balance work</td></tr>
+      <tr><td>Behavior VM</td><td>Sandboxed bytecode interpreter with a hard instruction budget per tick</td><td>User code cannot hang, crash, or escape. Instruction budget becomes a balance lever.</td></tr>
+      <tr><td>Renderer</td><td>Godot 4, or Bevy if you want to stay in Rust</td><td>Fast iteration, stylised rendering is enough, and neither fights you on determinism because neither is doing the sim</td></tr>
+      <tr><td>Netcode</td><td>Server-authoritative sim, clients receive belief-space state only</td><td>Falls out of the design — clients genuinely should not have ground truth. Cheating is structurally hard.</td></tr>
+      <tr><td>Replays</td><td>Seed plus input log. Kilobytes.</td><td>Determinism means a full match replay is tiny. This is what makes the market verifiable and clips shareable.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    <strong>The netcode is nearly free, and that is not a coincidence.</strong> A game where players cannot directly control units, where inputs are sparse and low-bandwidth, and where clients are only entitled to a filtered view has almost none of the problems that make competitive multiplayer expensive. No client prediction, no rollback, no lag compensation. The fiction and the architecture are the same shape.
+  </div>
+
+  <p>If you later want the visually ambitious version with a team behind it, the sim core is portable and Unreal becomes a rendering decision rather than a foundational one. Building it this way keeps that door open instead of closing it.</p>
+</section>
+
+<section id="scope">
+  <h2>What to build first</h2>
+  <p class="lede">The failure mode for a project like this is not picking the wrong concept. It is never shipping.</p>
+
+  <p>Multi-year solo projects alongside a demanding engineering job die at roughly a nine-in-ten rate, and the survivors are almost always people who shipped something small first. Every milestone below is scoped so that abandoning at the end of it still leaves you with something you learned or something you can show.</p>
+
+  <table>
+    <thead><tr><th>Milestone</th><th>Build</th><th>The question it answers</th></tr></thead>
+    <tbody>
+      <tr><td>One</td><td>Headless sim. One agent, one cave, dead reckoning drift, top-down 2D debug view. No art, no networking, no UI.</td><td>Is watching a position estimate diverge from truth actually tense?</td></tr>
+      <tr><td>Two</td><td>Sensors: passive acoustic, active sonar, beacons. Still 2D, still ugly.</td><td>Is <em>do I ping</em> a real decision?</td></tr>
+      <tr><td>Three</td><td>Two agents, one cave, acoustic detection, one thing worth finding.</td><td>Is a thirty-second contact between two blind machines fun to watch?</td></tr>
+      <tr><td>Four</td><td>Demonstration authoring. Drive it, record it, promote it, watch it.</td><td>Does a player feel something when the thing they taught works?</td></tr>
+      <tr><td>Five</td><td>Replay with both layers drawn together, and the ability to enter the agent's perception.</td><td>Is the forensics loop the good part? <em>This is the smallest shippable game.</em></td></tr>
+      <tr><td>Six</td><td>3D renderer, chassis art, one real cave biome.</td><td>Does it look like something people want to play?</td></tr>
+      <tr><td>Seven</td><td>Networked four-team matches, extraction mode, wrecks and salvage.</td><td>Does competition hold up?</td></tr>
+      <tr><td>Eight</td><td>Composition authoring and the market, in-game currency only.</td><td>Will players actually author things worth buying?</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    <strong>Milestone five is a product.</strong> A single-player forensic game about diagnosing why autonomous machines failed is small, novel, shippable by one person, and directly targets the deepest idea in the design. It would build an audience and de-risk everything after it. There is a strong case for shipping it as its own thing before attempting the competitive game.
+  </div>
+
+  <p>Milestones one through three should take weeks, not months, because there is no art in them. If milestone three is not fun in a 2D debug view with coloured dots, no amount of rendering will save it — and you will have found that out for the price of a few weekends.</p>
+</section>
+
+<section id="open">
+  <h2>Open decisions</h2>
+  <p class="lede">Things I chose that you should overrule if you disagree. Each one changes the shape of the game.</p>
+
+  <div class="grid2">
+    <div class="spec">
+      <h4>Cave versus open water</h4>
+      <p>I chose caves for visual variety and readability. Open water is more authentic to your background and harder to look at. Mixed flooded/dry passages are my attempt to have both.</p>
+    </div>
+    <div class="spec">
+      <h4>Walkers versus hovering</h4>
+      <p>Walkers for character and terrain interaction, at real animation cost. A pod would halve the art budget and cost you skin sales.</p>
+    </div>
+    <div class="spec">
+      <h4>Match length</h4>
+      <p>Ten minutes is my guess. Long enough for drift to matter, short enough that total loss is survivable. This is the number most likely to be wrong and it will only be settled by playtesting.</p>
+    </div>
+    <div class="spec">
+      <h4>Four teams</h4>
+      <p>Enough that the cave feels contested, few enough that a spectator can follow it. Two is cleaner and much easier to build; eight is chaos and probably better content.</p>
+    </div>
+    <div class="spec">
+      <h4>The command channel</h4>
+      <p>I gave you a few unreliable low-bandwidth commands. Pure helplessness is more thematically honest and probably less fun. Worth testing both.</p>
+    </div>
+    <div class="spec">
+      <h4>Spectator sees truth</h4>
+      <p>Watchability versus honesty. I lean toward truth for spectators because the growth engine depends on clips being legible.</p>
+    </div>
+    <div class="spec">
+      <h4>Stolen behavior resale</h4>
+      <p>I lean private-use-only with attribution. Resale is more dramatic and probably corrosive to authors.</p>
+    </div>
+    <div class="spec">
+      <h4>Audience</h4>
+      <p>Everything here is tuned for the Factorio and Kerbal audience — adults with money — rather than for kids. Kids will find it, the way they found redstone. That is the version that replaces a salary.</p>
+    </div>
+  </div>
+
+  <h3>The thing I would push you on</h3>
+  <p>Build milestone three before deciding anything else on this page. Two agents, one procedural cave, acoustic detection, one thing worth finding, rendered as coloured dots on a black background. Everything in this document is a guess until that exists, and most of it will change once it does.</p>
+</section>
+
+</main>
+</div>
+
+<script>
+(function(){
+"use strict";
+var C={abyss:"#070D14",hull:"#0F1A24",line:"#22333F",bone:"#E9E5DB",dim:"#8B9CAA",
+       faint:"#5C6E7C",sod:"#F2A03F",ping:"#54D9CE",rust:"#C04A38",vio:"#9A8CD8"};
+var RM = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function setup(id){
+  var cv=document.getElementById(id); if(!cv) return null;
+  var w=+cv.getAttribute("width"), h=+cv.getAttribute("height");
+  var dpr=Math.min(window.devicePixelRatio||1,2);
+  cv.width=w*dpr; cv.height=h*dpr; cv.style.width="100%";
+  var ctx=cv.getContext("2d"); ctx.scale(dpr,dpr);
+  return {cv:cv,ctx:ctx,w:w,h:h};
+}
+function anim(s,draw){
+  if(!s) return;
+  var running=false, t=0;
+  function frame(){ t+=1; draw(s.ctx,s.w,s.h,t); if(running) requestAnimationFrame(frame); }
+  var io=new IntersectionObserver(function(e){
+    e.forEach(function(en){
+      if(en.isIntersecting && !running){ running=true; requestAnimationFrame(frame); }
+      else if(!en.isIntersecting){ running=false; }
+    });
+  },{threshold:0.05});
+  io.observe(s.cv);
+  if(RM){ draw(s.ctx,s.w,s.h,140); io.disconnect(); }
+  return function(v){ t=v; };
+}
+function label(ctx,x,y,txt,col,size,align){
+  ctx.fillStyle=col||C.dim; ctx.font=(size||11)+"px 'JetBrains Mono',monospace";
+  ctx.textAlign=align||"left"; ctx.textBaseline="middle"; ctx.fillText(txt,x,y);
+}
+function disp(ctx,x,y,txt,col,size,align){
+  ctx.fillStyle=col||C.bone; ctx.font="500 "+(size||14)+"px 'Space Grotesk',sans-serif";
+  ctx.textAlign=align||"left"; ctx.textBaseline="middle"; ctx.fillText(txt,x,y);
+}
+function rr(ctx,x,y,w,h,r){
+  ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+}
+function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+
+/* ---------------- 1. HERO : drift and fix ---------------- */
+(function(){
+  var s=setup("c-hero"); if(!s) return;
+  // passage centreline
+  function path(u){ return {x:70+u*860, y:190+Math.sin(u*7.2)*66+Math.sin(u*2.1)*30}; }
+  var beacons=[0.30,0.62,0.88];
+  anim(s,function(ctx,w,h,t){
+    var T=(t*0.0016)%1.25; var u=Math.min(T,1);
+    ctx.clearRect(0,0,w,h);
+    // passage walls
+    ctx.lineWidth=1; 
+    for(var side=-1;side<=1;side+=2){
+      ctx.beginPath();
+      for(var i=0;i<=200;i++){var p=path(i/200);var wd=34+Math.sin(i/200*11)*13;ctx[i?"lineTo":"moveTo"](p.x,p.y+side*wd);}
+      ctx.strokeStyle=C.line; ctx.stroke();
+    }
+    // mapped trail (what it has surveyed)
+    ctx.beginPath();
+    for(var i=0;i<=200;i++){ if(i/200>u) break; var p=path(i/200); ctx[i?"lineTo":"moveTo"](p.x,p.y); }
+    ctx.strokeStyle="rgba(92,110,124,.55)"; ctx.lineWidth=2; ctx.stroke();
+    // drift accumulation, reset at beacons
+    var lastB=0; for(var b=0;b<beacons.length;b++){ if(u>beacons[b]) lastB=beacons[b]; }
+    var since=u-lastB; var err=since*1400;
+    var seed=Math.floor(lastB*1000);
+    var ang=(seed%7)*0.9+1.4;
+    var tp=path(u);
+    var bp={x:tp.x+Math.cos(ang)*err*0.10, y:tp.y+Math.sin(ang)*err*0.055};
+    // beacons
+    beacons.forEach(function(bu){
+      var p=path(bu); var live=u>bu;
+      ctx.beginPath(); ctx.arc(p.x,p.y,4,0,7); ctx.fillStyle=live?C.sod:"#2a3a46"; ctx.fill();
+      if(live){ var age=(u-bu); if(age<0.05){ ctx.beginPath(); ctx.arc(p.x,p.y,4+age*380,0,7);
+        ctx.strokeStyle="rgba(242,160,63,"+(1-age*20)+")"; ctx.lineWidth=1.5; ctx.stroke(); } }
+    });
+    // uncertainty ellipse
+    ctx.beginPath(); ctx.ellipse(bp.x,bp.y,Math.max(3,err*0.13),Math.max(3,err*0.10),0,0,7);
+    ctx.fillStyle="rgba(84,217,206,.09)"; ctx.fill();
+    ctx.strokeStyle="rgba(84,217,206,.42)"; ctx.lineWidth=1; ctx.stroke();
+    // link line
+    ctx.beginPath(); ctx.moveTo(tp.x,tp.y); ctx.lineTo(bp.x,bp.y);
+    ctx.strokeStyle="rgba(233,229,219,.16)"; ctx.setLineDash([2,4]); ctx.stroke(); ctx.setLineDash([]);
+    // believed
+    ctx.beginPath(); ctx.arc(bp.x,bp.y,5,0,7); ctx.fillStyle=C.ping; ctx.fill();
+    // true agent
+    ctx.beginPath(); ctx.arc(tp.x,tp.y,6.5,0,7); ctx.fillStyle=C.sod; ctx.fill();
+    ctx.beginPath(); ctx.arc(tp.x,tp.y,13,0,7); ctx.strokeStyle="rgba(242,160,63,.3)"; ctx.lineWidth=1; ctx.stroke();
+    // readout
+    label(ctx,70,36,"POSITION ERROR",C.faint,10);
+    disp(ctx,70,56,(err*0.9).toFixed(1)+" m",err>90?C.rust:C.ping,20);
+    label(ctx,w-70,36,u>=1?"EXTRACTED":"NO COMMS",C.faint,10,"right");
+  });
+})();
+
+/* ---------------- 2. DRIFT chart ---------------- */
+(function(){
+  var s=setup("c-drift"); if(!s) return;
+  var reset=anim(s,function(ctx,w,h,t){
+    var T=(t*0.0022)%1.15;
+    ctx.clearRect(0,0,w,h);
+    var L=70,R=w-70,B=h-46,TP=40;
+    ctx.strokeStyle=C.line; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(L,TP); ctx.lineTo(L,B); ctx.lineTo(R,B); ctx.stroke();
+    label(ctx,L,TP-16,"UNCERTAINTY",C.faint,10);
+    label(ctx,R,B+20,"TIME SINCE LAUNCH",C.faint,10,"right");
+    var fixes=[0.26,0.52,0.78];
+    // fix markers
+    fixes.forEach(function(f){
+      var x=L+(R-L)*f;
+      ctx.beginPath(); ctx.moveTo(x,TP); ctx.lineTo(x,B);
+      ctx.strokeStyle="rgba(242,160,63,.22)"; ctx.setLineDash([2,5]); ctx.stroke(); ctx.setLineDash([]);
+    });
+    function val(u){ var last=0; fixes.forEach(function(f){ if(u>f) last=f; }); return (u-last); }
+    // area
+    ctx.beginPath(); ctx.moveTo(L,B);
+    for(var i=0;i<=300;i++){ var u=i/300; if(u>T) break;
+      var x=L+(R-L)*u, y=B-Math.min(val(u)*3.1,1)*(B-TP); ctx.lineTo(x,y); }
+    var lx=L+(R-L)*Math.min(T,1);
+    ctx.lineTo(lx,B); ctx.closePath();
+    var g=ctx.createLinearGradient(0,TP,0,B);
+    g.addColorStop(0,"rgba(192,74,56,.30)"); g.addColorStop(1,"rgba(84,217,206,.05)");
+    ctx.fillStyle=g; ctx.fill();
+    // line
+    ctx.beginPath();
+    for(var i=0;i<=300;i++){ var u=i/300; if(u>T) break;
+      var x=L+(R-L)*u, y=B-Math.min(val(u)*3.1,1)*(B-TP); ctx[i?"lineTo":"moveTo"](x,y); }
+    ctx.strokeStyle=C.ping; ctx.lineWidth=2; ctx.stroke();
+    if(T<=1){
+      var cy=B-Math.min(val(T)*3.1,1)*(B-TP);
+      ctx.beginPath(); ctx.arc(lx,cy,4,0,7); ctx.fillStyle=C.ping; ctx.fill();
+    }
+    fixes.forEach(function(f){ if(T>f){ var x=L+(R-L)*f;
+      label(ctx,x,B+20,"fix",C.sod,10,"center"); } });
+  });
+  var b=document.getElementById("btn-drift"); if(b&&reset) b.addEventListener("click",function(){reset(0);});
+})();
+
+/* ---------------- 3. CORE LOOP ---------------- */
+(function(){
+  var s=setup("c-loop"); if(!s) return;
+  var steps=[["Build","chassis + modules, locked"],["Teach","demonstrate, compose, script"],
+             ["Commit","comms lost — control ends"],["Watch","belief-space telemetry only"],
+             ["Salvage","replay, forensics, wrecks"]];
+  anim(s,function(ctx,w,h,t){
+    ctx.clearRect(0,0,w,h);
+    var n=steps.length, gap=(w-120)/n, y=h/2-14;
+    var active=Math.floor((t*0.012)%n);
+    for(var i=0;i<n;i++){
+      var x=60+gap*i+gap/2, on=(i===active);
+      var bw=gap-26;
+      rr(ctx,x-bw/2,y-44,bw,88,3);
+      ctx.fillStyle=on?"rgba(242,160,63,.09)":"rgba(15,26,36,.9)"; ctx.fill();
+      ctx.strokeStyle=on?C.sod:C.line; ctx.lineWidth=1; ctx.stroke();
+      disp(ctx,x,y-14,steps[i][0],on?C.sod:C.bone,16,"center");
+      ctx.fillStyle=C.faint; ctx.font="10px 'JetBrains Mono',monospace"; ctx.textAlign="center";
+      var words=steps[i][1].split(", ");
+      words.forEach(function(wd,k){ ctx.fillText(wd,x,y+10+k*14); });
+      if(i<n-1){
+        var ax=x+bw/2+5, bx=x+gap-bw/2-5;
+        ctx.beginPath(); ctx.moveTo(ax,y); ctx.lineTo(bx-5,y);
+        ctx.strokeStyle=C.line; ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(bx-5,y-3.5); ctx.lineTo(bx,y); ctx.lineTo(bx-5,y+3.5);
+        ctx.fillStyle=C.line; ctx.fill();
+      }
+    }
+    // return arc
+    ctx.beginPath(); ctx.moveTo(w-60-gap/2,y+48); 
+    ctx.bezierCurveTo(w-200,h-14,200,h-14,60+gap/2,y+48);
+    ctx.strokeStyle="rgba(84,217,206,.35)"; ctx.setLineDash([3,4]); ctx.lineWidth=1; ctx.stroke(); ctx.setLineDash([]);
+    label(ctx,w/2,h-16,"change one thing, go again",C.ping,10,"center");
+    // the commit marker
+    var cx=60+gap*2+gap/2;
+    label(ctx,cx,y-58,"↓ authority ends here",C.rust,10,"center");
+  });
+})();
+
+/* ---------------- 4. CAVE GENERATION ---------------- */
+(function(){
+  var s=setup("c-cave"); if(!s) return;
+  var GW=100,GH=40,grid,seed=7;
+  function gen(sd){
+    var rnd=mulberry(sd), g=[];
+    for(var y=0;y<GH;y++){ g[y]=[]; for(var x=0;x<GW;x++){
+      var edge=(x<2||y<2||x>GW-3||y>GH-3);
+      g[y][x]= edge?1:(rnd()<0.45?1:0); } }
+    for(var it=0;it<5;it++){
+      var n=[];
+      for(var y=0;y<GH;y++){ n[y]=[]; for(var x=0;x<GW;x++){
+        var c=0;
+        for(var dy=-1;dy<=1;dy++)for(var dx=-1;dx<=1;dx++){
+          if(!dx&&!dy)continue; var yy=y+dy,xx=x+dx;
+          if(yy<0||xx<0||yy>=GH||xx>=GW) c++; else c+=g[yy][xx];
+        }
+        n[y][x]= c>4?1:(c<4?0:g[y][x]);
+      } }
+      g=n;
+    }
+    return g;
+  }
+  function draw(){
+    var ctx=s.ctx,w=s.w,h=s.h; ctx.clearRect(0,0,w,h);
+    var cw=w/GW, ch=(h-30)/GH;
+    for(var y=0;y<GH;y++)for(var x=0;x<GW;x++){
+      if(grid[y][x]===0){
+        // open space — depth-tinted
+        var d=y/GH;
+        ctx.fillStyle="rgba("+(20+d*14)+","+(38+d*10)+","+(50+d*12)+",1)";
+        ctx.fillRect(x*cw,y*ch+22,cw+.6,ch+.6);
+      }
+    }
+    // wall edges
+    ctx.strokeStyle="rgba(92,110,124,.5)"; ctx.lineWidth=1; ctx.beginPath();
+    for(var y=0;y<GH;y++)for(var x=0;x<GW;x++){
+      if(grid[y][x]===0){
+        if(y>0&&grid[y-1][x]===1){ctx.moveTo(x*cw,y*ch+22);ctx.lineTo(x*cw+cw,y*ch+22);}
+        if(y<GH-1&&grid[y+1][x]===1){ctx.moveTo(x*cw,y*ch+ch+22);ctx.lineTo(x*cw+cw,y*ch+ch+22);}
+        if(x>0&&grid[y][x-1]===1){ctx.moveTo(x*cw,y*ch+22);ctx.lineTo(x*cw,y*ch+ch+22);}
+        if(x<GW-1&&grid[y][x+1]===1){ctx.moveTo(x*cw+cw,y*ch+22);ctx.lineTo(x*cw+cw,y*ch+ch+22);}
+      }
+    }
+    ctx.stroke();
+    // waterline
+    var wl=22+ch*GH*0.62;
+    ctx.beginPath(); ctx.moveTo(0,wl); ctx.lineTo(w,wl);
+    ctx.strokeStyle="rgba(84,217,206,.30)"; ctx.setLineDash([5,5]); ctx.stroke(); ctx.setLineDash([]);
+    label(ctx,10,wl-11,"waterline — flooded below",C.ping,10);
+    // entry shafts
+    var rnd=mulberry(seed+99);
+    for(var i=0;i<4;i++){
+      var ex=Math.floor(8+rnd()*(GW-16))*cw;
+      ctx.beginPath(); ctx.moveTo(ex,4); ctx.lineTo(ex,22);
+      ctx.strokeStyle=C.sod; ctx.lineWidth=2; ctx.stroke();
+      ctx.beginPath(); ctx.arc(ex,4,3,0,7); ctx.fillStyle=C.sod; ctx.fill();
+    }
+    label(ctx,w-8,12,"seed "+seed,C.faint,10,"right");
+    label(ctx,10,12,"4 ENTRY SHAFTS",C.sod,10);
+  }
+  grid=gen(seed); draw();
+  var b=document.getElementById("btn-cave");
+  if(b) b.addEventListener("click",function(){ seed=Math.floor(Math.random()*9999); grid=gen(seed); draw(); });
+})();
+
+/* ---------------- 5. CHASSIS ---------------- */
+(function(){
+  var s=setup("c-chassis"); if(!s) return;
+  anim(s,function(ctx,w,h,t){
+    ctx.clearRect(0,0,w,h);
+    var cx=w/2, cy=h/2+10, br=(t*0.03);
+    // body
+    ctx.save(); ctx.translate(cx,cy);
+    // legs
+    for(var i=0;i<4;i++){
+      var sx=(i<2?-1:1), sy=(i%2?-1:1);
+      var ph=Math.sin(br*0.5+i*1.7)*7;
+      ctx.beginPath();
+      ctx.moveTo(sx*52,sy*20);
+      ctx.lineTo(sx*88,sy*44+ph);
+      ctx.lineTo(sx*80,sy*82+ph*0.4);
+      ctx.strokeStyle=C.dim; ctx.lineWidth=3.5; ctx.lineJoin="round"; ctx.lineCap="round"; ctx.stroke();
+      ctx.beginPath(); ctx.arc(sx*88,sy*44+ph,4,0,7); ctx.fillStyle=C.hull; ctx.fill();
+      ctx.strokeStyle=C.faint; ctx.lineWidth=1.5; ctx.stroke();
+    }
+    // hull
+    rr(ctx,-62,-30,124,60,8); ctx.fillStyle="#15242F"; ctx.fill();
+    ctx.strokeStyle=C.dim; ctx.lineWidth=2; ctx.stroke();
+    rr(ctx,-50,-20,100,40,5); ctx.strokeStyle="rgba(92,110,124,.5)"; ctx.lineWidth=1; ctx.stroke();
+    // sensor head — turns to look
+    var look=Math.sin(br*0.22)*0.55;
+    ctx.save(); ctx.translate(62,0); ctx.rotate(look);
+    rr(ctx,-4,-15,26,30,6); ctx.fillStyle="#1D2F3B"; ctx.fill();
+    ctx.strokeStyle=C.dim; ctx.lineWidth=2; ctx.stroke();
+    ctx.beginPath(); ctx.arc(14,0,6,0,7);
+    ctx.fillStyle=C.sod; ctx.fill();
+    ctx.beginPath(); ctx.arc(14,0,11+Math.sin(br*0.3)*2,0,7);
+    ctx.strokeStyle="rgba(242,160,63,.35)"; ctx.lineWidth=1; ctx.stroke();
+    // light cone
+    ctx.beginPath(); ctx.moveTo(18,0); ctx.lineTo(96,-30); ctx.lineTo(96,30); ctx.closePath();
+    var lg=ctx.createLinearGradient(18,0,96,0);
+    lg.addColorStop(0,"rgba(242,160,63,.16)"); lg.addColorStop(1,"rgba(242,160,63,0)");
+    ctx.fillStyle=lg; ctx.fill();
+    ctx.restore();
+    ctx.restore();
+    // mount points + labels
+    var mounts=[
+      [cx-30,cy-32,cx-150,cy-108,"Dorsal · active sonar",  "left"],
+      [cx+22,cy-32,cx+150,cy-108,"Head · optical + light", "right"],
+      [cx-56,cy+4, cx-150,cy-46, "Flank · passive array",  "left"],
+      [cx+56,cy+4, cx+150,cy-46, "Flank · magnetometer",   "right"],
+      [cx-30,cy+30,cx-150,cy+62, "Belly · beacon rack",    "left"],
+      [cx+22,cy+30,cx+150,cy+62, "Belly · cargo bay",      "right"],
+      [cx,   cy+56,cx,    cy+112,"Chassis · gait + power",  "center"]
+    ];
+    mounts.forEach(function(m){
+      ctx.beginPath(); ctx.arc(m[0],m[1],3.5,0,7); ctx.fillStyle=C.ping; ctx.fill();
+      ctx.beginPath(); ctx.moveTo(m[0],m[1]);
+      if(m[5]==="center"){ ctx.lineTo(m[2],m[3]-8); }
+      else { ctx.lineTo(m[0]+(m[5]==="left"?-24:24),m[3]); ctx.lineTo(m[2]+(m[5]==="left"?52:-52),m[3]); }
+      ctx.strokeStyle="rgba(84,217,206,.35)"; ctx.lineWidth=1; ctx.stroke();
+      label(ctx, m[5]==="left"?m[2]-52+56:(m[5]==="right"?m[2]+52-56:m[2]),
+            m[5]==="center"?m[3]:m[3], m[4], C.dim,11,
+            m[5]==="left"?"right":(m[5]==="right"?"left":"center"));
+    });
+    label(ctx,20,24,"SURVEYOR CLASS · 6 SLOTS",C.sod,10);
+    label(ctx,w-20,24,"silhouette is honest — loadout is readable on sight",C.faint,10,"right");
+  });
+})();
+
+/* ---------------- 6. PASSIVE ACOUSTIC ---------------- */
+(function(){
+  var s=setup("c-passive"); if(!s) return;
+  anim(s,function(ctx,w,h,t){
+    ctx.clearRect(0,0,w,h);
+    var cx=w/2, cy=h/2+10, T=t*0.01;
+    // rings
+    for(var r=60;r<=260;r+=65){
+      ctx.beginPath(); ctx.arc(cx,cy,r,0,7);
+      ctx.strokeStyle="rgba(34,51,63,.85)"; ctx.lineWidth=1; ctx.stroke();
+    }
+    ctx.beginPath(); ctx.moveTo(cx-280,cy); ctx.lineTo(cx+280,cy);
+    ctx.moveTo(cx,cy-150); ctx.lineTo(cx,cy+150); ctx.strokeStyle="rgba(34,51,63,.85)"; ctx.stroke();
+    // contacts — real positions (truth, dim) with bearing lines only
+    var cons=[{a:-0.7,d:210,n:"contact 01"},{a:2.3,d:130,n:"contact 02"},{a:3.9,d:255,n:"contact 03"}];
+    cons.forEach(function(c,i){
+      var a=c.a+Math.sin(T*0.3+i)*0.10;
+      var ex=cx+Math.cos(a)*300, ey=cy+Math.sin(a)*300;
+      // bearing wedge — uncertainty in angle
+      ctx.beginPath(); ctx.moveTo(cx,cy);
+      ctx.arc(cx,cy,300,a-0.05,a+0.05); ctx.closePath();
+      ctx.fillStyle="rgba(84,217,206,.07)"; ctx.fill();
+      ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(ex,ey);
+      ctx.strokeStyle="rgba(84,217,206,.55)"; ctx.lineWidth=1; ctx.setLineDash([4,4]); ctx.stroke(); ctx.setLineDash([]);
+      // truth marker
+      var tx=cx+Math.cos(a)*c.d, ty=cy+Math.sin(a)*c.d;
+      var pulse=(Math.sin(T*1.1+i*2)+1)/2;
+      ctx.beginPath(); ctx.arc(tx,ty,4,0,7); ctx.fillStyle="rgba(242,160,63,"+(0.25+pulse*0.5)+")"; ctx.fill();
+      label(ctx,cx+Math.cos(a)*312,cy+Math.sin(a)*312,c.n,C.faint,10,
+            Math.cos(a)<0?"right":"left");
+    });
+    // self
+    ctx.beginPath(); ctx.arc(cx,cy,7,0,7); ctx.fillStyle=C.bone; ctx.fill();
+    label(ctx,20,24,"BEARING ONLY — NO RANGE",C.ping,10);
+    label(ctx,20,h-20,"you know the direction. you do not know how far.",C.faint,10);
+  });
+})();
+
+/* ---------------- 7. ACTIVE SONAR ---------------- */
+(function(){
+  var s=setup("c-active"); if(!s) return;
+  var pingAt=-999, ticks=0;
+  var rnd=mulberry(11);
+  var walls=[]; for(var i=0;i<70;i++){ var a=rnd()*6.283, d=110+rnd()*180; walls.push({a:a,d:d}); }
+  var listeners=[{a:-0.5},{a:2.6},{a:4.2}];
+  anim(s,function(ctx,w,h,t){
+    ticks=t; ctx.clearRect(0,0,w,h);
+    var cx=w/2, cy=h/2+8;
+    var age=(t-pingAt)*0.9;
+    var R=age;
+    // revealed geometry
+    walls.forEach(function(p){
+      var x=cx+Math.cos(p.a)*p.d, y=cy+Math.sin(p.a)*p.d*0.62;
+      var lit = R>p.d ? Math.max(0,1-(R-p.d)/260) : 0;
+      ctx.beginPath(); ctx.arc(x,y,2.6,0,7);
+      ctx.fillStyle="rgba(84,217,206,"+(0.08+lit*0.85)+")"; ctx.fill();
+    });
+    // pulse ring
+    if(R>0&&R<430){
+      ctx.beginPath(); ctx.ellipse(cx,cy,R,R*0.62,0,0,7);
+      ctx.strokeStyle="rgba(84,217,206,"+Math.max(0,0.75-R/430)+")"; ctx.lineWidth=2; ctx.stroke();
+    }
+    // listeners hear you
+    listeners.forEach(function(L,i){
+      var lx=cx+Math.cos(L.a)*330, ly=cy+Math.sin(L.a)*330*0.62;
+      var heard = R>Math.hypot(lx-cx,(ly-cy)/0.62);
+      ctx.beginPath(); ctx.arc(lx,ly,6,0,7);
+      ctx.fillStyle=heard?C.rust:"#243441"; ctx.fill();
+      if(heard){
+        ctx.beginPath(); ctx.moveTo(lx,ly); ctx.lineTo(cx,cy);
+        ctx.strokeStyle="rgba(192,74,56,.4)"; ctx.setLineDash([3,5]); ctx.lineWidth=1; ctx.stroke(); ctx.setLineDash([]);
+        label(ctx,lx,ly-16,"heard you",C.rust,10,"center");
+      }
+    });
+    ctx.beginPath(); ctx.arc(cx,cy,7,0,7); ctx.fillStyle=C.sod; ctx.fill();
+    label(ctx,20,24,pingAt<0?"PASSIVE — NOTHING KNOWN":"ACTIVE RETURN",pingAt<0?C.faint:C.ping,10);
+    label(ctx,w-20,24,"3 listeners in range",C.faint,10,"right");
+    label(ctx,20,h-20,"geometry gained. position given away.",C.faint,10);
+  });
+  var b=document.getElementById("btn-ping");
+  if(b) b.addEventListener("click",function(){ pingAt=ticks; });
+})();
+
+/* ---------------- 8. AUTHORING LADDER ---------------- */
+(function(){
+  var s=setup("c-ladder"); if(!s) return;
+  var tiers=[["Demonstrate","drive it yourself, promote the trace","everyone"],
+             ["Compose","bolt modules together in the world","most players"],
+             ["Script","write policy in text","the deep end"]];
+  anim(s,function(ctx,w,h,t){
+    ctx.clearRect(0,0,w,h);
+    var bw=(w-160)/3;
+    for(var i=0;i<3;i++){
+      var x=80+i*(bw+10), bh=70+i*52, y=h-40-bh;
+      rr(ctx,x,y,bw,bh,3);
+      var cols=[C.ping,C.sod,C.vio];
+      ctx.fillStyle="rgba(15,26,36,.9)"; ctx.fill();
+      ctx.strokeStyle=cols[i]; ctx.lineWidth=1; ctx.stroke();
+      // fill bar showing share of playerbase
+      var shares=[1,0.42,0.06];
+      ctx.globalAlpha=0.10; ctx.fillStyle=cols[i];
+      ctx.fillRect(x+1,y+bh-(bh-2)*shares[i]+1,bw-2,(bh-2)*shares[i]); ctx.globalAlpha=1;
+      disp(ctx,x+16,y+24,tiers[i][0],cols[i],16);
+      label(ctx,x+16,y+44,tiers[i][1],C.dim,10);
+      label(ctx,x+16,y+bh-16,tiers[i][2],C.faint,10);
+      if(i<2){ var ax=x+bw+2, ay=h-40-bh-14;
+        ctx.beginPath(); ctx.moveTo(ax,ay+10); ctx.lineTo(ax+6,ay+4); ctx.lineTo(ax,ay-2);
+        ctx.strokeStyle=C.line; ctx.lineWidth=1; ctx.stroke(); }
+    }
+    label(ctx,80,26,"EVERY RUNG IS A COMPLETE GAME ON ITS OWN",C.sod,10);
+    label(ctx,80,h-16,"a player who never leaves rung one should never feel they missed anything",C.faint,10);
+  });
+})();
+
+/* ---------------- 9. MATCH TIMELINE ---------------- */
+(function(){
+  var s=setup("c-timeline"); if(!s) return;
+  var ph=[["Prep",3,C.dim],["Descent",0.4,C.sod],["Run",9,C.ping],["Extraction",1.5,C.rust],["Replay",2,C.vio]];
+  anim(s,function(ctx,w,h,t){
+    ctx.clearRect(0,0,w,h);
+    var total=ph.reduce(function(a,p){return a+p[1];},0);
+    var L=60,R=w-60,y=h/2-6,BH=42,x=L;
+    var head=((t*0.0021)%1)*(R-L)+L;
+    ph.forEach(function(p,i){
+      var bw=(R-L)*(p[1]/total);
+      ctx.fillStyle="rgba(15,26,36,.95)"; ctx.fillRect(x,y-BH/2,bw-2,BH);
+      ctx.fillStyle=p[2]; ctx.globalAlpha=head>x?0.16:0.04;
+      ctx.fillRect(x,y-BH/2,Math.max(0,Math.min(bw-2,head-x)),BH); ctx.globalAlpha=1;
+      ctx.strokeStyle=p[2]; ctx.lineWidth=1; ctx.strokeRect(x+.5,y-BH/2+.5,bw-3,BH-1);
+      disp(ctx,x+bw/2,y,p[0],p[2],bw>90?14:11,"center");
+      label(ctx,x+bw/2,y+BH/2+16,p[1]<1?"20s":p[1]+" min",C.faint,10,"center");
+      x+=bw;
+    });
+    // control authority line
+    var cut=L+(R-L)*((ph[0][1]+ph[1][1])/total);
+    ctx.beginPath(); ctx.moveTo(L,y-BH/2-22); ctx.lineTo(cut,y-BH/2-22);
+    ctx.strokeStyle=C.sod; ctx.lineWidth=2; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cut,y-BH/2-22); ctx.lineTo(R,y-BH/2-22);
+    ctx.strokeStyle="rgba(92,110,124,.5)"; ctx.setLineDash([2,4]); ctx.stroke(); ctx.setLineDash([]);
+    label(ctx,L+4,y-BH/2-36,"full control",C.sod,10);
+    label(ctx,cut+8,y-BH/2-36,"no control — telemetry and blunt commands only",C.faint,10);
+    // playhead
+    ctx.beginPath(); ctx.moveTo(head,y-BH/2-8); ctx.lineTo(head,y+BH/2+4);
+    ctx.strokeStyle="rgba(233,229,219,.55)"; ctx.lineWidth=1; ctx.stroke();
+  });
+})();
+
+/* ---------------- 10. BEACON SPOOF ---------------- */
+(function(){
+  var s=setup("c-spoof"); if(!s) return;
+  var reset=anim(s,function(ctx,w,h,t){
+    var T=(t*0.0017)%1.3, u=Math.min(T,1);
+    ctx.clearRect(0,0,w,h);
+    var gy=h/2+20;
+    // the wall / trench
+    ctx.beginPath(); ctx.moveTo(0,gy+40); ctx.lineTo(700,gy+40); ctx.lineTo(730,gy+120);
+    ctx.lineTo(860,gy+120); ctx.lineTo(890,gy+40); ctx.lineTo(w,gy+40);
+    ctx.lineTo(w,h); ctx.lineTo(0,h); ctx.closePath();
+    ctx.fillStyle="#0D1720"; ctx.fill(); ctx.strokeStyle=C.line; ctx.lineWidth=1; ctx.stroke();
+    label(ctx,795,gy+92,"trench",C.faint,10,"center");
+    // real beacon
+    ctx.beginPath(); ctx.arc(300,gy-70,5,0,7); ctx.fillStyle=C.sod; ctx.fill();
+    label(ctx,300,gy-92,"your beacon",C.sod,10,"center");
+    // false beacon appears
+    if(u>0.28){
+      var fa=Math.min(1,(u-0.28)*8);
+      ctx.globalAlpha=fa;
+      ctx.beginPath(); ctx.arc(660,gy-78,5,0,7); ctx.fillStyle=C.rust; ctx.fill();
+      ctx.beginPath(); ctx.arc(660,gy-78,10+Math.sin(t*0.14)*4,0,7);
+      ctx.strokeStyle="rgba(192,74,56,.5)"; ctx.lineWidth=1; ctx.stroke();
+      label(ctx,660,gy-100,"false beacon",C.rust,10,"center");
+      ctx.globalAlpha=1;
+    }
+    // agent path: correct until spoof, then bends toward trench
+    function truePos(uu){
+      if(uu<0.34) return {x:90+uu*760, y:gy+18};
+      var k=(uu-0.34)/0.66;
+      return {x:349+k*470, y:gy+18+ (k>0.82? (k-0.82)*430 : 0)};
+    }
+    var tp=truePos(u);
+    // what it believes: after spoof it thinks it is 140px left of truth
+    var off = u<0.34?0:Math.min(1,(u-0.34)*4)*150;
+    var bp={x:tp.x-off, y:tp.y-6};
+    // trail
+    ctx.beginPath();
+    for(var i=0;i<=120;i++){ var uu=i/120; if(uu>u) break; var p=truePos(uu); ctx[i?"lineTo":"moveTo"](p.x,p.y); }
+    ctx.strokeStyle="rgba(242,160,63,.28)"; ctx.lineWidth=1.5; ctx.stroke();
+    // belief marker
+    ctx.beginPath(); ctx.arc(bp.x,bp.y,5,0,7); ctx.fillStyle=C.ping; ctx.fill();
+    ctx.beginPath(); ctx.ellipse(bp.x,bp.y,26,18,0,0,7);
+    ctx.strokeStyle="rgba(84,217,206,.3)"; ctx.setLineDash([2,3]); ctx.lineWidth=1; ctx.stroke(); ctx.setLineDash([]);
+    // agent
+    ctx.beginPath(); ctx.arc(tp.x,tp.y,7,0,7); ctx.fillStyle= u>0.96?C.rust:C.sod; ctx.fill();
+    // captions
+    var cap = u<0.28 ? "navigating on a good fix"
+            : u<0.40 ? "accepts the nearest beacon — it has no reason not to"
+            : u<0.92 ? "acting correctly on a wrong premise"
+            : "lost, with everything it was carrying";
+    label(ctx,20,26,cap.toUpperCase(),u>0.92?C.rust:C.dim,10);
+    label(ctx,w-20,26,"no damage was dealt",C.faint,10,"right");
+  });
+  var b=document.getElementById("btn-spoof"); if(b&&reset) b.addEventListener("click",function(){reset(0);});
+})();
+
+/* ---------------- 11. MARKET CYCLE ---------------- */
+(function(){
+  var s=setup("c-market"); if(!s) return;
+  var nodes=[["Author","a player writes a policy",C.vio],
+             ["Prove","auto-run on benchmark seeds",C.ping],
+             ["Publish","listed with verified stats",C.bone],
+             ["Adopt","others slot it into their builds",C.sod],
+             ["Counter","its weakness becomes a product",C.rust]];
+  anim(s,function(ctx,w,h,t){
+    ctx.clearRect(0,0,w,h);
+    var cx=w/2, cy=h/2+6, R=118;
+    var act=Math.floor((t*0.014)%5);
+    // ring
+    ctx.beginPath(); ctx.arc(cx,cy,R,0,7); ctx.strokeStyle="rgba(34,51,63,.9)"; ctx.lineWidth=1; ctx.stroke();
+    // moving arc
+    var a0=(t*0.014)%5/5*6.283-1.5708;
+    ctx.beginPath(); ctx.arc(cx,cy,R,a0,a0+0.9);
+    ctx.strokeStyle="rgba(242,160,63,.6)"; ctx.lineWidth=2; ctx.stroke();
+    nodes.forEach(function(n,i){
+      var a=i/5*6.283-1.5708;
+      var x=cx+Math.cos(a)*R, y=cy+Math.sin(a)*R;
+      var on=(i===act);
+      ctx.beginPath(); ctx.arc(x,y,on?9:6,0,7); ctx.fillStyle=on?n[2]:"#22333F"; ctx.fill();
+      var lx=cx+Math.cos(a)*(R+26), ly=cy+Math.sin(a)*(R+26);
+      var al=Math.abs(Math.cos(a))<0.25?"center":(Math.cos(a)<0?"right":"left");
+      disp(ctx,lx,ly,n[0],on?n[2]:C.bone,15,al);
+      label(ctx,lx,ly+16,n[1],C.faint,10,al);
+    });
+    disp(ctx,cx,cy-8,"the metagame",C.dim,14,"center");
+    label(ctx,cx,cy+12,"you author none of it",C.faint,10,"center");
+  });
+})();
+
+/* ---------------- 12. ARCHITECTURE ---------------- */
+(function(){
+  var s=setup("c-arch"); if(!s) return;
+  var layers=[
+    ["Client · renderer","Godot 4 or Bevy — draws belief-space only","#54D9CE"],
+    ["Server · authority","runs the sim, holds ground truth","#E9E5DB"],
+    ["Deterministic sim core","Rust, fixed timestep — the actual product","#F2A03F"],
+    ["Behavior VM","sandboxed bytecode, hard tick budget","#9A8CD8"],
+    ["Replay · seed + input log","kilobytes — makes the market verifiable","#8B9CAA"]
+  ];
+  anim(s,function(ctx,w,h,t){
+    ctx.clearRect(0,0,w,h);
+    var L=70,R=w-70,BH=52,gap=12,y=26;
+    layers.forEach(function(la,i){
+      var inset=(i===2||i===3)?0:(i===4?60:26);
+      rr(ctx,L+inset,y,(R-L)-inset*2,BH,3);
+      ctx.fillStyle=i===2?"rgba(242,160,63,.07)":"rgba(15,26,36,.95)"; ctx.fill();
+      ctx.strokeStyle=la[2]; ctx.globalAlpha=i===2?1:0.45; ctx.lineWidth=i===2?1.5:1; ctx.stroke(); ctx.globalAlpha=1;
+      disp(ctx,L+inset+18,y+19,la[0],la[2],15);
+      label(ctx,L+inset+18,y+36,la[1],C.faint,10);
+      y+=BH+gap;
+    });
+    // data direction
+    var flow=(t*0.9)%(h-60);
+    ctx.beginPath(); ctx.arc(L-18,30+flow*0.75,2.5,0,7); ctx.fillStyle="rgba(84,217,206,.6)"; ctx.fill();
+    label(ctx,L-30,h/2,"state ↓",C.faint,10,"right");
+  });
+})();
+
+})();
+</script>
+</body>
+</html>
