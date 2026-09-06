@@ -59,6 +59,7 @@ class Mover:
         self.foot_pos = [Vector(e.location) for e in self.feet]
         self.look_pos = Vector(self.look.location)
         self.look_rel = None      # if set, look target rides with the body (body frame)
+        self.path = []            # body positions at every keyed frame, for scene keep-out
         self._key_all()
 
     # ---- helpers ------------------------------------------------------------------------
@@ -67,6 +68,7 @@ class Mover:
 
     def _key_all(self, bob=0.0, pitch=0.0, roll=0.0):
         f = self.frame
+        self.path.append((self.pos.x, self.pos.y))
         self.arm.location = (self.pos.x, self.pos.y, self.z_rest - self.crouch_dz + bob)
         self.arm.rotation_euler = Euler((roll, pitch, self.yaw))
         self.arm.keyframe_insert("location", frame=f)

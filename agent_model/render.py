@@ -14,8 +14,11 @@ def clear_scene():
     return sc
 
 
-def cave(radius=3.4, seed=3):
+def cave(radius=3.4, seed=3, path=None, keepout=0.7):
+    """path: body positions the agent will walk through. No rock is placed within
+    keepout metres (plus its own size) of any of them."""
     col = G.new_collection("CAVE")
+    path = [Vector((x, y, 0)) for (x, y) in (path or [(0, 0)])]
     rock = M.wet_rock()
     floor = G.plane("floor", radius * 3, (0, 0, 0), col=col, subdiv=60)
     disp = floor.modifiers.new("disp", "DISPLACE")
@@ -41,10 +44,17 @@ def cave(radius=3.4, seed=3):
         c.objects.unlink(dome)
     col.objects.link(dome)
     rng = random.Random(seed)
-    for i in range(14):
+    placed = 0
+    for i in range(200):
+        if placed >= 14:
+            break
         r = rng.uniform(0.08, 0.35)
-        a = rng.uniform(0, 2 * math.pi); d = rng.uniform(2.3, 3.8)
-        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=4, radius=r, location=(math.cos(a) * d, math.sin(a) * d, r * 0.45))
+        a = rng.uniform(0, 2 * math.pi); d = rng.uniform(1.4, 3.8)
+        c = Vector((math.cos(a) * d, math.sin(a) * d, 0))
+        if min((c - p).length for p in path) < keepout + r * 1.6:
+            continue
+        placed += 1
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=4, radius=r, location=(c.x, c.y, r * 0.45))
         rk = bpy.context.object; rk.name = f"rock.{i}"
         rk.scale = (rng.uniform(0.7, 1.5), rng.uniform(0.7, 1.5), rng.uniform(0.4, 0.8))
         rk.rotation_euler = (rng.uniform(0, 3), rng.uniform(0, 3), rng.uniform(0, 3))

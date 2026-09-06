@@ -71,7 +71,7 @@ def main(argv=None):
     mover = Mover(built)
     last = script(mover, a.move)
     if not a.no_cave:
-        R.cave()
+        R.cave(path=mover.path)
     az, el, dist = (float(v) for v in a.cam.split(","))
     zc = float(built.arm["hull_center_z"])
     frame = a.pose_frame if a.pose_frame is not None else max(1, last // 2)
