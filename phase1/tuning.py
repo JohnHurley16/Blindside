@@ -208,6 +208,27 @@ ANCIENT_PHASE_S: Final[float] = 30.0
 # it into the machinery's chamber -- which is DESIGN's "march into a trench" beat and
 # worth a deliberate seed later, but not the default the gate runs on.
 ANCIENT_HOLD_QUALITY: Final[float] = 0.45          # cautious policy stops above this
+INVESTIGATE_QUALITY: Final[float] = 0.30           # aggressive policy walks toward it above this
+INVESTIGATE_HOLD_S: Final[float] = 14.0            # and keeps heading that way this long after
+                                                   # the last time it heard it
+# Measured: 90 s here -- hunt until the next warning -- dropped the kill rate to 0/8,
+# because a bearing in a cave points down the passage the sound arrived by, not at the
+# source, and the rival walked itself somewhere else. The hunt is flavour; the kill
+# comes from the dwell below.
+INTERFACE_QUALITY: Final[float] = 0.60             # loud enough to mean "here": stop and interface
+INTERFACE_S: Final[float] = 80.0                   # longer than one cycle, so the next one lands
+INTERFACE_SPEED: Final[float] = 0.4                # creeping the last few cells along the bearing
+# Measured: walking toward the machinery on hearing it did nothing to the kill rate
+# (1-in-8, 2-in-8), because it hears the nine-second warning, starts walking, and
+# arrives after the four-second lethal window has closed -- then wanders off. The
+# fiction implies it goes there and STAYS to download, so it now interfaces for longer
+# than one cycle, and the next cycle finds it there.
+# Designer's call: the aggressive temperament investigates the machinery, because in
+# the real game the machinery is where an agent can download new behaviours -- so
+# going to look is rational, not reckless. Measured before this: the rival's death
+# was a 2-in-8 event across seeds under every phase and lethal window tried, which is
+# path luck, not a beat. This makes it a decision the rival takes, and one the
+# spectator can watch it take.
 
 # ---- policies ---------------------------------------------------------------------------------
 CAUTIOUS_PING_COOLDOWN_S: Final[float] = 24.0
@@ -231,10 +252,19 @@ MAP_ESCAPE_LOOKAHEAD: Final[float] = 18.0          # and when stuck, looking for
 # it is somewhere else -- but it finds the door.
 STUCK_SECONDS: Final[float] = 5.0
 ESCAPE_SECONDS: Final[float] = 9.0
-ESCAPES_BEFORE_SKIP: Final[int] = 2
-# 2 x (5 + 9) = 28 s of trying before a waypoint is abandoned, down from 48 s. A lost
-# agent should look like it is failing to get somewhere, not like it is stuck in a
-# loop, and the difference between those two readings is how fast it gives up.
+ESCAPES_BEFORE_SKIP: Final[int] = 4
+# 4 x (5 + 9) = 56 s of trying before a waypoint is abandoned. A lost agent should
+# look like it is failing to get somewhere, not like it is stuck in a loop, and the
+# difference between those two readings is how fast it gives up.
+#
+# Measured across eight seeds, after map-aware steering: at 2 the rival gave up on the
+# machinery's chamber at 44-68 cells out in six of eight matches and never arrived,
+# so the dwell that kills it never ran (reached 2/8, died 2/8). At 4 it reaches 5/8
+# and dies 4/8, and the player's own longest stall is unchanged (median 88 s vs 90).
+# At 8 the rival does no better and the player's stalls get longer. A finer occupancy
+# grid was worse in every cell of the matrix. What still keeps it out in the remaining
+# matches is the C3-to-ANC passage itself, which is a navigation-stack problem for
+# Phase 3, not a number here.
 
 # ---- recall -- the one player input --------------------------------------------------------------
 RECALL_DELAY_S: Final[float] = 3.0

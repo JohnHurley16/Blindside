@@ -339,5 +339,21 @@ Also decided from the same panel: the scripted echo moves from 2:15 to 2:35, aft
 spoof, because at 2:15 it merged into the standing rival contact and never showed as
 its own event; and a lidar ray reaching water returns the surface as a wall.
 
+### The machinery is where behaviours come from
+
+Designer, on being asked whether the aggressive rival should investigate the ancient
+system: *"they probably would investigate because machinery is where they can download
+new behaviors from so their agents get better."*
+
+This is new. `DESIGN.html` has wrecks as the place a behaviour is recovered from, and
+ancient systems as hazards with a signature, a behaviour, an exploit and a counter.
+The designer's statement makes the ancient systems a *second source* of behaviours --
+and makes approaching one rational rather than reckless, which is the thing that turns
+an agent's death there into a story about a decision. Not built in Phase 1 beyond the
+rival's temperament: the aggressive policy now walks toward the machinery when it hears
+it, and the cautious one still freezes. Recorded here so Phase 3's ancient-system trait
+(`provocable_by`, `hazard`, and now presumably something like `yields`) is designed with
+it rather than discovering it later.
+
 GLOSSARY's *Passive / active* entry should be updated to say this; left for the
 designer, since it is the one document that defines the vocabulary.

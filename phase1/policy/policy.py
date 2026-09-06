@@ -31,6 +31,11 @@ class Policy:
         self.done: bool = False
         self.recalled: bool = False
         self.hold: bool = False
+        # aggressive only: on hearing the machinery, go and look
+        self.investigate_bearing: float | None = None
+        self.investigate_until: float = -1.0
+        self.interfacing_until: float = -1.0
+        self.interfacing: bool = False      # stopped at the machinery to download
         # load bookkeeping
         self.load_until: float = 0.0
         self.cargo_at_load: int = 0
@@ -210,7 +215,7 @@ class Policy:
         if self.done:
             return cmd
         if self.mode is PolicyMode.LOAD:
-            cmd.load = True
+            cmd.load = not self.interfacing   # a dwell at the machinery is not a load
             if t >= self.load_until:
                 self._after_load(t)
             return cmd
@@ -227,6 +232,27 @@ class Policy:
                          and sig.character is SoundCharacter.SIGNATURE
                          and t - sig.t < 1.0
                          and sig.quality >= T.ANCIENT_HOLD_QUALITY)
+        # The aggressive temperament does the opposite of holding: it hears the
+        # machinery and goes to look. Designer's reasoning -- the machinery is where an
+        # agent can download new behaviours, so investigating is rational, not
+        # reckless. It is also how the cautious one gets to watch it die.
+        if (not self.cautious and sig is not None
+                and sig.character is SoundCharacter.SIGNATURE
+                and t - sig.t < 1.5 and sig.quality >= T.INVESTIGATE_QUALITY):
+            if self.investigate_bearing is None or t >= self.investigate_until:
+                b.log.append((t, "heard machinery; going to look"))
+            self.investigate_bearing = sig.bearing
+            self.investigate_until = t + T.INVESTIGATE_HOLD_S
+            # Close enough that it is loud: stop travelling and interface with it. It
+            # creeps the last few cells along the bearing and stays through the next
+            # cycle -- that is what "downloading" costs, and it is where the cautious
+            # one, holding still a chamber away, hears something break.
+            if sig.quality >= T.INTERFACE_QUALITY and t >= self.interfacing_until:
+                b.log.append((t, "interfacing with the machinery"))
+                self.interfacing_until = t + T.INTERFACE_S
+        interfacing = not self.cautious and t < self.interfacing_until
+        investigating = (not self.cautious and self.investigate_bearing is not None
+                         and (t < self.investigate_until or interfacing))
 
         if (self.cautious and self.mode is PolicyMode.TRAVEL and not self.recalled
                 and b.sigma_pos() > T.CAUTIOUS_RETURN_SIGMA):
@@ -242,13 +268,20 @@ class Policy:
         self._track_progress(dist, goal_wp, t)
 
         goal = math.atan2(goal_wp.y - b.y, goal_wp.x - b.x)
+        if investigating and self.investigate_bearing is not None:
+            goal = self.investigate_bearing      # toward the sound, not the waypoint
         if t < self.escape_until:
             goal = self._escape_heading(goal)
         heading, free_ahead = self._steer(goal)
         cmd.heading = heading
         slow = free_ahead < 1.3 or G.angle_between(heading, b.theta) > math.radians(60.0)
         base = T.AGENT_SPEED if self.cautious else T.RIVAL_SPEED
-        cmd.speed = 0.0 if self.hold else base * (0.5 if slow else 1.0)
+        if self.hold:
+            cmd.speed = 0.0
+        elif interfacing:
+            cmd.speed = T.INTERFACE_SPEED        # creeping the last few cells toward it
+        else:
+            cmd.speed = base * (0.5 if slow else 1.0)
 
         if self.mode is PolicyMode.TRAVEL and b.dist_since_drop >= T.BEACON_DROP_EVERY_CELLS:
             cmd.drop = True
@@ -413,6 +446,17 @@ class Policy:
             self.mode = PolicyMode.LOAD
             self.load_until = t + T.LOAD_SECONDS
             return
+        if wp.label == "ANC" and not self.cautious:
+            # The aggressive temperament stops at the machinery to download from it.
+            # Designer's reasoning: the machinery is where new behaviours come from, so
+            # this is rational, not reckless. It stays longer than one cycle, so the
+            # next cycle finds it there -- which is how the cautious one, holding still
+            # a chamber away, comes to hear something break.
+            b.log.append((t, "at the machinery; interfacing"))
+            self.interfacing = True
+            self.mode = PolicyMode.LOAD
+            self.load_until = t + T.INTERFACE_S
+            return
         if wp.label in ("HOME", "S"):
             if self.heard_shaft():
                 b.log.append((t, "at the shaft"))
@@ -427,6 +471,13 @@ class Policy:
         """Discover through the cargo return whether the load actually happened."""
         b = self.b
         wp = self.route[self.i]
+        if self.interfacing:
+            # Done at the machinery (if it survived). Nothing to check: there is no
+            # cargo return for a download in Phase 1, only the time spent.
+            self.interfacing = False
+            b.log.append((t, "done at the machinery; moving on"))
+            self._resume_after_load(t)
+            return
         if b.cargo > self.cargo_at_load:
             self.load_attempts = 0
             self._resume_after_load(t)
