@@ -270,13 +270,23 @@ class Policy:
         return free
 
     def _steer(self, goal: float) -> tuple[float, float]:
+        """Pick a heading by what it can feel close in and what its map says further out.
+
+        The feeler alone (2.5 cells) was the whole of its steering, which is why a
+        machine holding a 26,000-point map still walked into walls like it was blind.
+        The map is wrong globally by the drift, but so is the agent, so locally it is
+        right -- and locally is all steering needs.
+        """
         b = self.b
         hits = self._near_hits()
         best, best_score, best_free = b.theta, -1e9, T.NEARFIELD_RANGE
         for k in range(-10, 11):
             cand = G.wrap(goal + k * math.radians(15.0))
             free = self._clearance(cand, hits, 28.0)
-            score = math.cos(G.wrap(cand - goal)) + 0.9 * free / T.NEARFIELD_RANGE
+            ahead = b.cloud.clearance(b.x, b.y, cand, T.MAP_LOOKAHEAD)
+            score = (math.cos(G.wrap(cand - goal))
+                     + 0.9 * free / T.NEARFIELD_RANGE
+                     + 0.6 * ahead / T.MAP_LOOKAHEAD)
             if free < 0.9:
                 score -= 3.0
             score += 0.15 * math.cos(G.wrap(cand - b.theta))    # hysteresis
@@ -285,18 +295,28 @@ class Policy:
         return best, best_free
 
     def _escape_heading(self, goal: float) -> float:
+        """Stuck: find the longest open line on the map, leaning toward the goal.
+
+        In a chamber whose exits are not where the target says they are, the only
+        long open line is an exit. Weighting alignment weakly here is deliberate --
+        a strong pull toward the goal is what kept it grinding the same wall.
+        """
         if self.escape_heading is not None:
             return self.escape_heading
         b = self.b
         hits = self._near_hits()
-        best, best_free = b.theta, -1.0
-        for k in range(24):
-            cand = G.wrap(k * math.pi / 12.0)
-            free = self._clearance(cand, hits, 30.0)
-            free += 0.3 * math.cos(G.wrap(cand - goal))
-            free -= 0.6 * max(0.0, -math.cos(G.wrap(cand - b.theta)))
-            if free > best_free:
-                best, best_free = cand, free
+        best, best_score = b.theta, -1e9
+        for k in range(36):
+            cand = G.wrap(k * math.pi / 18.0)
+            near = self._clearance(cand, hits, 30.0)
+            far = b.cloud.clearance(b.x, b.y, cand, T.MAP_ESCAPE_LOOKAHEAD)
+            score = far / T.MAP_ESCAPE_LOOKAHEAD + 0.4 * near / T.NEARFIELD_RANGE
+            score += 0.15 * math.cos(G.wrap(cand - goal))
+            score -= 0.5 * max(0.0, -math.cos(G.wrap(cand - b.theta)))
+            if near < 0.9:
+                score -= 2.0
+            if score > best_score:
+                best, best_score = cand, score
         self.escape_heading = best
         return best
 

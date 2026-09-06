@@ -86,15 +86,20 @@ SELF_DEAF_AFTER_PING_S: Final[float] = 1.0
 # waterline. "Do I ping?" does not go away, it moves: it is the loud question for a
 # sonar carrier, and for a lidar carrier the question becomes where it dares to go.
 #
-# Phase 1 has no loadout screen, so the two scripted agents are given different kit.
-# The cautious player agent creeps with lidar; the aggressive rival announces itself
-# with sonar. The player hears the rival every time it fires; the rival never hears
-# the player. That asymmetry is a story a spectator can follow.
+# THE GATE IS TWO VIEWINGS, SONAR FIRST. Designer's call, 2026-09-06, after a design
+# panel: the tester watches an agent carrying sonar, then a second match with the
+# agent carrying lidar. Sonar goes first because the Phase 1 spec names three sensors
+# and its acceptance criteria are written for pings, and roughly ten "Measured:"
+# numbers in this file were calibrated against heard pings -- so that viewing is the
+# specced one. The panel's caveat, recorded and accepted: a tester who sees both worlds
+# compares rather than reacts, which weakens attribution of a failure. Watch the first
+# viewing for the gate, the second for the sensor question. This default is the first
+# viewing; --player-sensor lidar is the second.
 #
 # A lidar sweep is a visible light in a dark cave, so in the real game it should be a
 # tell to anyone with LINE OF SIGHT -- local exposure rather than basin-wide. Neither
 # Phase 1 agent carries optics, so that tell is not modelled here. Noted, not built.
-PLAYER_SENSOR: Final[str] = "lidar"                # "lidar" or "sonar"
+PLAYER_SENSOR: Final[str] = "sonar"                # "sonar" (the gate) or "lidar" (comparison)
 RIVAL_SENSOR: Final[str] = "sonar"
 
 LIDAR_RANGE: Final[float] = 18.0                   # short; sonar reaches 30 and across water
@@ -196,7 +201,12 @@ ANCIENT_PERIOD_S: Final[float] = 75.0
 ANCIENT_WARNING_S: Final[float] = 9.0              # signature before lethal
 ANCIENT_LETHAL_S: Final[float] = 4.0
 ANCIENT_RADIUS: Final[float] = 9.0
-ANCIENT_PHASE_S: Final[float] = 20.0
+ANCIENT_PHASE_S: Final[float] = 30.0
+# Measured after map-aware steering moved every path: at 20 nobody dies in either
+# kit; at 30 the rival dies at 5:41 (sonar) / 5:45 (lidar), within a few seconds of
+# where it did before. Several other phases kill the PLAYER instead -- the spoof walks
+# it into the machinery's chamber -- which is DESIGN's "march into a trench" beat and
+# worth a deliberate seed later, but not the default the gate runs on.
 ANCIENT_HOLD_QUALITY: Final[float] = 0.45          # cautious policy stops above this
 
 # ---- policies ---------------------------------------------------------------------------------
@@ -212,6 +222,13 @@ CAUTIOUS_RETURN_SIGMA: Final[float] = 16.0
 # Raised with the drift. Note that a fix collapses this, so the spoof silently disarms
 # the agent's own self-preservation rule -- which is the design, not a bug.
 WAYPOINT_REACHED: Final[float] = 5.0
+MAP_LOOKAHEAD: Final[float] = 9.0                  # cells the steering reads off the map
+MAP_ESCAPE_LOOKAHEAD: Final[float] = 18.0          # and when stuck, looking for an exit
+# Measured: with steering on the 2.5-cell feeler alone, the spoofed agent spent 2:24
+# to 8:00 inside one chamber, skipping every waypoint in turn, because each target was
+# thirty cells off in truth and pointed into rock. It had a 26,000-point map and used
+# none of it. Reading clearance off the map does not undo the lie -- it still thinks
+# it is somewhere else -- but it finds the door.
 STUCK_SECONDS: Final[float] = 5.0
 ESCAPE_SECONDS: Final[float] = 9.0
 ESCAPES_BEFORE_SKIP: Final[int] = 2
@@ -237,7 +254,12 @@ RECALL_SEARCH_SWEEP: Final[float] = 0.9            # unused: the spiral now swee
 # holding rather than spending early.
 
 # ---- scripted events ----------------------------------------------------------------------------
-ECHO_TIMES: Final[tuple[float, ...]] = (135.0, 136.5)
+ECHO_TIMES: Final[tuple[float, ...]] = (155.0, 156.5)
+# Measured: at 2:15 the echo arrived on bearing 23 while the rival's own pings were a
+# standing contact on bearing 13, inside the 18-degree merge window, so it was absorbed
+# and never appeared as its own event. Lowering the merge angle does not help -- both
+# sounds enter the chamber down the same passage. Moved to 2:35, after the spoof, when
+# the agent is elsewhere and the bearings separate. Designer's pick of three levers.
 # The same ping arriving a second time off a reflective chamber, on a different bearing
 # because it came by a different passage. Scripted so the beat is guaranteed, but the
 # mechanism is real: it is a second sound field from a second point.

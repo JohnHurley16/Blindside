@@ -307,20 +307,37 @@ every other loadout choice.
 - **Sonar** - loud. Every listener in the basin hears it, from the direction of the
   passage it arrived through. Long range. Works in water.
 - **Lidar** - silent. Short range, precise. Blind the moment there is water or silt in
-  the way; the map it builds simply stops at the waterline. A sweep is a visible light
-  in a dark cave, so it is a tell to anyone with *line of sight* - local exposure, not
-  basin-wide. (Not modelled in Phase 1: neither agent carries optics.)
+  the way. The water surface reflects, so from the dry side a sump maps as a wall over a
+  mirror: the agent steers round it and never learns what is beyond (designer's call,
+  over the alternative where water returned nothing, read as open space, and would have
+  sent the agent in). A sweep is a visible light in a dark cave, so it is a tell to
+  anyone with *line of sight* - local exposure, not basin-wide. (Not modelled in Phase
+  1: neither agent carries optics.)
 
 "Do I ping?" does not go away. It moves. For a sonar carrier it is the loud question it
 always was. For a lidar carrier it becomes *where do I dare to go* - the quiet sensor is
 also the one that goes blind in the flooded sections, which is where the machinery
 lives. A Swimmer chassis can only sensibly carry sonar.
 
-Phase 1 has no loadout screen, so the two scripted agents are given different kit: the
-cautious player agent creeps with lidar, the aggressive rival announces itself with
-sonar. The player hears the rival every time it fires; the rival never hears the
-player. `PLAYER_SENSOR` / `RIVAL_SENSOR` in `tuning.py`, or `--player-sensor` on the
-command line, so both versions can be rendered from the same seed and compared.
+**The gate is two viewings: an agent carrying sonar, then an agent carrying lidar.**
+Designer's call after a four-lens design panel with three adversarial judges. Sonar
+goes first because the Phase 1 spec names three sensors and its acceptance criteria are
+written for pings, and about ten measured tunings were calibrated against heard pings
+-- so that viewing is the specced one and the one the gate is judged on. The panel also
+found that in Phase 1 "do I ping" is a cooldown rather than a decision: no policy reads
+contacts, so the gate is testing the *signal* side of pings (something is out there,
+roughly that way, and it just died), which is the rival's emission and is untouched by
+the player's sensor.
+
+The panel's caveat, recorded and accepted: a tester who sees both worlds compares
+rather than reacts, which weakens attribution of a failure ("nothing happened" and
+"the machine looked implausible" are fixed differently). Watch the first viewing for the
+gate and the second for the sensor question. `PLAYER_SENSOR` in `tuning.py` is the
+first viewing; `--player-sensor lidar` is the second; both render from the same seed.
+
+Also decided from the same panel: the scripted echo moves from 2:15 to 2:35, after the
+spoof, because at 2:15 it merged into the standing rival contact and never showed as
+its own event; and a lidar ray reaching water returns the surface as a wall.
 
 GLOSSARY's *Passive / active* entry should be updated to say this; left for the
 designer, since it is the one document that defines the vocabulary.

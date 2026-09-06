@@ -110,8 +110,12 @@ class SensorRig:
 
         Sonar rays march against ~FREE, so sound crosses a flooded sump and maps the
         far wall. Lidar marches against ~WALKABLE, so the water surface ends the ray
-        and returns nothing: a flooded chamber is a hole in a lidar map. That hole is
-        the honest cost of carrying the quiet sensor, and it is where the machinery is.
+        -- and returns it. A sump seen from the dry side is a wall over a mirror: the
+        agent maps the waterline as solid, steers round it like any other wall, and
+        never learns what is on the other side. That is the honest cost of carrying
+        the quiet sensor, and the other side is where the machinery is. (Designer's
+        call over the alternative, where water returned nothing and read as open
+        space -- which would have sent it in.)
         """
         out: list[Return] = []
         if not cave.is_walkable(me.x, me.y):
@@ -122,10 +126,6 @@ class SensorRig:
             r = march(me.x, me.y, me.heading + b, T.LIDAR_RANGE, ~cave.WALKABLE, step=0.25)
             if r is None:
                 continue
-            hx = me.x + math.cos(me.heading + b) * r
-            hy = me.y + math.sin(me.heading + b) * r
-            if cave.is_free(hx, hy):
-                continue                  # the ray ended at water, not rock: no return
             quality = 1.0 - 0.3 * r / T.LIDAR_RANGE
             noisy_r = r + self.rng.normal(0.0, T.LIDAR_RANGE_NOISE)
             noisy_b = b + self.rng.normal(0.0, math.radians(T.LIDAR_BEARING_NOISE_DEG))
