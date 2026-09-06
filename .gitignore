@@ -6,3 +6,4 @@ renders/test_*
 renders/frames/
 *.blend1
 renders/*.log
+renders/*_frames/

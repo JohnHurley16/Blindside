@@ -138,8 +138,21 @@ def render_still(path, frame=None):
 
 
 def render_video(path, start=None, end=None, fps=24):
-    """Straight to an H.264 MP4 with Blender's own encoder."""
+    """An H.264 MP4. Blender's own encoder when it has one (a normal install);
+    otherwise PNG frames stitched by imageio-ffmpeg (the pip bpy module has no FFmpeg)."""
     sc = bpy.context.scene
+    formats = {e.identifier for e in bpy.types.ImageFormatSettings.bl_rna.properties["file_format"].enum_items}
+    if "FFMPEG" not in formats:
+        import os
+        frames_dir = os.path.splitext(path)[0] + "_frames"
+        os.makedirs(frames_dir, exist_ok=True)
+        render_animation(os.path.join(frames_dir, "f_"), start, end, 1)
+        import imageio.v2 as iio
+        names = sorted(f for f in os.listdir(frames_dir) if f.endswith(".png"))
+        with iio.get_writer(path, fps=fps, codec="libx264", quality=8, macro_block_size=8) as w:
+            for n in names:
+                w.append_data(iio.imread(os.path.join(frames_dir, n)))
+        return
     sc.render.image_settings.file_format = "FFMPEG"
     sc.render.ffmpeg.format = "MPEG4"
     sc.render.ffmpeg.codec = "H264"
