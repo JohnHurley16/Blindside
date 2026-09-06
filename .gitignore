@@ -9,3 +9,4 @@ renders/*_frames/
 *.mp4
 *.wav
 snap_*.png
+!renders/surveyor_walk.mp4
