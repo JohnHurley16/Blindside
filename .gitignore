@@ -9,3 +9,6 @@ renders/*_frames/
 *.mp4
 *.wav
 snap_*.png
+# The dev plan board is docs/DEV-PLAN.md. The JSON it was generated from is an
+# intermediate; edit the markdown directly.
+docs/dev-plan.json
