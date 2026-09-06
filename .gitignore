@@ -1,3 +1,6 @@
 __pycache__/
 *.pyc
 .venv/
+renders/*.blend
+renders/test_*
+renders/frames/
