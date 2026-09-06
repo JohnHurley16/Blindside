@@ -351,11 +351,23 @@ def _module(kind, slot, u, col):
             objs.append((G.cyl(f"{slot}_beacon_cap{k}", u * 0.03, u * 0.022, u * 0.022, (x, 0, u * 0.165), verts=10, col=col), "accent"))
         objs.append((G.box(f"{slot}_chute", (u * 0.1, u * 0.1, u * 0.05), (-u * 0.22, 0, u * 0.02), rot=(0, 0.6, 0), bevel=0.003, col=col), "carbon"))
     elif kind == "magnetometer":
-        objs.append((G.box(f"{slot}_mag_base", (u * 0.12, u * 0.12, u * 0.035), (0, 0, u * 0.017), bevel=0.003, col=col), "dark"))
-        objs.append((G.cyl(f"{slot}_mag_hinge", u * 0.03, u * 0.03, u * 0.08, (0, 0, u * 0.045), rot=(math.pi / 2, 0, 0), verts=12, col=col), "metal"))
-        tip = Vector((-u * 0.95, 0, u * 0.5))
-        objs.append((G.segment(f"{slot}_boom", (0, 0, u * 0.03), tip, u * 0.016, u * 0.011, verts=8, col=col), "carbon"))
-        objs.append((G.cyl(f"{slot}_pod", u * 0.035, u * 0.035, u * 0.09, tip, rot=(0, -0.5, 0), verts=12, col=col), "accent"))
+        # folding boom: motorised root hinge on a wide base, box-section arm, a brace
+        # strut triangulating the first segment, elbow joint, sensor pod at the tip.
+        # The pod has to sit clear of the hip actuators' magnetic noise, hence the reach.
+        objs.append((G.box(f"{slot}_mag_base", (u * 0.22, u * 0.2, u * 0.04), (0, 0, u * 0.02), bevel=0.004, col=col), "dark"))
+        for sd in (1, -1):
+            objs.append((G.box(f"{slot}_mag_ear{sd}", (u * 0.08, u * 0.02, u * 0.09), (u * 0.02, sd * u * 0.075, u * 0.08), bevel=0.003, col=col), "dark"))
+        objs.append((G.cyl(f"{slot}_mag_hinge", u * 0.045, u * 0.045, u * 0.19, (u * 0.02, 0, u * 0.09), rot=(math.pi / 2, 0, 0), verts=16, col=col), "metal"))
+        objs.append((G.cyl(f"{slot}_mag_motor", u * 0.05, u * 0.05, u * 0.05, (u * 0.02, u * 0.12, u * 0.09), rot=(math.pi / 2, 0, 0), verts=16, col=col), "dark"))
+        objs.append((G.cyl(f"{slot}_mag_motor_cap", u * 0.035, u * 0.035, u * 0.008, (u * 0.02, u * 0.148, u * 0.09), rot=(math.pi / 2, 0, 0), verts=16, col=col), "accent"))
+        root = Vector((u * 0.02, 0, u * 0.09)); elbow = Vector((-u * 0.55, 0, u * 0.42)); tip = Vector((-u * 0.95, 0, u * 0.55))
+        objs.append((G.strut(f"{slot}_boom1", root, elbow, u * 0.07, u * 0.09, u * 0.05, u * 0.06, col=col, bevel=0.003), "carbon"))
+        objs.append((G.strut(f"{slot}_brace", Vector((-u * 0.18, 0, u * 0.02)), root.lerp(elbow, 0.55), u * 0.03, u * 0.03, u * 0.025, u * 0.025, col=col, bevel=0.002), "metal"))
+        objs.append((G.cyl(f"{slot}_mag_elbow", u * 0.04, u * 0.04, u * 0.1, elbow, rot=(math.pi / 2, 0, 0), verts=16, col=col), "dark"))
+        objs.append((G.cyl(f"{slot}_mag_elbow_cap", u * 0.028, u * 0.028, u * 0.008, elbow + Vector((0, u * 0.054, 0)), rot=(math.pi / 2, 0, 0), verts=16, col=col), "accent"))
+        objs.append((G.strut(f"{slot}_boom2", elbow, tip, u * 0.04, u * 0.05, u * 0.03, u * 0.035, col=col, bevel=0.002), "carbon"))
+        objs.append((G.cyl(f"{slot}_pod", u * 0.04, u * 0.04, u * 0.11, tip + Vector((-u * 0.03, 0, u * 0.01)), rot=(0, -0.5, 0), verts=16, col=col), "accent"))
+        objs.append((G.tube_along(f"{slot}_mag_cable", [root + Vector((0, u * 0.06, u * 0.03)), root.lerp(elbow, 0.5) + Vector((0, u * 0.05, -u * 0.02)), elbow + Vector((0, u * 0.05, 0))], 0.003, verts=6, col=col), "rubber"))
     elif kind == "cargo_bay":
         objs.append((G.box(f"{slot}_bay", (u * 0.95, u * 0.6, u * 0.2), (0, 0, u * 0.1), bevel=u * 0.035, col=col), "chassis"))
         objs.append((G.box(f"{slot}_hatch", (u * 0.5, u * 0.42, u * 0.012), (0, 0, u * 0.205), bevel=0.003, col=col), "dark"))
