@@ -1,0 +1,131 @@
+# Phase 0 determinism CI (docs/PHASE-0-HARNESS.md acceptance criteria 1, 3 and 5;
+# docs/DETERMINISM.md "Enforcement").
+#
+#   build-test-lint   x3 OS   build, unit tests, determinism lint, 10k-tick canary, record
+#                              a replay and upload its per-tick hashes as hashes-<os>
+#   cross-platform             the three hashes.json files must be byte-identical
+#   lint-rejects-f64           a copy of blindside-sim with `pub fn bad() -> f64 { 0.0 }`
+#                              appended must FAIL the lint (acceptance criterion 5)
+
+name: determinism
+
+on:
+  push:
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  build-test-lint:
+    name: build, test, lint, canary (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: cargo build --workspace
+        run: cargo build --workspace --locked
+
+      - name: cargo test --workspace
+        run: cargo test --workspace --locked
+
+      - name: determinism lint (sources + dependency tree)
+        run: cargo run -p determinism-lint --locked -- --check-all
+
+      - name: desync canary, 10000 ticks
+        run: cargo run -p blindside-harness --release --locked -- canary --ticks 10000
+
+      - name: record replay (seed 7, 5000 ticks) -> replay.json + hashes.json
+        run: cargo run -p blindside-harness --release --locked -- record --seed 7 --ticks 5000 --out replay.json --hashes hashes.json
+
+      - name: show hashes.json digest
+        shell: bash
+        run: |
+          ls -l replay.json hashes.json
+          if command -v sha256sum >/dev/null; then sha256sum hashes.json; else shasum -a 256 hashes.json; fi
+
+      - name: upload hashes-${{ matrix.os }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: hashes-${{ matrix.os }}
+          path: |
+            hashes.json
+            replay.json
+          if-no-files-found: error
+          retention-days: 14
+
+  cross-platform:
+    name: hashes identical across Linux, macOS, Windows
+    needs: build-test-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: hashes-*
+          path: artifacts
+          merge-multiple: false
+
+      - name: compare the three hashes.json byte-for-byte
+        shell: bash
+        run: |
+          set -euo pipefail
+          a=artifacts/hashes-ubuntu-latest/hashes.json
+          b=artifacts/hashes-macos-latest/hashes.json
+          c=artifacts/hashes-windows-latest/hashes.json
+          for f in "$a" "$b" "$c"; do
+            test -s "$f" || { echo "missing or empty: $f"; exit 1; }
+          done
+          sha256sum "$a" "$b" "$c"
+          fail=0
+          cmp "$a" "$b" || { echo "::error::ubuntu vs macos hashes.json differ"; fail=1; }
+          cmp "$a" "$c" || { echo "::error::ubuntu vs windows hashes.json differ"; fail=1; }
+          cmp "$b" "$c" || { echo "::error::macos vs windows hashes.json differ"; fail=1; }
+          if [ "$fail" -ne 0 ]; then
+            echo "first differing lines (ubuntu vs macos, ubuntu vs windows):"
+            diff "$a" "$b" | head -20 || true
+            diff "$a" "$c" | head -20 || true
+            exit 1
+          fi
+          echo "OK: hashes.json is byte-identical on all three platforms"
+
+  lint-rejects-f64:
+    name: lint rejects f64 added to blindside-sim
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: build the lint
+        run: cargo build -p determinism-lint --locked
+
+      - name: copy blindside-sim, append a float fn, lint the copy (must FAIL)
+        shell: bash
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp -d)"
+          cp -r crates/blindside-sim "$tmp/blindside-sim"
+          printf '\npub fn bad() -> f64 { 0.0 }\n' >> "$tmp/blindside-sim/src/lib.rs"
+          set +e
+          out="$(cargo run -p determinism-lint --locked -- --check-all "$tmp/blindside-sim")"
+          code=$?
+          set -e
+          echo "$out"
+          echo "lint exit code: $code"
+          if [ "$code" -ne 1 ]; then
+            echo "::error::lint should exit 1 on the f64 copy, exited $code"
+            exit 1
+          fi
+          echo "$out" | grep -q 'lib.rs:[0-9]*:[0-9]*: `f64` -- rule 1' \
+            || { echo "::error::lint did not name the f64 line"; exit 1; }
+          echo "OK: lint rejects f64 in blindside-sim (acceptance criterion 5)"
+
+      - name: "sanity: the unmodified crates still pass"
+        run: cargo run -p determinism-lint --locked -- --check-all
