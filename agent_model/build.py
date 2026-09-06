@@ -195,17 +195,17 @@ def build_agent(cfg: AgentConfig, name="AGENT", at=(0, 0, 0)):
         add(G.cyl(f"knee.{i}", r * 1.05, r * 1.05, r * 2.6, K, rot=(math.pi / 2, 0, 0), verts=16, col=col), "dark", f"femur.{i}")
         add(G.cyl(f"knee_bolt.{i}", r * 0.5, r * 0.5, r * 0.3, K + Vector((0, s * r * 1.4, 0)), rot=(math.pi / 2, 0, 0), verts=6, col=col), "accent", f"femur.{i}")
         # tibia: slimmer strut, actuator rod down its back, ankle, rubber pad
-        add(G.strut(f"tibia.{i}", K, F + Vector((0, 0, 0.03)), r * 1.5, r * 1.3, r * 0.9, r * 0.8, col=col), "carbon", f"tibia.{i}")
+        add(G.strut(f"tibia.{i}", K, F + Vector((0, 0, r * 1.2)), r * 1.5, r * 1.3, r * 0.9, r * 0.8, col=col), "carbon", f"tibia.{i}")
         ta, tb = K.lerp(F, 0.12), K.lerp(F, 0.72)
         back = Vector((-r * 0.9, 0, 0))
         add(G.segment(f"tibia_cyl.{i}", ta + back, ta.lerp(tb, 0.5) + back, r * 0.35, r * 0.35, verts=10, col=col), "dark", f"tibia.{i}")
         add(G.segment(f"tibia_rod.{i}", ta.lerp(tb, 0.45) + back, tb + back, r * 0.16, r * 0.16, verts=8, col=col), "metal", f"tibia.{i}")
-        add(G.sphere(f"ankle.{i}", r * 0.7, F + Vector((0, 0, 0.035)), col=col, seg=12), "dark", f"tibia.{i}")
+        add(G.sphere(f"ankle.{i}", r * 0.7, F + Vector((0, 0, r * 1.25)), col=col, seg=12), "dark", f"tibia.{i}")
         foot = G.sphere(f"foot.{i}", r * 0.95, F + Vector((0, 0, r * 0.55)), col=col, seg=16)
         foot.scale = (1.4, 1.15, 0.6)
         add(foot, "rubber", f"tibia.{i}")
         if "structural_monitor" in cfg.modules.values():
-            add(G.torus(f"geophone.{i}", r * 0.85, r * 0.22, F + Vector((0, 0, 0.045)), col=col), "accent", f"tibia.{i}")
+            add(G.torus(f"geophone.{i}", r * 0.85, r * 0.22, F + Vector((0, 0, r * 1.6)), col=col), "accent", f"tibia.{i}")
         # power conduit from the hull to the hip actuator
         p0 = Vector((Hp.x, s * (W * 0.42), zc - H * 0.1))
         p1 = Hp + Vector((0, s * r * 0.4, r * 1.2))
