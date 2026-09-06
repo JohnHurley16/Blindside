@@ -145,41 +145,56 @@ def build_agent(cfg: AgentConfig, name="AGENT", at=(0, 0, 0)):
     # front face: a recessed dark sensor bay the yoke sits on; vents on the flanks near the hips
     add(G.box("front_bay", (0.02, W * 0.6, H * 0.55), (L / 2 - 0.005, 0, zc - H * 0.05), bevel=0.004, col=col), "dark")
 
-    # ---- legs: hip stacks, femur blade, tibia strut ------------------------------------
+    # ---- legs -----------------------------------------------------------------------------
+    # Joint chain as on a real quadruped: abduction drum (axis X) on the chassis corner;
+    # the flexion/knee motor stack (axis Y) bolts to its outboard face; the femur blade
+    # bolts to the stack's outboard face on a round knuckle; the tibia sits BESIDE the
+    # femur on a through-axle at the knee. Nothing passes through anything.
     neutral, leg_geom = [], []
     rh = H * 0.34                                       # hip motor radius
+    bw = rh * 0.9                                       # femur blade thickness (Y)
+    tw = rh * 0.5                                       # tibia thickness (Y)
+    abd_len, stack_len, gap = 0.05, 0.06, 0.003
     for i, leg in enumerate(ch.legs):
         s = leg.side
         wx = width_at((leg.hip[0] + L / 2) / L) / 2
-        Hp = Vector((leg.hip[0], s * (wx + 0.03), zc + leg.hip[2]))          # abduction axis (along X) at the housing face
-        P = Hp + Vector((0, s * (leg.coxa), 0))                              # flexion pivot, outboard
+        Hp = Vector((leg.hip[0], s * wx, zc + leg.hip[2]))                  # abduction axis meets the chassis face
+        y_face = Hp.y + s * abd_len                                          # abduction drum outboard face
+        y_stack = y_face + s * stack_len / 2                                 # stack centre
+        y_f = y_face + s * (stack_len + gap + bw / 2)                        # femur blade plane
+        y_t = y_f + s * (bw / 2 + gap + tw / 2)                              # tibia plane
+        P = Vector((Hp.x, y_f, Hp.z))                                        # femur pivot (flexion axis, in the blade plane)
         kdir = Vector((leg.knee_back, 0, leg.knee_rise)).normalized()
-        K = P + kdir * leg.femur
-        F = Vector((leg.hip[0] + leg.foot_fwd, P.y + s * leg.foot_out, 0.0))
-        neutral.append((F.x, F.y, F.z)); leg_geom.append((Hp, P, K, F))
-        # abduction motor: cylinder along X on the chassis corner, with a heat-sink ring
-        add(G.cyl(f"abd_motor.{i}", rh, rh, 0.06, Hp - Vector((0, s * 0.03, 0)), rot=(0, math.pi / 2, 0), verts=24, col=col), "dark")
-        add(G.torus(f"abd_ring.{i}", rh * 0.9, 0.004, Hp - Vector((0, s * 0.055, 0)), rot=(0, math.pi / 2, 0), col=col), "accent")
-        # abduction link: short yoke from the housing face out to the flexion stack (rolls with coxa)
-        add(G.box(f"abd_link.{i}", (rh * 1.3, leg.coxa + 0.01, rh * 0.9), (Hp + P) / 2, bevel=0.004, col=col), "chassis", f"coxa.{i}")
-        # flexion + knee motor stack: a fat cylinder along Y at the femur top
-        add(G.cyl(f"hip_stack.{i}", rh * 0.95, rh * 0.95, 0.055, P + Vector((0, s * 0.02, 0)), rot=(math.pi / 2, 0, 0), verts=24, col=col), "dark", f"coxa.{i}")
-        add(G.cyl(f"hip_cap.{i}", rh * 0.6, rh * 0.6, 0.008, P + Vector((0, s * 0.05, 0)), rot=(math.pi / 2, 0, 0), verts=24, col=col), "accent", f"coxa.{i}")
-        # femur: broad blade with the belt cover on its outer face
-        add(G.strut(f"femur.{i}", P, K, rh * 0.9, rh * 1.6, rh * 0.7, rh * 1.0, col=col, bevel=0.005), "shell", f"femur.{i}")
-        add(G.strut(f"belt_cover.{i}", P.lerp(K, 0.05) + Vector((0, s * rh * 0.55, 0)), K + Vector((0, s * rh * 0.45, 0)),
-                    rh * 0.3, rh * 0.9, rh * 0.25, rh * 0.55, col=col, bevel=0.003), "carbon", f"femur.{i}")
-        # knee: pivot drum and bolt
-        add(G.cyl(f"knee.{i}", rh * 0.55, rh * 0.55, rh * 1.5, K, rot=(math.pi / 2, 0, 0), verts=20, col=col), "dark", f"femur.{i}")
-        add(G.cyl(f"knee_bolt.{i}", rh * 0.25, rh * 0.25, rh * 0.2, K + Vector((0, s * rh * 0.85, 0)), rot=(math.pi / 2, 0, 0), verts=8, col=col), "accent", f"femur.{i}")
-        # tibia: thin tapered strut, ankle and rubber ball foot
-        add(G.strut(f"tibia.{i}", K, F + Vector((0, 0, 0.02)), rh * 0.55, rh * 0.8, rh * 0.3, rh * 0.35, col=col, bevel=0.003), "carbon", f"tibia.{i}")
+        Kf = P + kdir * leg.femur                                            # knee in the femur plane
+        Kt = Vector((Kf.x, y_t, Kf.z))                                       # knee in the tibia plane
+        F = Vector((leg.hip[0] + leg.foot_fwd, y_t, 0.0))
+        neutral.append((F.x, F.y, F.z)); leg_geom.append((Hp, P, Kf, Kt, F))
+        # abduction drum on the chassis corner, output flange on its outboard face
+        add(G.cyl(f"abd_motor.{i}", rh, rh, abd_len, Hp + Vector((0, s * abd_len / 2, 0)), rot=(math.pi / 2, 0, 0), verts=28, col=col), "dark")
+        add(G.cyl(f"abd_flange.{i}", rh * 0.85, rh * 0.85, 0.006, Vector((Hp.x, y_face + s * 0.003, Hp.z)), rot=(math.pi / 2, 0, 0), verts=28, col=col), "metal", f"coxa.{i}")
+        # flexion + knee motor stack, axis Y, bolted to the flange
+        add(G.cyl(f"hip_stack.{i}", rh * 0.95, rh * 0.95, stack_len - 0.006, Vector((Hp.x, y_stack, Hp.z)), rot=(math.pi / 2, 0, 0), verts=28, col=col), "dark", f"coxa.{i}")
+        add(G.torus(f"stack_seam.{i}", rh * 0.95, 0.002, Vector((Hp.x, y_stack, Hp.z)), rot=(math.pi / 2, 0, 0), col=col), "carbon", f"coxa.{i}")
+        add(G.cyl(f"stack_cap.{i}", rh * 0.55, rh * 0.55, 0.006, Vector((Hp.x, y_face + s * (stack_len - 0.003), Hp.z)), rot=(math.pi / 2, 0, 0), verts=28, col=col), "accent", f"coxa.{i}")
+        # femur: round knuckle on the stack face, blade down to the knee knuckle, belt cover outboard
+        add(G.cyl(f"femur_knuckle.{i}", rh * 0.78, rh * 0.78, bw, P, rot=(math.pi / 2, 0, 0), verts=28, col=col), "shell", f"femur.{i}")
+        add(G.strut(f"femur.{i}", P, Kf, bw, rh * 1.5, bw, rh * 1.0, col=col, bevel=0.004), "shell", f"femur.{i}")
+        add(G.cyl(f"knee_knuckle.{i}", rh * 0.5, rh * 0.5, bw, Kf, rot=(math.pi / 2, 0, 0), verts=24, col=col), "shell", f"femur.{i}")
+        cov_y = s * (bw / 2 + 0.003)
+        add(G.strut(f"belt_cover.{i}", P + Vector((0, cov_y, 0)), Kf + Vector((0, cov_y, 0)), 0.006, rh * 0.7, 0.006, rh * 0.45, col=col, bevel=0.002), "carbon", f"femur.{i}")
+        # knee axle through femur knuckle and tibia knuckle, cap outboard
+        ax0 = Vector((Kf.x, y_f - s * (bw / 2 + 0.004), Kf.z)); ax1 = Vector((Kf.x, y_t + s * (tw / 2 + 0.006), Kf.z))
+        add(G.segment(f"knee_axle.{i}", ax0, ax1, rh * 0.16, rh * 0.16, verts=12, col=col), "metal", f"femur.{i}")
+        add(G.cyl(f"knee_cap.{i}", rh * 0.24, rh * 0.24, 0.005, ax1, rot=(math.pi / 2, 0, 0), verts=12, col=col), "accent", f"tibia.{i}")
+        # tibia beside the femur: knuckle, tapered strut, ankle, rubber ball foot
+        add(G.cyl(f"tibia_knuckle.{i}", rh * 0.42, rh * 0.42, tw, Kt, rot=(math.pi / 2, 0, 0), verts=24, col=col), "carbon", f"tibia.{i}")
+        add(G.strut(f"tibia.{i}", Kt, F + Vector((0, 0, 0.02)), tw, rh * 0.7, tw * 0.7, rh * 0.32, col=col, bevel=0.002), "carbon", f"tibia.{i}")
         add(G.sphere(f"foot.{i}", 0.022, F + Vector((0, 0, 0.018)), col=col, seg=16), "rubber", f"tibia.{i}")
         if "structural_monitor" in cfg.modules.values():
-            add(G.cyl(f"geophone.{i}", rh * 0.45, rh * 0.45, 0.012, F + Vector((0, 0, 0.055)), verts=12, col=col), "accent", f"tibia.{i}")
-        # cable from the chassis into the hip stack
-        c0 = Hp - Vector((0.0, s * 0.02, rh * 0.9)); c1 = P + Vector((0, s * 0.02, -rh * 0.95))
-        add(G.tube_along(f"cable.{i}", [c0, (c0 + c1) / 2 + Vector((0, 0, -0.012)), c1], 0.004, verts=6, col=col), "rubber", f"coxa.{i}")
+            add(G.cyl(f"geophone.{i}", rh * 0.4, rh * 0.4, 0.012, F + Vector((0, 0, 0.055)), verts=12, col=col), "accent", f"tibia.{i}")
+        # power and signal cable: chassis -> abduction drum -> stack, with slack for travel
+        c0 = Vector((Hp.x - rh * 0.6, Hp.y + s * 0.002, Hp.z - rh * 1.0)); c1 = Vector((Hp.x - rh * 0.9, y_stack, Hp.z - rh * 0.95))
+        add(G.tube_along(f"cable.{i}", [c0, (c0 + c1) / 2 + Vector((-0.01, 0, -0.015)), c1], 0.0035, verts=6, col=col), "rubber", f"coxa.{i}")
 
     # ---- head: pan-tilt unit on a chassis prow bracket -------------------------------------
     # Mounted on structure, not on the removable shell. The payload block is centred on the
@@ -192,10 +207,10 @@ def build_agent(cfg: AgentConfig, name="AGENT", at=(0, 0, 0)):
         add(G.box(f"prow_gusset.{s}", (0.05, 0.006, 0.05), (L / 2 + 0.005, s * W * 0.2, prow_z - 0.035), rot=(0, -0.5, 0), col=col), "chassis")
     B = Vector((L / 2 + 0.035, 0, prow_z + 0.011))                          # pan axis base
     add(G.cyl("pan_motor", hr * 0.62, hr * 0.62, 0.028, B + Vector((0, 0, 0.014)), verts=28, col=col), "dark")
-    add(G.torus("pan_ring", hr * 0.6, 0.003, B + Vector((0, 0, 0.0285)), col=col), "accent")
+    add(G.torus("pan_ring", hr * 0.6, 0.003, B + Vector((0, 0, 0.0285)), col=col), "carbon")
     add(G.cyl("pan_plate", hr * 0.58, hr * 0.5, 0.012, B + Vector((0, 0, 0.034)), verts=28, col=col), "dark", "pan")
     T = B + Vector((0.01, 0, 0.04 + hr * 0.7))                              # tilt axis centre
-    yw = hr * 0.8
+    yw = hr * 0.95
     for s in (1, -1):
         a0 = B + Vector((-0.01, s * yw * 0.55, 0.04)); a1 = T + Vector((0, s * yw, 0))
         add(G.strut(f"yoke.{s}", a0, a1, 0.018, 0.04, 0.018, 0.03, col=col, bevel=0.003), "dark", "pan")
@@ -205,11 +220,12 @@ def build_agent(cfg: AgentConfig, name="AGENT", at=(0, 0, 0)):
     add(G.cyl("tilt_motor_cap", hr * 0.25, hr * 0.25, 0.006, T + Vector((0, -(yw + 0.036), 0)), rot=(math.pi / 2, 0, 0), verts=24, col=col), "accent", "pan")
     add(G.cyl("tilt_bearing", hr * 0.3, hr * 0.3, 0.012, T + Vector((0, yw + 0.012, 0)), rot=(math.pi / 2, 0, 0), verts=24, col=col), "accent", "pan")
     Hc = T
-    head = G.box("head", (hr * 1.5, yw * 2 - 0.012, hr * 1.2), Hc, bevel=hr * 0.22, col=col)
+    head = G.box("head", (hr * 1.5, yw * 2 - 0.012, hr * 0.95), Hc, bevel=hr * 0.16, col=col)
     add(head, "shell", "tilt")
     face_x = Hc.x + hr * 0.75
-    add(G.box("face_plate", (0.006, yw * 2 - 0.03, hr * 1.0), (face_x, 0, Hc.z), bevel=0.003, col=col), "dark", "tilt")
-    add(G.box("head_vent", (hr * 0.5, yw * 2 - 0.02, 0.004), Hc + Vector((-hr * 0.3, 0, hr * 0.6)), col=col), "dark", "tilt")
+    add(G.box("face_plate", (0.006, yw * 2 - 0.03, hr * 0.8), (face_x, 0, Hc.z), bevel=0.003, col=col), "dark", "tilt")
+    add(G.box("head_hood", (hr * 0.45, yw * 2 + 0.004, 0.005), (face_x - hr * 0.1, 0, Hc.z + hr * 0.5), bevel=0.002, col=col), "dark", "tilt")
+    add(G.box("head_vent", (hr * 0.5, yw * 2 - 0.02, 0.004), Hc + Vector((-hr * 0.3, 0, hr * 0.48)), col=col), "dark", "tilt")
     # cable loop from the chassis into the head: slack for the pan/tilt travel
     add(G.tube_along("head_cable", [Vector((L / 2 - 0.02, W * 0.18, z_top - 0.01)), B + Vector((-0.02, yw * 0.9, 0.02)),
                                      T + Vector((-hr * 0.5, yw * 0.9, -hr * 0.2))], 0.004, verts=6, col=col), "rubber")
@@ -230,9 +246,9 @@ def build_agent(cfg: AgentConfig, name="AGENT", at=(0, 0, 0)):
         if not mod:
             continue
         if slot.name == "face":
-            base = Vector((face_x, 0, Hc.z + hr * 0.3)); f = Vector((1, 0, 0)); bone = "tilt"; u_ = hr * 2.2
+            base = Vector((face_x, 0, Hc.z + hr * 0.22)); f = Vector((1, 0, 0)); bone = "tilt"; u_ = hr * 2.4
         elif slot.name == "eye":
-            base = Vector((face_x, 0, Hc.z - hr * 0.15)); f = Vector((1, 0, 0)); bone = "tilt"; u_ = hr * 2.2
+            base = Vector((face_x, 0, Hc.z - hr * 0.16)); f = Vector((1, 0, 0)); bone = "tilt"; u_ = hr * 2.0
         else:
             base = Vector((slot.pos[0], slot.pos[1], zc + slot.pos[2])); f = Vector(slot.facing).normalized(); bone = None; u_ = u
         rot = f.to_track_quat("Z", "Y").to_euler()
@@ -240,8 +256,8 @@ def build_agent(cfg: AgentConfig, name="AGENT", at=(0, 0, 0)):
             o.matrix_world = Matrix.Translation(base) @ rot.to_matrix().to_4x4() @ o.matrix_world
             add(o, mat, bone)
     mast = Vector((-L * 0.42, -W * 0.25, z_top + 0.012))
-    add(G.cyl("comms_mast", 0.005, 0.0035, hr * 1.6, mast + Vector((0, 0, hr * 0.8)), verts=8, col=col), "metal")
-    add(G.cyl("comms_head", 0.01, 0.01, 0.018, mast + Vector((0, 0, hr * 1.6)), verts=12, col=col), "dark")
+    add(G.cyl("comms_mast", 0.006, 0.005, hr * 1.0, mast + Vector((0, 0, hr * 0.5)), verts=8, col=col), "metal")
+    add(G.cyl("comms_head", 0.011, 0.011, 0.02, mast + Vector((0, 0, hr * 1.0)), verts=12, col=col), "dark")
 
     # ---- armature -----------------------------------------------------------------------
     arm_data = bpy.data.armatures.new("AGENT_RIG")
@@ -251,16 +267,16 @@ def build_agent(cfg: AgentConfig, name="AGENT", at=(0, 0, 0)):
     bpy.ops.object.mode_set(mode="EDIT")
     _bone(arm_data, "pan", B + Vector((0, 0, 0.028)), B + Vector((0.05, 0, 0.028)))
     _bone(arm_data, "tilt", T, T + Vector((0.06, 0, 0)), parent="pan")
-    for i, (Hp, P, K, F) in enumerate(leg_geom):
+    for i, (Hp, P, Kf, Kt, F) in enumerate(leg_geom):
         _bone(arm_data, f"coxa.{i}", Hp, Hp + Vector((0, 0, -0.04)))         # abduction: rolls about X
-        _bone(arm_data, f"femur.{i}", P, K, parent=f"coxa.{i}")
-        _bone(arm_data, f"tibia.{i}", K, F, parent=f"femur.{i}", connect=True)
-        pole = K + (K - (P + F) / 2).normalized() * 0.3
+        _bone(arm_data, f"femur.{i}", P, Kf, parent=f"coxa.{i}")
+        _bone(arm_data, f"tibia.{i}", Kt, F, parent=f"femur.{i}")           # beside the femur, on the axle
+        pole = Kf + (Kf - (P + F) / 2).normalized() * 0.3
         _bone(arm_data, f"pole.{i}", pole, pole + Vector((0, 0, 0.03)), parent=f"coxa.{i}")
     bpy.ops.object.mode_set(mode="OBJECT")
     arm.data.display_type = "STICK"
 
-    feet = [_empty(f"FOOT.{i}", F, size=0.05, kind="SPHERE") for i, (Hp, P, K, F) in enumerate(leg_geom)]
+    feet = [_empty(f"FOOT.{i}", F, size=0.05, kind="SPHERE") for i, (Hp, P, Kf, Kt, F) in enumerate(leg_geom)]
     look = _empty("LOOK", Hc + Vector((2.0, 0, 0)), size=0.08, kind="CUBE")
     out.feet, out.look, out.arm = feet, look, arm
 
@@ -311,7 +327,7 @@ def build_agent(cfg: AgentConfig, name="AGENT", at=(0, 0, 0)):
 
 def _settle_pole_angles(arm, leg_geom):
     dg = bpy.context.evaluated_depsgraph_get()
-    for i, (Hp, P, K, F) in enumerate(leg_geom):
+    for i, (Hp, P, K, Kt, F) in enumerate(leg_geom):
         ik = arm.pose.bones[f"tibia.{i}"].constraints[-1]
         best, best_err = 0.0, 1e9
         for deg in range(-180, 180, 15):

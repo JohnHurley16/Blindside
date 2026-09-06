@@ -14,7 +14,6 @@ Vec = Tuple[float, float, float]
 class LegSpec:
     hip: Vec                 # hip position on the hull, body frame
     side: int                # +1 left, -1 right
-    coxa: float = 0.045      # abduction axis to flexion pivot, outward
     femur: float = 0.20      # upper leg length. Tibia length follows from ride height
     knee_rise: float = -0.14 # knee below the hip (negative): a dog
     knee_back: float = -0.11 # knee behind the hip (negative): knees back, like a robot dog
@@ -93,7 +92,7 @@ def _hex_legs(L, W, **kw):
 CHASSIS: Dict[str, ChassisSpec] = {
     "scout": ChassisSpec(
         name="scout", hull=(0.40, 0.15, 0.085), hull_bevel=0.03, ride_height=0.25,
-        legs=_quad_legs(0.40, 0.15, 0.15, -0.15, coxa=0.035, femur=0.15, knee_rise=-0.11, knee_back=-0.08),
+        legs=_quad_legs(0.40, 0.15, 0.15, -0.15, femur=0.15, knee_rise=-0.11, knee_back=-0.08),
         slots=[SlotSpec("eye", (0, 0, 0), (1, 0, 0), "s"), SlotSpec("top_r", (-0.12, 0, 0.055), (0, 0, 1), "m"),
                SlotSpec("side_l", (0.0, 0.075, -0.012), (0, 1, 0), "s"), SlotSpec("side_r", (0.0, -0.075, -0.012), (0, -1, 0), "s")],
         head_neck=0.07, head_radius=0.045, head_pos=(0.21, 0, 0.02), noise_label="quiet"),
@@ -107,7 +106,7 @@ CHASSIS: Dict[str, ChassisSpec] = {
         head_neck=0.10, head_radius=0.065, head_pos=(0.31, 0, 0.03), noise_label="moderate"),
     "hauler": ChassisSpec(
         name="hauler", hull=(0.90, 0.32, 0.18), hull_bevel=0.06, ride_height=0.34,
-        legs=_hex_legs(0.90, 0.32, coxa=0.05, femur=0.22, knee_rise=-0.15, knee_back=-0.12),
+        legs=_hex_legs(0.90, 0.32, femur=0.22, knee_rise=-0.15, knee_back=-0.12),
         slots=[SlotSpec("face", (0, 0, 0), (1, 0, 0), "m"), SlotSpec("eye", (0, 0, 0), (1, 0, 0), "s")] +
               [SlotSpec(f"top_{i}", (0.1 - 0.15 * i, 0, 0.115), (0, 0, 1), "m") for i in range(4)] +
               [SlotSpec("side_l", (0.1, 0.16, -0.02), (0, 1, 0), "s"), SlotSpec("side_r", (0.1, -0.16, -0.02), (0, -1, 0), "s"),
@@ -115,7 +114,7 @@ CHASSIS: Dict[str, ChassisSpec] = {
         head_neck=0.12, head_radius=0.08, head_pos=(0.45, 0, 0.04), noise_label="loud"),
     "swimmer": ChassisSpec(
         name="swimmer", hull=(0.66, 0.18, 0.10), hull_bevel=0.07, ride_height=0.27,
-        legs=_quad_legs(0.66, 0.18, 0.22, -0.22, coxa=0.04, femur=0.17, knee_rise=-0.12, knee_back=-0.10),
+        legs=_quad_legs(0.66, 0.18, 0.22, -0.22, femur=0.17, knee_rise=-0.12, knee_back=-0.10),
         slots=[SlotSpec("face", (0, 0, 0), (1, 0, 0), "m"), SlotSpec("eye", (0, 0, 0), (1, 0, 0), "s"),
                SlotSpec("side_l", (0.04, 0.09, -0.012), (0, 1, 0), "s"), SlotSpec("side_r", (0.04, -0.09, -0.012), (0, -1, 0), "s"),
                SlotSpec("top_r", (-0.18, 0, 0.075), (0, 0, 1), "m"), SlotSpec("belly", (0.0, 0, -0.05), (0, 0, -1), "l")],
