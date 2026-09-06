@@ -151,50 +151,49 @@ def build_agent(cfg: AgentConfig, name="AGENT", at=(0, 0, 0)):
     # bolts to the stack's outboard face on a round knuckle; the tibia sits BESIDE the
     # femur on a through-axle at the knee. Nothing passes through anything.
     neutral, leg_geom = [], []
-    rh = H * 0.34                                       # hip motor radius
-    bw = rh * 0.9                                       # femur blade thickness (Y)
-    tw = rh * 0.5                                       # tibia thickness (Y)
-    abd_len, stack_len, gap = 0.05, 0.06, 0.003
+    rh = H * 0.36                                       # hip motor radius
+    bw = rh * 0.75                                      # femur blade thickness (Y)
+    tw = rh * 0.42                                      # tibia thickness (Y)
+    abd_out, stack_len, gap = 0.016, 0.042, 0.002      # abduction drum shows this much beyond the chassis; stack length
     for i, leg in enumerate(ch.legs):
         s = leg.side
         wx = width_at((leg.hip[0] + L / 2) / L) / 2
-        Hp = Vector((leg.hip[0], s * wx, zc + leg.hip[2]))                  # abduction axis meets the chassis face
-        y_face = Hp.y + s * abd_len                                          # abduction drum outboard face
-        y_stack = y_face + s * stack_len / 2                                 # stack centre
-        y_f = y_face + s * (stack_len + gap + bw / 2)                        # femur blade plane
-        y_t = y_f + s * (bw / 2 + gap + tw / 2)                              # tibia plane
-        P = Vector((Hp.x, y_f, Hp.z))                                        # femur pivot (flexion axis, in the blade plane)
+        Hp = Vector((leg.hip[0], s * wx, zc + leg.hip[2]))                  # abduction axis at the chassis face
+        y_face = Hp.y + s * abd_out                                          # abduction drum outboard face
+        y_stack = y_face + s * stack_len / 2
+        y_f = y_face + s * (stack_len + gap + bw / 2)                        # femur blade plane, right on the stack face
+        y_t = y_f - s * (bw / 2 + gap + tw / 2)                              # tibia tucks INBOARD of the femur
+        P = Vector((Hp.x, y_f, Hp.z))
         kdir = Vector((leg.knee_back, 0, leg.knee_rise)).normalized()
-        Kf = P + kdir * leg.femur                                            # knee in the femur plane
-        Kt = Vector((Kf.x, y_t, Kf.z))                                       # knee in the tibia plane
+        Kf = P + kdir * leg.femur
+        Kt = Vector((Kf.x, y_t, Kf.z))
         F = Vector((leg.hip[0] + leg.foot_fwd, y_t, 0.0))
         neutral.append((F.x, F.y, F.z)); leg_geom.append((Hp, P, Kf, Kt, F))
-        # abduction drum on the chassis corner, output flange on its outboard face
-        add(G.cyl(f"abd_motor.{i}", rh, rh, abd_len, Hp + Vector((0, s * abd_len / 2, 0)), rot=(math.pi / 2, 0, 0), verts=28, col=col), "dark")
-        add(G.cyl(f"abd_flange.{i}", rh * 0.85, rh * 0.85, 0.006, Vector((Hp.x, y_face + s * 0.003, Hp.z)), rot=(math.pi / 2, 0, 0), verts=28, col=col), "metal", f"coxa.{i}")
-        # flexion + knee motor stack, axis Y, bolted to the flange
-        add(G.cyl(f"hip_stack.{i}", rh * 0.95, rh * 0.95, stack_len - 0.006, Vector((Hp.x, y_stack, Hp.z)), rot=(math.pi / 2, 0, 0), verts=28, col=col), "dark", f"coxa.{i}")
-        add(G.torus(f"stack_seam.{i}", rh * 0.95, 0.002, Vector((Hp.x, y_stack, Hp.z)), rot=(math.pi / 2, 0, 0), col=col), "carbon", f"coxa.{i}")
-        add(G.cyl(f"stack_cap.{i}", rh * 0.55, rh * 0.55, 0.006, Vector((Hp.x, y_face + s * (stack_len - 0.003), Hp.z)), rot=(math.pi / 2, 0, 0), verts=28, col=col), "accent", f"coxa.{i}")
-        # femur: round knuckle on the stack face, blade down to the knee knuckle, belt cover outboard
-        add(G.cyl(f"femur_knuckle.{i}", rh * 0.78, rh * 0.78, bw, P, rot=(math.pi / 2, 0, 0), verts=28, col=col), "shell", f"femur.{i}")
-        add(G.strut(f"femur.{i}", P, Kf, bw, rh * 1.5, bw, rh * 1.0, col=col, bevel=0.004), "shell", f"femur.{i}")
-        add(G.cyl(f"knee_knuckle.{i}", rh * 0.5, rh * 0.5, bw, Kf, rot=(math.pi / 2, 0, 0), verts=24, col=col), "shell", f"femur.{i}")
-        cov_y = s * (bw / 2 + 0.003)
-        add(G.strut(f"belt_cover.{i}", P + Vector((0, cov_y, 0)), Kf + Vector((0, cov_y, 0)), 0.006, rh * 0.7, 0.006, rh * 0.45, col=col, bevel=0.002), "carbon", f"femur.{i}")
-        # knee axle through femur knuckle and tibia knuckle, cap outboard
-        ax0 = Vector((Kf.x, y_f - s * (bw / 2 + 0.004), Kf.z)); ax1 = Vector((Kf.x, y_t + s * (tw / 2 + 0.006), Kf.z))
-        add(G.segment(f"knee_axle.{i}", ax0, ax1, rh * 0.16, rh * 0.16, verts=12, col=col), "metal", f"femur.{i}")
-        add(G.cyl(f"knee_cap.{i}", rh * 0.24, rh * 0.24, 0.005, ax1, rot=(math.pi / 2, 0, 0), verts=12, col=col), "accent", f"tibia.{i}")
-        # tibia beside the femur: knuckle, tapered strut, ankle, rubber ball foot
-        add(G.cyl(f"tibia_knuckle.{i}", rh * 0.42, rh * 0.42, tw, Kt, rot=(math.pi / 2, 0, 0), verts=24, col=col), "carbon", f"tibia.{i}")
-        add(G.strut(f"tibia.{i}", Kt, F + Vector((0, 0, 0.02)), tw, rh * 0.7, tw * 0.7, rh * 0.32, col=col, bevel=0.002), "carbon", f"tibia.{i}")
-        add(G.sphere(f"foot.{i}", 0.022, F + Vector((0, 0, 0.018)), col=col, seg=16), "rubber", f"tibia.{i}")
+        # abduction drum: mostly inside the chassis corner, a short length shows outboard
+        add(G.cyl(f"abd_motor.{i}", rh, rh, 0.05, Hp + Vector((0, s * (abd_out - 0.025), 0)), rot=(math.pi / 2, 0, 0), verts=28, col=col), "dark")
+        # flexion + knee motor stack on the drum face, one drum with a shallow seam
+        add(G.cyl(f"hip_stack.{i}", rh * 0.92, rh * 0.92, stack_len, Vector((Hp.x, y_stack, Hp.z)), rot=(math.pi / 2, 0, 0), verts=28, col=col), "dark", f"coxa.{i}")
+        add(G.torus(f"stack_seam.{i}", rh * 0.92, 0.0015, Vector((Hp.x, y_face + s * stack_len * 0.5, Hp.z)), rot=(math.pi / 2, 0, 0), col=col), "carbon", f"coxa.{i}")
+        # femur: knuckle sitting on the stack face, blade down to the knee, belt cover outboard
+        add(G.cyl(f"femur_knuckle.{i}", rh * 0.8, rh * 0.8, bw, P, rot=(math.pi / 2, 0, 0), verts=28, col=col), "shell", f"femur.{i}")
+        add(G.cyl(f"femur_bolt.{i}", rh * 0.3, rh * 0.3, 0.004, P + Vector((0, s * (bw / 2 + 0.002), 0)), rot=(math.pi / 2, 0, 0), verts=16, col=col), "accent", f"femur.{i}")
+        add(G.strut(f"femur.{i}", P, Kf, bw, rh * 1.5, bw, rh * 0.95, col=col, bevel=0.004), "shell", f"femur.{i}")
+        add(G.cyl(f"knee_knuckle.{i}", rh * 0.48, rh * 0.48, bw, Kf, rot=(math.pi / 2, 0, 0), verts=24, col=col), "shell", f"femur.{i}")
+        cov_y = s * (bw / 2 + 0.002)
+        add(G.strut(f"belt_cover.{i}", P + Vector((0, cov_y, 0)), Kf + Vector((0, cov_y, 0)), 0.005, rh * 0.7, 0.005, rh * 0.42, col=col, bevel=0.002), "carbon", f"femur.{i}")
+        # knee axle through the femur knuckle and the tibia knuckle, cap outboard
+        ax0 = Vector((Kf.x, y_t - s * (tw / 2 + 0.004), Kf.z)); ax1 = Vector((Kf.x, y_f + s * (bw / 2 + 0.005), Kf.z))
+        add(G.segment(f"knee_axle.{i}", ax0, ax1, rh * 0.14, rh * 0.14, verts=12, col=col), "metal", f"femur.{i}")
+        add(G.cyl(f"knee_cap.{i}", rh * 0.22, rh * 0.22, 0.004, ax1, rot=(math.pi / 2, 0, 0), verts=12, col=col), "accent", f"femur.{i}")
+        # tibia inboard of the femur: knuckle, tapered strut, rubber ball foot under the stack
+        add(G.cyl(f"tibia_knuckle.{i}", rh * 0.4, rh * 0.4, tw, Kt, rot=(math.pi / 2, 0, 0), verts=24, col=col), "carbon", f"tibia.{i}")
+        add(G.strut(f"tibia.{i}", Kt, F + Vector((0, 0, 0.02)), tw, rh * 0.65, tw * 0.75, rh * 0.3, col=col, bevel=0.002), "carbon", f"tibia.{i}")
+        add(G.sphere(f"foot.{i}", 0.021, F + Vector((0, 0, 0.018)), col=col, seg=16), "rubber", f"tibia.{i}")
         if "structural_monitor" in cfg.modules.values():
-            add(G.cyl(f"geophone.{i}", rh * 0.4, rh * 0.4, 0.012, F + Vector((0, 0, 0.055)), verts=12, col=col), "accent", f"tibia.{i}")
-        # power and signal cable: chassis -> abduction drum -> stack, with slack for travel
-        c0 = Vector((Hp.x - rh * 0.6, Hp.y + s * 0.002, Hp.z - rh * 1.0)); c1 = Vector((Hp.x - rh * 0.9, y_stack, Hp.z - rh * 0.95))
-        add(G.tube_along(f"cable.{i}", [c0, (c0 + c1) / 2 + Vector((-0.01, 0, -0.015)), c1], 0.0035, verts=6, col=col), "rubber", f"coxa.{i}")
+            add(G.cyl(f"geophone.{i}", rh * 0.38, rh * 0.38, 0.012, F + Vector((0, 0, 0.055)), verts=12, col=col), "accent", f"tibia.{i}")
+        # cable: chassis flank -> stack, with slack for abduction travel
+        c0 = Vector((Hp.x - rh * 0.7, Hp.y + s * 0.002, Hp.z - rh * 0.95)); c1 = Vector((Hp.x - rh * 0.85, y_stack, Hp.z - rh * 0.9))
+        add(G.tube_along(f"cable.{i}", [c0, (c0 + c1) / 2 + Vector((-0.008, 0, -0.012)), c1], 0.0035, verts=6, col=col), "rubber", f"coxa.{i}")
 
     # ---- head: pan-tilt unit on a chassis prow bracket -------------------------------------
     # Mounted on structure, not on the removable shell. The payload block is centred on the
