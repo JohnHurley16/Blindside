@@ -49,6 +49,7 @@ def parse(argv):
     ap.add_argument("--save", default=None, help="write a .blend to open on your machine")
     ap.add_argument("--no-cave", action="store_true")
     ap.add_argument("--cam", default="-42,9,1.75", help="azimuth_deg,elevation_deg,distance")
+    ap.add_argument("--chase", action="store_true", help="camera follows the body (default on for --video / --anim)")
     return ap.parse_args(argv)
 
 
@@ -74,8 +75,9 @@ def main(argv=None):
     az, el, dist = (float(v) for v in a.cam.split(","))
     zc = float(built.arm["hull_center_z"])
     frame = a.pose_frame if a.pose_frame is not None else max(1, last // 2)
-    cam = R.camera(built.arm, aim_offset=(0.12, 0, zc * 0.95), frame=frame, dist=dist * (P.CHASSIS[a.chassis].hull[0] / 0.62) ** 0.8,
-                   azimuth_deg=az, elevation_deg=el)
+    chase = a.chase or bool(a.video or a.anim)
+    cam = R.camera(built.arm, aim_offset=(0.12, 0, zc * 0.95), frame=1 if chase else frame,
+                   dist=dist * (P.CHASSIS[a.chassis].hull[0] / 0.62) ** 0.8, azimuth_deg=az, elevation_deg=el, chase=chase)
     R.lights(target=tuple(built.arm.matrix_world.translation + __import__("mathutils").Vector((0.1, 0, zc))))
     w, h = (int(v) for v in a.res.split("x"))
     R.settings(samples=a.samples, res=(w, h))

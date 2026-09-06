@@ -43,7 +43,7 @@ def cave(radius=3.4, seed=3):
     rng = random.Random(seed)
     for i in range(14):
         r = rng.uniform(0.08, 0.35)
-        a = rng.uniform(0, 2 * math.pi); d = rng.uniform(1.2, 3.5)
+        a = rng.uniform(0, 2 * math.pi); d = rng.uniform(2.3, 3.8)
         bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=4, radius=r, location=(math.cos(a) * d, math.sin(a) * d, r * 0.45))
         rk = bpy.context.object; rk.name = f"rock.{i}"
         rk.scale = (rng.uniform(0.7, 1.5), rng.uniform(0.7, 1.5), rng.uniform(0.4, 0.8))
@@ -87,9 +87,11 @@ def lights(target=(0.1, 0, 0.35)):
     return col
 
 
-def camera(follow, aim_offset=(0.1, 0, 0.32), frame=1, dist=2.1, azimuth_deg=-38, elevation_deg=14, focal=50, fstop=4.0):
-    """Camera fixed in the world, placed relative to where `follow` (the armature) is at
-    `frame`, and always aimed at its body. Azimuth is relative to the body's heading."""
+def camera(follow, aim_offset=(0.1, 0, 0.32), frame=1, dist=2.1, azimuth_deg=-38, elevation_deg=14, focal=50, fstop=4.0,
+           chase=False):
+    """Camera placed relative to where `follow` (the armature) is at `frame`, always aimed
+    at its body. Azimuth is relative to the body's heading. With chase=True the camera
+    also translates with the body (no rotation), so a walking agent stays framed."""
     sc = bpy.context.scene
     sc.frame_set(frame)
     body = Vector(follow.matrix_world.translation)
@@ -103,6 +105,9 @@ def camera(follow, aim_offset=(0.1, 0, 0.32), frame=1, dist=2.1, azimuth_deg=-38
     cam.location = look_at + Vector((math.cos(az) * math.cos(el), math.sin(az) * math.cos(el), math.sin(el))) * dist
     tgt = bpy.data.objects.new("CAM_aim", None); sc.collection.objects.link(tgt)
     tgt.parent = follow; tgt.location = aim_offset
+    if chase:
+        cam.location = cam.location - body
+        cl = cam.constraints.new("COPY_LOCATION"); cl.target = follow; cl.use_offset = True
     tr = cam.constraints.new("TRACK_TO"); tr.target = tgt; tr.track_axis = "TRACK_NEGATIVE_Z"; tr.up_axis = "UP_Y"
     cd.dof.focus_object = tgt
     bpy.context.scene.camera = cam
