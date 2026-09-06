@@ -23,6 +23,9 @@ def main() -> None:
     parser.add_argument("--snap", type=str, default=None,
                         help="comma-separated sim times; render PNGs with no window")
     parser.add_argument("--no-audio", action="store_true")
+    parser.add_argument("--player-sensor", choices=("lidar", "sonar"), default=None,
+                        help="the player's active sensor (default: tuning.PLAYER_SENSOR)")
+    parser.add_argument("--rival-sensor", choices=("lidar", "sonar"), default=None)
     parser.add_argument("--record", type=str, default=None,
                         help="render the whole match to this .mp4, with sound, and exit")
     parser.add_argument("--fps", type=int, default=20)
@@ -31,6 +34,11 @@ def main() -> None:
     parser.add_argument("--invariant", action="store_true",
                         help="check the truth/belief boundary and exit")
     args = parser.parse_args()
+
+    if args.player_sensor:
+        T.PLAYER_SENSOR = args.player_sensor      # type: ignore[misc]
+    if args.rival_sensor:
+        T.RIVAL_SENSOR = args.rival_sensor        # type: ignore[misc]
 
     if args.invariant:
         from .match.invariant import assert_clean

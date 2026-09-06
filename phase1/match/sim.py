@@ -50,7 +50,8 @@ class Sim:
             known = dict(places)
             known["HOME"] = cave.SHAFTS[name]
             belief = Belief(name, agent.x, agent.y, agent.heading, known,
-                            np.random.default_rng(int(rng.integers(1 << 30))))
+                            np.random.default_rng(int(rng.integers(1 << 30))),
+                            sensor=agent.sensor)
             shaft_id = f"shaft_{name}"
             belief.note_surveyed_beacon(shaft_id, *cave.SHAFTS[name])
             self.beliefs[name] = belief

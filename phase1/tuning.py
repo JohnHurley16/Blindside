@@ -78,6 +78,33 @@ CONTACT_MERGE_S: Final[float] = 8.0
 CONTACT_FADE_S: Final[float] = 14.0
 SELF_DEAF_AFTER_PING_S: Final[float] = 1.0
 
+# ---- the active sensor is a loadout choice --------------------------------------------
+# Designer's call, 2026-09-06: in the real game sonar and lidar are both modules and
+# the player picks. Each has a cost. Sonar is loud -- every listener in the basin hears
+# it -- and long, and it works in water. Lidar is silent, short, precise, and blind
+# the moment there is water or silt in the way; the map it builds simply stops at the
+# waterline. "Do I ping?" does not go away, it moves: it is the loud question for a
+# sonar carrier, and for a lidar carrier the question becomes where it dares to go.
+#
+# Phase 1 has no loadout screen, so the two scripted agents are given different kit.
+# The cautious player agent creeps with lidar; the aggressive rival announces itself
+# with sonar. The player hears the rival every time it fires; the rival never hears
+# the player. That asymmetry is a story a spectator can follow.
+#
+# A lidar sweep is a visible light in a dark cave, so in the real game it should be a
+# tell to anyone with LINE OF SIGHT -- local exposure rather than basin-wide. Neither
+# Phase 1 agent carries optics, so that tell is not modelled here. Noted, not built.
+PLAYER_SENSOR: Final[str] = "lidar"                # "lidar" or "sonar"
+RIVAL_SENSOR: Final[str] = "sonar"
+
+LIDAR_RANGE: Final[float] = 18.0                   # short; sonar reaches 30 and across water
+LIDAR_RAYS: Final[int] = 90                        # a full sweep
+LIDAR_ARC_DEG: Final[float] = 360.0
+LIDAR_PERIOD_S: Final[float] = 1.5                 # it spins; no discipline needed, it is free
+LIDAR_RANGE_NOISE: Final[float] = 0.08             # cells; lidar is precise
+LIDAR_BEARING_NOISE_DEG: Final[float] = 0.3
+LIDAR_FALSE_RETURNS: Final[int] = 0
+
 # ---- active sonar ---------------------------------------------------------------------
 SONAR_ARC_DEG: Final[float] = 120.0
 SONAR_RAYS: Final[int] = 60

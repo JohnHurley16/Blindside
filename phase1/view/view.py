@@ -262,6 +262,11 @@ class View:
         rgb[walked] = palette.POINT_WALKED
         alpha[walked] = 0.22
         size[walked] = 1.7
+        # Lidar is precise and dense; drawn at sonar size it turns into a blob. Small
+        # points let a lidar map read as a wall line, and the ghosting still shows.
+        lidar = b.cloud.source[:n] == 3
+        size[lidar] = 2.2
+        alpha[lidar] = 0.55 + 0.35 * q[lidar]
         self.cloud.set_data(np.column_stack([xs, ys, b.cloud.z[:n]]),
                             face_color=np.column_stack([rgb, alpha]),
                             edge_width=0, size=size, symbol="disc")
@@ -393,6 +398,12 @@ class View:
                 circle = ring(ping.x, ping.y, age * T.WAVEFRONT_SPEED, n=96, z=0.12)
                 segments += list(to_segments(circle))
                 colours += [(0.55, 0.88, 1.0, 0.55 * (1 - age / T.WAVEFRONT_LIFE_S))] * (2 * 96 - 2)
+        for t_scan in b.own_scans[-3:]:
+            age = t - t_scan
+            if 0.0 <= age < 0.45:
+                sweep = ring(b.x, b.y, T.LIDAR_RANGE, n=96, z=0.12)
+                segments += list(to_segments(sweep))
+                colours += [(0.55, 0.88, 1.0, 0.35 * (1 - age / 0.45))] * (2 * 96 - 2)
         arrivals = [x for x in b.heard[-40:]
                     if x.character in (SoundCharacter.PING, SoundCharacter.CRASH)]
         for sound in arrivals[-6:]:
@@ -456,7 +467,8 @@ class View:
             f"{b.cargo} of {T.CARGO_CAPACITY}",
             f"within {b.sigma_pos():.0f} cell" + ("" if round(b.sigma_pos()) == 1 else "s"),
             fix_text,
-            f"{(b.cloud.n // 50) * 50} points, {len(b.own_pings)} pings",
+            (f"{(b.cloud.n // 50) * 50} points, {len(b.own_scans)} sweeps" if b.sensor == "lidar"
+             else f"{(b.cloud.n // 50) * 50} points, {len(b.own_pings)} pings"),
             "spent" if sim.recall_used else "ready - press R",
         ), (
             None,

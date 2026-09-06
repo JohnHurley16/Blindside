@@ -187,11 +187,16 @@ class Policy:
                          fill=min(b.dist_since_drop / T.BEACON_DROP_EVERY_CELLS, 1.0),
                          active=True),
         ]
-        cooldown = T.CAUTIOUS_PING_COOLDOWN_S if self.cautious else T.AGGRESSIVE_PING_COOLDOWN_S
         since = b.ticks_since_ping * T.DT
-        subs.append(DecisionNode("act.drive.ping", "ping", "sub",
-                                 detail=f"{min(since, cooldown):.0f} of {cooldown:.0f}s",
-                                 fill=min(since / cooldown, 1.0), active=True))
+        if b.sensor == "lidar":
+            subs.append(DecisionNode("act.drive.ping", "lidar sweep", "sub",
+                                     detail="silent",
+                                     fill=min(since / T.LIDAR_PERIOD_S, 1.0), active=True))
+        else:
+            cooldown = T.CAUTIOUS_PING_COOLDOWN_S if self.cautious else T.AGGRESSIVE_PING_COOLDOWN_S
+            subs.append(DecisionNode("act.drive.ping", "ping", "sub",
+                                     detail=f"{min(since, cooldown):.0f} of {cooldown:.0f}s",
+                                     fill=min(since / cooldown, 1.0), active=True))
         return [drive, *subs]
 
     def heard_shaft(self) -> bool:
@@ -329,6 +334,11 @@ class Policy:
 
     def _wants_ping(self) -> bool:
         b = self.b
+        if b.sensor == "lidar":
+            # Silent, so there is nothing to be disciplined about: it sweeps on a
+            # period, holding still or not. The decision it faces is not "do I emit"
+            # but "do I go where this cannot see".
+            return b.ticks_since_ping * T.DT >= T.LIDAR_PERIOD_S
         cooldown = T.CAUTIOUS_PING_COOLDOWN_S if self.cautious else T.AGGRESSIVE_PING_COOLDOWN_S
         if b.ticks_since_ping * T.DT < cooldown or self.hold:
             return False

@@ -14,7 +14,7 @@ from . import palette
 ROW_HEIGHT: float = 17.0
 
 ENTRIES: tuple[tuple[tuple[float, float, float, float], str], ...] = (
-    ((0.62, 0.93, 1.00, 0.95), "wall it has pinged"),
+    ((0.62, 0.93, 1.00, 0.95), "wall it has sensed"),
     ((0.26, 0.30, 0.38, 0.95), "ground it only walked"),
     (palette.AGENT, "where it thinks it is"),
     (palette.ELLIPSE, "how sure it is"),

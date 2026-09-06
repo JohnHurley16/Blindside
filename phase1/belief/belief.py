@@ -36,8 +36,9 @@ class Belief:
 
     def __init__(self, name: str, x: float, y: float, heading: float,
                  known_places: dict[str, tuple[float, float]],
-                 rng: np.random.Generator) -> None:
+                 rng: np.random.Generator, sensor: str = "sonar") -> None:
         self.name: str = name
+        self.sensor: str = sensor          # which active sensor it carries: it knows this
         self.x: float = float(x)
         self.y: float = float(y)
         self.theta: float = float(heading)
@@ -67,7 +68,8 @@ class Belief:
 
         # steering input and display streams, all belief-derived
         self.recent_near: list[tuple[float, float, float]] = []
-        self.own_pings: list[OwnPing] = []
+        self.own_pings: list[OwnPing] = []      # sonar: loud, drawn as a wavefront, heard
+        self.own_scans: list[float] = []        # lidar: silent, drawn as a brief sweep
         self.heard: list[HeardSound] = []
         self.signature: HeardSound | None = None
         # What it has worked out about things it can only hear. Bearings crossed over
@@ -233,6 +235,9 @@ class Belief:
 
     def note_ping(self, t: float) -> None:
         self.ticks_since_ping = 0
+        if self.sensor == "lidar":
+            self.own_scans.append(t)
+            return
         self.own_pings.append(OwnPing(t, self.x, self.y, self.theta))
         self.log.append((t, "ping"))
 

@@ -51,9 +51,14 @@ class SensorRig:
         self.tick += 1
         out: list[Return] = [self._odometry(me)]
         if cmd.ping:
-            out.extend(self._sonar(me))
-            me.audible_until = t + T.SONAR_AUDIBLE_S
-            self.deaf_until = t + T.SELF_DEAF_AFTER_PING_S
+            if me.sensor == "lidar":
+                # Light, not sound: nothing in the basin hears this, and the agent
+                # is not deafened by its own transmission. The cost is elsewhere.
+                out.extend(self._lidar(me))
+            else:
+                out.extend(self._sonar(me))
+                me.audible_until = t + T.SONAR_AUDIBLE_S
+                self.deaf_until = t + T.SELF_DEAF_AFTER_PING_S
         if self.tick % T.NEARFIELD_PERIOD_TICKS == 0:
             out.extend(self._nearfield(me))
         if t >= self.deaf_until:
@@ -97,6 +102,38 @@ class SensorRig:
                 float(self.rng.uniform(-half, half)),
                 float(self.rng.uniform(*T.SONAR_FALSE_QUALITY)),
                 PointSource.FALSE))
+        return out
+
+    # ---- lidar --------------------------------------------------------------------------
+    def _lidar(self, me: AgentTruth) -> list[Return]:
+        """A full silent sweep, precise and short, that stops dead at water.
+
+        Sonar rays march against ~FREE, so sound crosses a flooded sump and maps the
+        far wall. Lidar marches against ~WALKABLE, so the water surface ends the ray
+        and returns nothing: a flooded chamber is a hole in a lidar map. That hole is
+        the honest cost of carrying the quiet sensor, and it is where the machinery is.
+        """
+        out: list[Return] = []
+        if not cave.is_walkable(me.x, me.y):
+            return out                    # standing in water: it sees nothing at all
+        half = math.radians(T.LIDAR_ARC_DEG) / 2.0
+        for i in range(T.LIDAR_RAYS):
+            b = -half + 2.0 * half * i / T.LIDAR_RAYS
+            r = march(me.x, me.y, me.heading + b, T.LIDAR_RANGE, ~cave.WALKABLE, step=0.25)
+            if r is None:
+                continue
+            hx = me.x + math.cos(me.heading + b) * r
+            hy = me.y + math.sin(me.heading + b) * r
+            if cave.is_free(hx, hy):
+                continue                  # the ray ended at water, not rock: no return
+            quality = 1.0 - 0.3 * r / T.LIDAR_RANGE
+            noisy_r = r + self.rng.normal(0.0, T.LIDAR_RANGE_NOISE)
+            noisy_b = b + self.rng.normal(0.0, math.radians(T.LIDAR_BEARING_NOISE_DEG))
+            out.append(RangeBearingReturn(max(0.2, noisy_r), noisy_b, quality, PointSource.LIDAR))
+        for _ in range(T.LIDAR_FALSE_RETURNS):
+            out.append(RangeBearingReturn(
+                float(self.rng.uniform(2.0, T.LIDAR_RANGE)), float(self.rng.uniform(-half, half)),
+                float(self.rng.uniform(0.1, 0.3)), PointSource.FALSE))
         return out
 
     # ---- near field -------------------------------------------------------------------

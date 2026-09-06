@@ -18,8 +18,10 @@ class AgentTruth:
     the only place drift is born.
     """
 
-    def __init__(self, name: str, x: float, y: float, heading_deg: float, seed: int) -> None:
+    def __init__(self, name: str, x: float, y: float, heading_deg: float, seed: int,
+                 sensor: str = "sonar") -> None:
         self.name: str = name
+        self.sensor: str = sensor          # the active sensor this chassis carries
         self.x: float = float(x)
         self.y: float = float(y)
         self.heading: float = math.radians(heading_deg)

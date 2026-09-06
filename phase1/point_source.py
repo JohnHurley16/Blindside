@@ -11,5 +11,6 @@ from enum import StrEnum
 
 class PointSource(StrEnum):
     SONAR = "sonar"   # an active ping return
+    LIDAR = "lidar"   # an active light return: precise, silent, stops at water
     NEAR = "near"     # near-field: the agent's own motion noise off close walls
     FALSE = "false"   # a return from nothing at all

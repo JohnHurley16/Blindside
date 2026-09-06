@@ -26,7 +26,9 @@ class World:
         self.agents: dict[str, AgentTruth] = {}
         for index, (name, (sx, sy)) in enumerate(cave.SHAFTS.items()):
             heading = 0.0 if name == "player" else 180.0
-            self.agents[name] = AgentTruth(name, sx, sy, heading, T.SEED * 11 + index + 1)
+            sensor = T.PLAYER_SENSOR if name == "player" else T.RIVAL_SENSOR
+            self.agents[name] = AgentTruth(name, sx, sy, heading, T.SEED * 11 + index + 1,
+                                           sensor=sensor)
         self.beacons: dict[str, Beacon] = {}
         for name, (sx, sy) in cave.SHAFTS.items():
             bid = f"shaft_{name}"

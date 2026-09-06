@@ -15,6 +15,7 @@ _SOURCE_CODE: dict[PointSource, int] = {
     PointSource.SONAR: 0,
     PointSource.NEAR: 1,
     PointSource.FALSE: 2,
+    PointSource.LIDAR: 3,
 }
 
 

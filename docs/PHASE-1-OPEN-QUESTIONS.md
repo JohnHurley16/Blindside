@@ -289,3 +289,38 @@ One environment note: I am building on Linux without a display or audio device, 
 I can run the sim headless and verify state, but the point-cloud rendering and the
 audio panning will get their first real look on your machine. Expect a round of
 "this looks wrong" fixes after the first run.
+
+
+---
+
+## Part 4 - decided after the first playtests
+
+### Sonar and lidar are both loadout options
+
+Designer's question: *"can we change from pings to lidar? Idk why we wouldn't do lidar
+in a cave, maybe pings only when it's flooded."* Then: *"in the real game, sonar and
+lidar should both be options the user has to decide upon."*
+
+Decision: both are modules. The player picks, and the choice is locked at launch like
+every other loadout choice.
+
+- **Sonar** - loud. Every listener in the basin hears it, from the direction of the
+  passage it arrived through. Long range. Works in water.
+- **Lidar** - silent. Short range, precise. Blind the moment there is water or silt in
+  the way; the map it builds simply stops at the waterline. A sweep is a visible light
+  in a dark cave, so it is a tell to anyone with *line of sight* - local exposure, not
+  basin-wide. (Not modelled in Phase 1: neither agent carries optics.)
+
+"Do I ping?" does not go away. It moves. For a sonar carrier it is the loud question it
+always was. For a lidar carrier it becomes *where do I dare to go* - the quiet sensor is
+also the one that goes blind in the flooded sections, which is where the machinery
+lives. A Swimmer chassis can only sensibly carry sonar.
+
+Phase 1 has no loadout screen, so the two scripted agents are given different kit: the
+cautious player agent creeps with lidar, the aggressive rival announces itself with
+sonar. The player hears the rival every time it fires; the rival never hears the
+player. `PLAYER_SENSOR` / `RIVAL_SENSOR` in `tuning.py`, or `--player-sensor` on the
+command line, so both versions can be rendered from the same seed and compared.
+
+GLOSSARY's *Passive / active* entry should be updated to say this; left for the
+designer, since it is the one document that defines the vocabulary.
