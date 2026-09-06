@@ -46,7 +46,19 @@ EST_SIGMA_ALONG_PER_CELL: Final[float] = 0.038
 EST_SIGMA_HEADING_RAD_PER_CELL: Final[float] = 0.0013
 EST_SIGMA_AFTER_FIX: Final[float] = 0.5
 EST_HEADING_SIGMA_AFTER_FIX: Final[float] = 0.02
-HEADING_FIX_GAIN: Final[float] = 0.7               # fraction of inferred heading error a fix removes
+HEADING_FIX_GAIN: Final[float] = 0.0               # fraction of inferred heading error a fix removes
+# Zero, deliberately. ARCHITECTURE specifies Fix { position, source } -- a beacon gives
+# position and says nothing about heading. The heading correction here was invented: it
+# guessed rotation error by comparing the direction travelled since the last fix against
+# the direction to the fixed position, which is a weak heuristic, and when it guessed
+# wrong it rotated the whole back-propagated map about the anchor. Measured over a
+# match, half of all honest loop closures left the agent MORE wrong than before they
+# happened. At 0.0 none of them do.
+#
+# Heading drift is now uncorrected for the whole match, which is the honest consequence:
+# the map fans open and nothing straightens it. DESIGN says the thing that recovers
+# heading is terrain-relative matching against ground already surveyed, and that is a
+# Phase 3 sensor, not something a lone beacon can do.
 
 # ---- passive acoustic ---------------------------------------------------------------
 # Ranges are path length through the cave: sound follows passages. Flooded cells cost

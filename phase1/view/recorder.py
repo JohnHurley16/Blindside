@@ -88,6 +88,7 @@ class Recorder:
                                     quality=8, macro_block_size=1,
                                     ffmpeg_params=["-preset", "veryfast"])
         started = time.perf_counter()
+        last_report = started
         try:
             for frame_index in range(total_frames):
                 t_target = frame_index / self.fps
@@ -100,9 +101,17 @@ class Recorder:
                 self._pull_audio()
                 writer.append_data(self._frame())
                 if frame_index % (self.fps * 30) == 0:
+                    # Rate over the last chunk, not since the beginning. A cumulative
+                    # average never recovers from a slow start, and this line was
+                    # reporting seventy-six minutes remaining on a render that had
+                    # seven left.
+                    now = time.perf_counter()
                     done = frame_index / total_frames
-                    elapsed = time.perf_counter() - started
-                    eta = (elapsed / done - elapsed) if done > 0 else 0.0
+                    recent = now - last_report
+                    rate = (self.fps * 30) / recent if recent > 0 else 0.0
+                    eta = (total_frames - frame_index) / rate if rate > 0 else 0.0
+                    last_report = now
+                    elapsed = now - started
                     print(f"  {t_target:6.1f}s / {T.MATCH_SECONDS + self.reveal_seconds:.0f}s "
                           f"({done * 100:4.1f}%)  points {self.sim.beliefs['player'].cloud.n:6d}"
                           f"  eta {eta / 60:.1f} min", flush=True)
