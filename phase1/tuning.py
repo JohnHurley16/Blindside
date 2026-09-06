@@ -15,7 +15,8 @@ TICK_HZ: Final[int] = 20
 DT: Final[float] = 1.0 / TICK_HZ
 MATCH_SECONDS: Final[float] = 8 * 60
 EXTRACT_WINDOW_OPENS: Final[float] = 6 * 60 + 30   # DESIGN: the last 90 s
-EXTRACT_RADIUS: Final[float] = 4.0                 # cells from shaft centre, in truth
+EXTRACT_RADIUS: Final[float] = 6.0                 # cells from shaft centre, in truth
+                                                   # (the shaft chamber's own radius)
 SEED: Final[int] = 7
 
 AGENT_SPEED: Final[float] = 1.1                    # cells/s; 480 s => ~530 cells of travel
@@ -93,7 +94,11 @@ BEACON_RANGE: Final[float] = 6.0
 # be nothing to look at. The gap between 6 and 45 is where the smear happens.
 BEACON_FIX_NOISE: Final[float] = 0.35
 SHAFT_BEACON_RANGE: Final[float] = 10.0            # survey-placed: the only truth anchor
-HOME_REACHED: Final[float] = 1.5
+HOME_REACHED: Final[float] = 6.0
+HOME_FINAL: Final[float] = 2.0                     # once the shaft has answered
+# Measured: at 1.5 cells the agent never once registered arriving at the shaft in a
+# whole sweep of recall timings, so the search that follows arrival never ran at all.
+# A drifting agent wall-following its way home cannot hit a 1.5-cell target.
 
 # ---- the spoof ---------------------------------------------------------------------------
 # Lie distance divided by beacon range is the most important ratio in the test. Below
@@ -179,8 +184,14 @@ ESCAPES_BEFORE_SKIP: Final[int] = 2
 RECALL_DELAY_S: Final[float] = 3.0
 RECALL_LATENCY_PER_CELL: Final[float] = 0.02       # DESIGN: latency grows with depth
 RECALL_BEACON_REACHED: Final[float] = 3.0
-RECALL_SEARCH_RADIUS_RATE: Final[float] = 1.6      # cells/s the search spiral widens
-RECALL_SEARCH_SWEEP: Final[float] = 0.9            # rad/s around the spiral
+RECALL_SEARCH_PITCH: Final[float] = 3.2            # cells of radius per radian, so each
+# loop steps out by 2*pi*3.2 = 20 cells, twice the shaft's 10-cell answering range.
+# Wider and the search can circle straight past the shaft; tighter and it cannot cover
+# the distance a spoof puts between belief and the truth before the match ends. Sweeping
+# a 35-cell radius takes about 190 cells of walking, which is roughly three minutes --
+# so a recall sent late genuinely cannot get home, and that is the decision.
+RECALL_SEARCH_SWEEP: Final[float] = 0.9            # unused: the spiral now sweeps at
+                                                   # walking pace, speed / radius
 # On recall the agent runs for the shaft it believes in, and if nothing is there it
 # searches outward until the real transponder answers. That search is the only thing
 # in the match that can undo a spoof, which is what makes the single command worth

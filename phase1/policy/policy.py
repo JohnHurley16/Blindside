@@ -45,6 +45,8 @@ class Policy:
         self.search_t0: float = 0.0
         self.search_x: float = 0.0
         self.search_y: float = 0.0
+        self.search_angle: float = 0.0
+        self.search_dist0: float = 0.0
 
     # ---- routes ---------------------------------------------------------------------
     def set_route(self, names: list[str], t: float) -> None:
@@ -301,6 +303,14 @@ class Policy:
         elif t - self.best_t > T.STUCK_SECONDS and t >= self.escape_until:
             self.escapes += 1
             if self.escapes > T.ESCAPES_BEFORE_SKIP:
+                if self.recalled:
+                    # Keep pushing for the shaft. Starting the spiral here instead
+                    # began it wherever the agent had got stuck -- in one trace fifty
+                    # cells short of the shaft it was aiming for -- so it circled
+                    # empty cave for five minutes. The search is only meaningful once
+                    # it is standing where it believes the shaft to be.
+                    self.escapes = 0
+                    return
                 self.b.log.append((t, f"cannot reach {wp.label}; skipping"))
                 self.escapes = 0
                 self._advance(t)
@@ -312,7 +322,7 @@ class Policy:
 
     def _reach_radius(self, wp: Waypoint) -> float:
         if wp.label in ("HOME", "S"):
-            return T.HOME_REACHED
+            return T.HOME_FINAL if self.heard_shaft() else T.HOME_REACHED
         if self.mode is PolicyMode.HOME:
             return T.RECALL_BEACON_REACHED
         return T.WAYPOINT_REACHED
@@ -341,13 +351,22 @@ class Policy:
         cmd = MotorCommand(heading=b.theta)
         if self.heard_shaft():
             b.log.append((t, "shaft acquired"))
-            self.done = True
+            sx, sy = b.known_places["HOME"]
+            self.route = [Waypoint(sx, sy, "HOME")]
+            self.i = 0
+            self.best_dist = 1e9
+            self.best_t = t
+            self.escapes = 0
+            self.mode = PolicyMode.HOME
             return cmd
-        elapsed = t - self.search_t0
-        radius = T.RECALL_SEARCH_RADIUS_RATE * elapsed
-        angle = elapsed * T.RECALL_SEARCH_SWEEP
-        target_x = self.search_x + math.cos(angle) * radius
-        target_y = self.search_y + math.sin(angle) * radius
+        # An Archimedean spiral sized so each loop steps outward by less than the
+        # width it can detect the shaft across -- otherwise it can circle straight
+        # past the thing it is looking for. Radius is driven by angle, and angle by
+        # walking speed, so the whole search is something the agent can actually walk.
+        radius = 4.0 + T.RECALL_SEARCH_PITCH * self.search_angle
+        self.search_angle += (T.AGENT_SPEED / radius) * T.DT
+        target_x = self.search_x + math.cos(self.search_angle) * radius
+        target_y = self.search_y + math.sin(self.search_angle) * radius
         goal = math.atan2(target_y - b.y, target_x - b.x)
         heading, free_ahead = self._steer(goal)
         cmd.heading = heading
@@ -370,10 +389,7 @@ class Policy:
                 self.done = True
                 self.route = []
             else:
-                b.log.append((t, "at the shaft, but nothing is answering"))
-                self.mode = PolicyMode.SEARCH
-                self.search_t0 = t
-                self.search_x, self.search_y = b.x, b.y
+                self._begin_search(t)
             return
         self._advance(t)
 
@@ -410,9 +426,26 @@ class Policy:
         self.best_dist = 1e9
         self.best_t = t
         self.escapes = 0
-        if self.i >= len(self.route):
-            self.route = []
+        if self.i < len(self.route):
+            return
+        self.route = []
+        if self.recalled:
+            # Recall is terminal. Running off the end of the route used to drop back
+            # into _plan, which handed the agent a fresh survey route and quietly
+            # cancelled the only command the player gets.
+            self._begin_search(t)
+        else:
             self._plan(t)
+
+    def _begin_search(self, t: float) -> None:
+        if self.mode is PolicyMode.SEARCH:
+            return
+        self.b.log.append((t, "at the shaft, but nothing is answering"))
+        self.mode = PolicyMode.SEARCH
+        self.search_t0 = t
+        self.search_angle = 0.0
+        self.search_dist0 = self.b.dist_total
+        self.search_x, self.search_y = self.b.x, self.b.y
 
     def _plan(self, t: float) -> None:
         b = self.b
