@@ -120,11 +120,22 @@ class View:
         self.revealed: bool = False
         self.reveal_visuals: list[object] = []
         self._wall_clock_zero: float | None = None
+        self._in_draw: bool = False
 
         self.canvas.events.key_press.connect(self.on_key)
         self.canvas.events.resize.connect(self.on_resize)
         self._layout(w, h)
-        self.timer = app.Timer(interval=1 / 60, connect=self.on_tick, start=show)
+        # The frame loop runs on a Qt timer rather than vispy's app.Timer.
+        #
+        # A vispy Timer created here never fired even once, while a second Timer in
+        # the same process fired normally -- so the window painted its chrome and then
+        # sat there forever, which is what a black screen turned out to be. Driving it
+        # from the canvas's draw event instead advanced exactly one frame, because an
+        # update() requested from inside a draw is coalesced into the draw already in
+        # progress. A Qt timer has neither problem and is what vispy is sitting on
+        # anyway.
+        self.live: bool = show
+        self.timer: object | None = None
 
     # ---- layout ------------------------------------------------------------------------
     def _layout(self, w: float, h: float) -> None:
@@ -172,17 +183,30 @@ class View:
                 self.audio.recall_sent()      # type: ignore[attr-defined]
 
     # ---- frame ------------------------------------------------------------------------
-    def on_tick(self, ev: object) -> None:
+    def start(self) -> None:
+        """Kept for symmetry; the frame timer is owned by the entry point.
+
+        Every attempt to own the timer inside this class failed, and failed
+        inconsistently -- fired once, then not at all. A timer created by the caller
+        and held in a local that outlives app.run() works every time. Since a vispy
+        Timer's lifetime is the thing in question, the reference lives where it is
+        obviously alive.
+        """
+        return
+
+    def advance(self) -> None:
         if self._wall_clock_zero is None:
             self._wall_clock_zero = time.perf_counter()
         target = time.perf_counter() - self._wall_clock_zero
         steps = 0
-        while self.sim.t < target and not self.sim.over and steps < 6:
+        while self.sim.t < target and not self.sim.over and steps < 8:
             self.sim.step()
             if self.sim.tick % 10 == 0:
                 self.sim.record_truth_trail()
             steps += 1
         self.draw()
+        if self.live:
+            self.canvas.update()
 
     def draw(self) -> None:
         b, t = self.b, self.sim.t
@@ -201,7 +225,6 @@ class View:
             self.audio.update(b, t, self.view.camera.azimuth)   # type: ignore[attr-defined]
         if self.sim.over and not self.revealed:
             self._reveal()
-        self.canvas.update()
 
     # ---- the map ------------------------------------------------------------------------
     def _draw_cloud(self, b: Belief, t: float) -> None:
@@ -433,7 +456,7 @@ class View:
             f"{b.cargo} of {T.CARGO_CAPACITY}",
             f"within {b.sigma_pos():.0f} cell" + ("" if round(b.sigma_pos()) == 1 else "s"),
             fix_text,
-            f"{b.cloud.n} points, {len(b.own_pings)} pings",
+            f"{(b.cloud.n // 50) * 50} points, {len(b.own_pings)} pings",
             "spent" if sim.recall_used else "ready - press R",
         ), (
             None,

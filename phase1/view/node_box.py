@@ -29,14 +29,11 @@ class NodeBox:
                                    color=palette.DIM, font_size=8.5, bold=True)
         self.detail = visuals.Text("", parent=parent, anchor_x="left", anchor_y="center",
                                    color=palette.DIM, font_size=7.5)
-        # Square ends: vispy refuses a corner radius larger than half the shorter
-        # side, and an almost-empty bar is only a pixel or two wide.
-        self.bar_track = visuals.Rectangle(center=(0.0, 0.0), width=10.0,
-                                           height=BAR_HEIGHT, radius=0.0,
-                                           color=palette.BAR_TRACK, parent=parent)
-        self.bar_fill = visuals.Rectangle(center=(0.0, 0.0), width=2.0,
-                                          height=BAR_HEIGHT, radius=0.0,
-                                          color=palette.BAR_FILL, parent=parent)
+        # The bar is not a visual of its own. In a shown window every property set on
+        # a Rectangle regenerates its geometry and forces a synchronous repaint, and
+        # ten bars moving every frame cost four hundred milliseconds a paint. The box
+        # only records where its bar should be; the graph draws all of them at once.
+        self.bar: tuple[float, float, float, float, bool] | None = None
         self._cache: tuple = ()
         self.set_visible(False)
 
@@ -44,13 +41,14 @@ class NodeBox:
         for v in (self.frame, self.label, self.answer, self.detail):
             v.visible = visible
         if not visible:
-            self.bar_track.visible = False
-            self.bar_fill.visible = False
+            self.bar = None
 
     def place(self, x: float, y: float, width: float, height: float) -> None:
-        if (x, y, width, height) != (getattr(self, "x", None), getattr(self, "y", None),
+        if (x, y, width, height) == (getattr(self, "x", None), getattr(self, "y", None),
                                      getattr(self, "width", None), getattr(self, "height", None)):
-            self._cache = ()      # moved: text positions must be laid out again
+            return                # unchanged: setting the rectangle again would regenerate
+                                  # its geometry and force a repaint, for nothing
+        self._cache = ()          # moved: text positions must be laid out again
         self.x, self.y, self.width, self.height = x, y, width, height
         self.frame.center = (x + width / 2, y + height / 2)
         self.frame.width = width
@@ -141,15 +139,7 @@ class NodeBox:
 
         if has_bar:
             bar_w = w - pad * 2
-            bar_y = y + h - 8.0
-            self.bar_track.center = (x + pad + bar_w / 2, bar_y)
-            self.bar_track.width = bar_w
-            self.bar_track.visible = True
-            fill_w = max(bar_w * min(max(node.fill, 0.0), 1.0), 1.5)
-            self.bar_fill.center = (x + pad + fill_w / 2, bar_y)
-            self.bar_fill.width = fill_w
-            self.bar_fill.color = palette.BAR_HOT if node.fill >= 0.999 else palette.BAR_FILL
-            self.bar_fill.visible = True
+            fill = min(max(node.fill, 0.0), 1.0)
+            self.bar = (x + pad, bar_y, bar_w, bar_w * fill, fill >= 0.999)
         else:
-            self.bar_track.visible = False
-            self.bar_fill.visible = False
+            self.bar = None

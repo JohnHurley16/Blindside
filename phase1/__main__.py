@@ -82,13 +82,38 @@ def main() -> None:
     if not args.no_audio:
         from .audio.mixer import Mixer
         audio = Mixer()
+    # Build the window hidden and take the first two paints offscreen. The first
+    # compiles a shader for every visual and the second builds a glyph atlas for
+    # every string, and together they froze the event loop for eleven seconds --
+    # which, on a window that had already appeared, looked like a black screen
+    # that never did anything. Done here, they finish before there is anything to
+    # look at.
+    print("preparing the display (about ten seconds)...", flush=True)
     view = View(sim, audio=audio, show=True)
+    # The window must be on screen before an offscreen render: render() on a canvas
+    # that has never been shown leaves vispy's framebuffer stack empty, and every
+    # on-screen paint after that dies with an IndexError inside glBindFramebuffer.
+    view.canvas.show()
+    view.advance()
+    view.canvas.render()
+    view.advance()
+    view.canvas.render()
+    view._wall_clock_zero = None       # the match clock starts now, not during warm-up
+    print("ready.", flush=True)
 
+    # The frame clock. Owned here, bound to the canvas's own Application, and held in
+    # a local for the lifetime of the event loop -- every other arrangement produced a
+    # timer that fired once or never, and a window that never drew a second frame.
+    frame_clock = app.Timer(interval=1 / 60, connect=lambda ev: view.advance(),
+                            start=True, app=view.canvas.app)
+
+    auto_clock = None
     if args.recall is not None:
         def auto_recall(ev: object) -> None:
             if sim.t >= args.recall and not sim.recall_used:
                 sim.recall()
-        app.Timer(interval=0.5, connect=auto_recall, start=True)
+        auto_clock = app.Timer(interval=0.5, connect=auto_recall, start=True,
+                               app=view.canvas.app)
 
     print(f"backend {backend}; audio {'on' if audio is not None and audio.ok else 'silent'}. "
           f"R = Recall, left drag orbits, wheel zooms.")

@@ -33,7 +33,15 @@ class DecisionGraphView:
         self.arrows = visuals.Markers(parent=parent)
         self.arrows.set_gl_state("translucent", depth_test=False)
         self.boxes: list[NodeBox] = [NodeBox(parent) for _ in range(MAX_NODES)]
+        # Every bar in the graph, as two line visuals: one set_data a frame instead
+        # of twenty rectangle regenerations, each of which forced a repaint.
+        self.bar_tracks = visuals.Line(parent=parent, connect="segments", width=5,
+                                       color=palette.BAR_TRACK)
+        self.bar_fills = visuals.Line(parent=parent, connect="segments", width=5)
+        for v in (self.bar_tracks, self.bar_fills):
+            v.set_gl_state("translucent", depth_test=False)
         self._bottom: float = y
+        self._edge_key: tuple = ()
 
     @staticmethod
     def _height_for(node: DecisionNode) -> float:
@@ -93,17 +101,39 @@ class DecisionGraphView:
         for spare in range(len(nodes), MAX_NODES):
             self.boxes[spare].set_visible(False)
 
-        if segments:
-            self.edges.set_data(np.array(segments), color=np.array(colours))
-            self.edges.visible = True
+        tracks: list[list[float]] = []
+        fills: list[list[float]] = []
+        fill_colours: list[tuple[float, float, float, float]] = []
+        for box in self.boxes[:len(nodes)]:
+            if box.bar is None:
+                continue
+            bx, by, track_w, fill_w, hot = box.bar
+            tracks += [[bx, by, 0.0], [bx + track_w, by, 0.0]]
+            fills += [[bx, by, 0.0], [bx + max(fill_w, 1.0), by, 0.0]]
+            fill_colours += [palette.BAR_HOT if hot else palette.BAR_FILL] * 2
+        if tracks:
+            self.bar_tracks.set_data(np.array(tracks))
+            self.bar_fills.set_data(np.array(fills), color=np.array(fill_colours))
+            self.bar_tracks.visible = True
+            self.bar_fills.visible = True
         else:
-            self.edges.visible = False
-        if arrow_pos:
-            self.arrows.set_data(np.array(arrow_pos), face_color=np.array(arrow_col),
-                                 size=8, symbol="triangle_down", edge_width=0)
-            self.arrows.visible = True
-        else:
-            self.arrows.visible = False
+            self.bar_tracks.visible = False
+            self.bar_fills.visible = False
+
+        edge_key = tuple((n.node_id, n.fired, n.active, n.kind) for n in nodes[:MAX_NODES])
+        if edge_key != self._edge_key:
+            self._edge_key = edge_key
+            if segments:
+                self.edges.set_data(np.array(segments), color=np.array(colours))
+                self.edges.visible = True
+            else:
+                self.edges.visible = False
+            if arrow_pos:
+                self.arrows.set_data(np.array(arrow_pos), face_color=np.array(arrow_col),
+                                     size=8, symbol="triangle_down", edge_width=0)
+                self.arrows.visible = True
+            else:
+                self.arrows.visible = False
         self._bottom = previous_bottom or self.y
 
     @property
