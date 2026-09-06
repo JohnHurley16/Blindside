@@ -23,6 +23,11 @@ def main() -> None:
     parser.add_argument("--snap", type=str, default=None,
                         help="comma-separated sim times; render PNGs with no window")
     parser.add_argument("--no-audio", action="store_true")
+    parser.add_argument("--record", type=str, default=None,
+                        help="render the whole match to this .mp4, with sound, and exit")
+    parser.add_argument("--fps", type=int, default=20)
+    parser.add_argument("--width", type=int, default=1400)
+    parser.add_argument("--height", type=int, default=900)
     parser.add_argument("--invariant", action="store_true",
                         help="check the truth/belief boundary and exit")
     args = parser.parse_args()
@@ -46,6 +51,18 @@ def main() -> None:
     from .view.view import View
 
     sim = Sim(args.seed)
+
+    if args.record:
+        from .view.recorder import Recorder
+        recorder = Recorder(sim, args.record, fps=args.fps,
+                            size=(args.width, args.height),
+                            with_audio=not args.no_audio,
+                            recall_at=args.recall)
+        print(f"recording {T.MATCH_SECONDS:.0f}s of match plus the reveal "
+              f"at {args.fps} fps, {args.width}x{args.height}...")
+        path = recorder.run()
+        print(f"wrote {path}")
+        return
 
     if args.snap:
         view = View(sim, audio=None, show=False)

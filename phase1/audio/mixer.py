@@ -26,11 +26,27 @@ MAX_VOICES: int = 24
 class Mixer:
     """A numpy mixer behind a sounddevice callback. Runs silent if there is no device."""
 
-    def __init__(self, blocksize: int = 1024) -> None:
+    def __init__(self, blocksize: int = 1024, offline: bool = False) -> None:
+        """offline=True queues voices without opening a device, so a recording can
+        pull the mix out frame by frame with `render_offline` and end up in sync."""
         self.voices: list[Voice] = []
         self.lock: threading.Lock = threading.Lock()
         self.ok: bool = False
+        self.offline: bool = offline
         self.stream: object | None = None
+
+        # cursors into the Belief streams, set before any early return
+        self._seen_contacts: dict[int, float] = {}
+        self._n_own_pings: int = 0
+        self._n_heard: int = 0
+        self._n_fixes: int = 0
+        self._n_log: int = 0
+        self._next_signature_pulse: float = 0.0
+        self._last_cargo: int = 0
+
+        if offline:
+            self.ok = True
+            return
         try:
             import sounddevice as sd
             self.stream = sd.OutputStream(samplerate=SAMPLE_RATE, channels=2,
@@ -40,15 +56,6 @@ class Mixer:
             self.ok = True
         except Exception as exc:                       # noqa: BLE001 - any device failure
             print(f"audio: running silent ({exc})")
-
-        # cursors into the Belief streams
-        self._seen_contacts: dict[int, float] = {}
-        self._n_own_pings: int = 0
-        self._n_heard: int = 0
-        self._n_fixes: int = 0
-        self._n_log: int = 0
-        self._next_signature_pulse: float = 0.0
-        self._last_cargo: int = 0
 
     # ---- device ----------------------------------------------------------------------
     def _callback(self, out: np.ndarray, frames: int, time_info: object, status: object) -> None:

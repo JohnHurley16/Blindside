@@ -55,7 +55,7 @@ class View:
             v.set_gl_state("translucent", depth_test=False)
 
         self.reveal_visuals: list[object] = []
-        self.hud_lines = [visuals.Text("", parent=self.canvas.scene, pos=(14, 14 + 18 * i),
+        self.hud_lines = [visuals.Text("", parent=self.canvas.scene, pos=(18, 22 + 19 * i),
                                        anchor_x="left", anchor_y="top",
                                        color=palette.HUD, font_size=9) for i in range(10)]
         self.banner = visuals.Text("", parent=self.canvas.scene, pos=(size[0] / 2, size[1] - 40),
@@ -65,11 +65,12 @@ class View:
             "cloud: brighter = more confident    amber wedge: something moving    "
             "white wedge: a ping heard    magenta: machinery signature    "
             "red: something broke    green: you, and how sure you are",
-            parent=self.canvas.scene, pos=(14, size[1] - 12), anchor_x="left",
+            parent=self.canvas.scene, pos=(18, size[1] - 20), anchor_x="left",
             anchor_y="bottom", color=palette.LEGEND, font_size=7)
 
         self.canvas.events.key_press.connect(self.on_key)
         self.canvas.events.resize.connect(self.on_resize)
+        self._hud_cache: list[str] = [""] * len(self.hud_lines)
         self.revealed: bool = False
         self._wall_clock_zero: float | None = None
         self.timer = app.Timer(interval=1 / 60, connect=self.on_tick, start=show)
@@ -86,7 +87,7 @@ class View:
     def on_resize(self, ev: object) -> None:
         w, h = self.canvas.size
         self.banner.pos = (w / 2, h - 40)
-        self.legend.pos = (14, h - 12)
+        self.legend.pos = (18, h - 20)
 
     # ---- frame --------------------------------------------------------------------------
     def on_tick(self, ev: object) -> None:
@@ -274,14 +275,23 @@ class View:
         ]
         if b.log:
             lines.append("log: " + " | ".join(text for _, text in b.log[-3:]))
+        # Only touch a Text visual when the string actually changed: assigning to
+        # .text rebuilds the glyph atlas, and doing that for seven lines every frame
+        # cost more than drawing the entire point cloud.
         for i, text_visual in enumerate(self.hud_lines):
-            text_visual.text = lines[i] if i < len(lines) else ""
+            wanted = lines[i] if i < len(lines) else ""
+            if self._hud_cache[i] != wanted:
+                self._hud_cache[i] = wanted
+                text_visual.text = wanted
 
+        banner = self.banner.text
         if sim.over and sim.result is not None:
-            self.banner.text = (f"MATCH OVER - agent {sim.result.player_outcome}, "
-                                f"cargo {sim.result.cargo}   (truth now shown in red)")
+            banner = (f"MATCH OVER - agent {sim.result.player_outcome}, "
+                      f"cargo {sim.result.cargo}   (truth now shown in red)")
         elif sim.recall_used and not sim.recall_pending:
-            self.banner.text = "RECALL RECEIVED - agent running for the shaft it believes in"
+            banner = "RECALL RECEIVED - agent running for the shaft it believes in"
+        if banner != self.banner.text:
+            self.banner.text = banner
 
     # ---- after the end -------------------------------------------------------------------
     def _reveal(self) -> None:
