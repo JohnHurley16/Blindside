@@ -74,7 +74,7 @@ BEACON_FIX_NOISE = 0.35                # cells
 SHAFT_BEACON_RANGE = 10.0              # survey-placed, the only truth anchor
 SHAFT_FIX_PERIOD_S = 2.0               # the shaft beacon keeps fixing you while in range
 HOME_REACHED = 1.5
-SPOOF_AFTER_S = 3 * 60 + 20            # earliest time the scripted spoof may arm (fires on the next drop + lie distance)
+SPOOF_AFTER_S = 2 * 60 + 45            # earliest time the scripted spoof may arm (fires on the next drop + lie distance)
 SPOOF_LIE_CELLS = 12.0                 # how far the cloned beacon is from the original
 SPOOF_AHEAD_CELLS = 4.0                # clone placed this far ahead of the victim
 
