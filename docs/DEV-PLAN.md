@@ -21,44 +21,28 @@ This file is the board. Edit it directly. It was generated once from `docs/dev-p
 
 Tick a story when it is done and move its `Status:` line. `Ready` means every dependency is done or there were none; the first epics in the order of work can start today.
 
-### Ready now (7)
+### Ready now (6)
 
 - [ ] **BLD-8** Spike: sweep Recall timings for both player sensors; find why lidar never reaches SEARCH *(BLD-1, P0, 0.75d)*
 - [ ] **BLD-4** Pin the Phase 1 Python environment in requirements.txt *(BLD-1, P1, 0.25d)*
 - [ ] **BLD-5** Write the spectator-test protocol and scoring rubric for Phase 1 and Phase 5 *(BLD-1, P0, 0.5d)*
 - [ ] **BLD-6** Update GLOSSARY Passive/active for sonar and lidar as loadout modules *(BLD-1, P1, 0.25d)*
 - [ ] **BLD-7** Record Phase 1's velocity data point and state the plan's estimate unit and total *(BLD-1, P1, 0.25d)*
-- [ ] **BLD-19** Create the Cargo workspace, pin the toolchain, and lock blindside-sim's dependency tree *(BLD-18, P0, 0.5d)*
 - [ ] **BLD-20** Spike: put the harness's load-bearing unknowns to the designer in one written round *(BLD-18, P0, 0.5d)*
 
-### Blocked on a dependency (187)
+### Blocked on a dependency (172)
 
 - [ ] **BLD-9** Apply the two-viewings gate decision: sonar is the gate configuration; retune so the Recall arc can succeed in it *(BLD-1, P0, 1.5d)* — after BLD-8
 - [ ] **BLD-10** Reconcile tuning.py commentary with its values; write the measured beat sheet *(BLD-1, P1, 0.5d)* — after BLD-9
 - [ ] **BLD-11** Spike: measure the contact mix the player actually hears; decide if ambiguity exists *(BLD-1, P1, 0.5d)* — after BLD-9
 - [ ] **BLD-12** Answer or retire every PHASE-1-OPEN-QUESTIONS item against what was built *(BLD-1, P1, 0.5d)* — after BLD-9, BLD-11
 - [ ] **BLD-13** Tick the six PHASE-1 acceptance boxes with seed, args and commit as evidence *(BLD-1, P0, 0.5d)* — after BLD-2, BLD-9, BLD-10, BLD-11
-- [ ] **BLD-15** Designer self-test: twenty minutes on the gate build before the external session *(BLD-1, P0, 0.25d)* — after BLD-13, BLD-5
-- [ ] **BLD-16** Run the Phase 1 gate playtest with a non-engineer and write the readiness report *(BLD-1, P0, 0.5d)* — after BLD-14, BLD-15
 - [ ] **BLD-17** Write the Phase 1 decision record: what was proved, measured, and handed to Phase 3 *(BLD-1, P0, 1d)* — after BLD-16, BLD-12
 - [ ] **BLD-21** Spike: choose the determinism-lint mechanism and prove it catches the known evasions *(BLD-18, P0, 0.5d)* — after BLD-19
-- [ ] **BLD-22** Land the CI determinism lint and prove a PR adding f64 to blindside-sim goes red *(BLD-18, P0, 1d)* — after BLD-19, BLD-21
-- [ ] **BLD-23** Build the empty blindside-sim: Sim::new(&MatchRecord), step, tick, state_hash; World pub(crate) *(BLD-18, P0, 0.5d)* — after BLD-19, BLD-22
-- [ ] **BLD-24** Add Fx, the fixed-point math module home, and stateless DeterministicRng with golden tests *(BLD-18, P0, 1d)* — after BLD-19, BLD-20, BLD-22
 - [ ] **BLD-25** Provide DeterministicRng-based test helpers and settle the dev-dependency lint policy *(BLD-18, P1, 0.5d)* — after BLD-24, BLD-21, BLD-22
-- [ ] **BLD-26** Compute the content pack hash in blindside-content and refuse mismatching replays *(BLD-18, P0, 0.5d)* — after BLD-19, BLD-20
-- [ ] **BLD-27** Implement the per-tick state hash with an explicit coverage list and mutation tests *(BLD-18, P0, 1d)* — after BLD-20, BLD-23, BLD-24
-- [ ] **BLD-28** Expose a feature-gated, string-only structural diff of two Sims for the canary *(BLD-18, P0, 0.5d)* — after BLD-20, BLD-23, BLD-27
 - [ ] **BLD-29** Guard against Cargo feature unification exposing diagnostics or inject-desync outside the harness *(BLD-18, P0, 0.5d)* — after BLD-28, BLD-22
-- [ ] **BLD-30** Define MatchRecord serialisation, schema version, migration hook, and recorded final hash *(BLD-18, P0, 1d)* — after BLD-20, BLD-23, BLD-27, BLD-26
-- [ ] **BLD-31** Build the blindside-harness binary: run, record and verify subcommands, hash log, throughput *(BLD-18, P0, 1d)* — after BLD-23, BLD-27, BLD-30, BLD-26
 - [ ] **BLD-32** Scaffold the compile-fail test that nothing outside blindside-sim can reach World *(BLD-18, P1, 0.5d)* — after BLD-23, BLD-28
-- [ ] **BLD-33** Build the desync canary: two Sims in lockstep, hash compared every tick, panic with diff *(BLD-18, P0, 1d)* — after BLD-23, BLD-27, BLD-28, BLD-31
 - [ ] **BLD-34** Add the unsafe policy and PR template for the non-lintable determinism rules *(BLD-18, P1, 0.5d)* — after BLD-19, BLD-22
-- [ ] **BLD-35** Inject a HashMap-iteration non-determinism and prove the canary catches it in the tick *(BLD-18, P0, 1d)* — after BLD-33, BLD-21, BLD-22, BLD-29
-- [ ] **BLD-36** Build one-command bisect: first divergent tick, both hashes, and the state diff *(BLD-18, P0, 1.5d)* — after BLD-20, BLD-28, BLD-31, BLD-35
-- [ ] **BLD-37** Run build, lint, canary, golden replay and cross-OS hash compare on Linux/macOS/Windows CI *(BLD-18, P0, 2d)* — after BLD-33, BLD-31, BLD-30, BLD-22, BLD-35, BLD-29
-- [ ] **BLD-38** Add the batch executor: N seeds in parallel across matches with a seed-to-hash table *(BLD-18, P1, 1d)* — after BLD-31, BLD-37
 - [ ] **BLD-39** Write docs/HARNESS.md and reconcile ARCHITECTURE's MatchRecord and ROADMAP's crate names *(BLD-18, P1, 0.5d)* — after BLD-20, BLD-21, BLD-36, BLD-37
 - [ ] **BLD-40** Verify all five Phase 0 acceptance criteria on one commit and report ready for the gate *(BLD-18, P0, 0.5d)* — after BLD-34, BLD-35, BLD-36, BLD-37, BLD-38, BLD-32, BLD-39, BLD-29, BLD-25
 - [ ] **BLD-42** Settle the load-bearing Phase 2 unknowns with the designer before writing code *(BLD-41, P0, 1d)* — after BLD-16
@@ -223,10 +207,26 @@ Tick a story when it is done and move its `Status:` line. `Ready` means every de
 
 ### In progress
 
+- [ ] **BLD-16** Run the Phase 1 gate playtest with a non-engineer and write the readiness report *(BLD-1, P0, 0.5d)*
+- [ ] **BLD-19** Create the Cargo workspace, pin the toolchain, and lock blindside-sim's dependency tree *(BLD-18, P0, 0.5d)*
+- [ ] **BLD-22** Land the CI determinism lint and prove a PR adding f64 to blindside-sim goes red *(BLD-18, P0, 1d)*
+- [ ] **BLD-23** Build the empty blindside-sim: Sim::new(&MatchRecord), step, tick, state_hash; World pub(crate) *(BLD-18, P0, 0.5d)*
+- [ ] **BLD-24** Add Fx, the fixed-point math module home, and stateless DeterministicRng with golden tests *(BLD-18, P0, 1d)*
+- [ ] **BLD-26** Compute the content pack hash in blindside-content and refuse mismatching replays *(BLD-18, P0, 0.5d)*
+- [ ] **BLD-27** Implement the per-tick state hash with an explicit coverage list and mutation tests *(BLD-18, P0, 1d)*
+- [ ] **BLD-28** Expose a feature-gated, string-only structural diff of two Sims for the canary *(BLD-18, P0, 0.5d)*
+- [ ] **BLD-30** Define MatchRecord serialisation, schema version, migration hook, and recorded final hash *(BLD-18, P0, 1d)*
+- [ ] **BLD-31** Build the blindside-harness binary: run, record and verify subcommands, hash log, throughput *(BLD-18, P0, 1d)*
+- [ ] **BLD-33** Build the desync canary: two Sims in lockstep, hash compared every tick, panic with diff *(BLD-18, P0, 1d)*
+- [ ] **BLD-35** Inject a HashMap-iteration non-determinism and prove the canary catches it in the tick *(BLD-18, P0, 1d)*
+- [ ] **BLD-36** Build one-command bisect: first divergent tick, both hashes, and the state diff *(BLD-18, P0, 1.5d)*
+- [ ] **BLD-37** Run build, lint, canary, golden replay and cross-OS hash compare on Linux/macOS/Windows CI *(BLD-18, P0, 2d)*
+- [ ] **BLD-38** Add the batch executor: N seeds in parallel across matches with a seed-to-hash table *(BLD-18, P1, 1d)*
 - [ ] **BLD-14** Render gate videos for both sensors from one seed and record their provenance *(BLD-1, P1, 0.5d)*
 
 ### Done
 
+- [x] **BLD-15** Designer self-test: twenty minutes on the gate build before the external session *(BLD-1, P0, 0.25d)*
 - [x] **BLD-2** Fix SEARCH-mode crash: decision_report reads undefined T.RECALL_SEARCH_RADIUS_RATE *(BLD-1, P0, 0.25d)*
 - [x] **BLD-3** Verify and commit the in-progress Phase 1 retune, one commit per concern *(BLD-1, P0, 0.75d)*
 
@@ -429,7 +429,9 @@ Done when:
 
 ### BLD-15 — Designer self-test: twenty minutes on the gate build before the external session
 
-**Status:** Backlog  ·  **Task**  ·  P0  ·  0.25 d  ·  depends on BLD-13, BLD-5  ·  retires R1
+**Status:** Done  ·  **Task**  ·  P0  ·  0.25 d  ·  depends on BLD-13, BLD-5  ·  retires R1
+
+**Gate (2026-09-06):** designer self-test run on 2026-09-06 before the external session; reported green.
 
 PHASE-1-SPECTATOR-TEST.md: 'Test it alone first. You will know within twenty minutes whether you are leaning forward.' The two earlier 'playtest feedback' commits were the designer watching renders, not a live session on the gate build. This is the go/no-go for spending someone else's evening. Human-gated (designer self-test): expect about 2 calendar days and 1 round-trip(s) with the designer or testers beyond the 0.25 working days of work.
 
@@ -440,7 +442,9 @@ Done when:
 
 ### BLD-16 — Run the Phase 1 gate playtest with a non-engineer and write the readiness report
 
-**Status:** Backlog  ·  **Story**  ·  P0  ·  0.5 d  ·  depends on BLD-14, BLD-15  ·  retires R1
+**Status:** In progress  ·  **Story**  ·  P0  ·  0.5 d  ·  depends on BLD-14, BLD-15  ·  retires R1
+
+**Gate (2026-09-06):** the session was run on 2026-09-06 and the designer reports pass on all three signals. The observations (what was said, when, and what happened at Recall) are not yet in the repo; the readiness report waits on them.
 
 This is the Phase 1 gate and the one failure that no later work repairs (ROADMAP: risk R1, confidence Low). No commit or document records it having been run. The designer wants Rust to start as soon as this lands; the report is what unblocks the Phase 2 group and, transitively, Phase 3. The build agent cannot declare the gate met; it reports readiness and the observations (CLAUDE.md definition of done). Human-gated (external playtest with a non-engineer): expect about 7 calendar days and 1 round-trip(s) with the designer or testers beyond the 0.5 working days of work.
 
@@ -474,6 +478,8 @@ Done when:
 - **Can start when:** Immediately. No document places a predecessor gate before Phase 0: CLAUDE.md's 'do immediately before 3' and PHASE-0's 'build immediately before Phase 3, not first' are read as priority statements (do not let the harness rot), not blockers — this is an interpretation that contradicts the literal spec text, so BLD-20 puts it to the designer as a yes/no on day one and records the dated answer in docs/HARNESS.md, and BLD-40 and BLD-66 assert that nothing crept into blindside-sim during the parallel window. It runs in parallel with the Phase 1 gate playtest and with Phase 2 (throwaway Python). Constraint that keeps the build order honest: blindside-sim gains no sensors, belief fusion, generation or any game logic until the Phase 2 gate report exists; Phase 3 remains blocked on gates 1, 2 and 0 and BLD-66 encodes that in depends_on. Stories BLD-19 and BLD-20 have no dependencies and start on day one; BLD-21 follows BLD-19.
 - **Estimate:** 17.5 working days
 
+**Where it actually is (2026-09-06):** branch `claude/phase-0-harness` carries a working harness that meets all five PHASE-0-HARNESS acceptance criteria. CI run 34062222514 on commit `0051189` is green on ubuntu-24.04, macos-26-arm64 and windows-2025 with byte-identical 5,001-entry hash logs (sha256 `365f7d33…6513`, reproduced on the dev machine). The stories below were written before that branch existed and their Done-when lists are stricter than the spec's criteria, so none is ticked; each carries a *Built so far* line saying what exists and what its own criteria still want. Two things the branch did that the plan says not to: every BLD-20 unknown was defaulted rather than asked (the defaults are listed under BLD-20 so the designer can answer yes/no), and CI builds with `--workspace`, which BLD-29 forbids for hash-producing binaries. 
+
 | Key | Type | Summary | Pri | Days | Depends on | Risk |
 |---|---|---|---|---|---|---|
 | BLD-19 | Task | Create the Cargo workspace, pin the toolchain, and lock blindside-sim's dependency tree | P0 | 0.5 | — | — |
@@ -501,7 +507,9 @@ Done when:
 
 ### BLD-19 — Create the Cargo workspace, pin the toolchain, and lock blindside-sim's dependency tree
 
-**Status:** Backlog  ·  **Task**  ·  P0  ·  0.5 d
+**Status:** In progress  ·  **Task**  ·  P0  ·  0.5 d
+
+**Built so far (2026-09-06, `claude/phase-0-harness`):** workspace of five crates; `rust-toolchain.toml` floats on `stable` rather than an exact version; `Cargo.lock` committed; blindside-sim depends on exactly `fixed` and `blake3`, enforced by the lint's `--check-all` allow-list rather than a `cargo metadata` test. Not yet: `=x.y.z` pins, `.gitattributes eol=lf` (every commit today warns LF→CRLF), per-crate descriptions.
 
 ARCHITECTURE.md fixes the crate names (blindside-*, not ROADMAP's stale deadwater-*) and says 'blindside-sim depends only on blindside-vm and blindside-content. That constraint is load-bearing — it keeps determinism auditable by reading one dependency tree.' The repo has no Cargo.toml, rust-toolchain, .github or .gitattributes today. Phase 0 creates only the crates it needs — sim, vm (stub), content (stub), gen (stub, a lint target), harness — and none of behavior/induct/client/net. Line-ending normalisation lands here because Windows autocrlf checkouts would otherwise change fixture bytes and the content hash.
 
@@ -517,6 +525,8 @@ Done when:
 
 **Status:** Backlog  ·  **Spike**  ·  P0  ·  0.5 d  ·  retires R4
 
+**Built so far (2026-09-06, `claude/phase-0-harness`):** not done, and it is the first thing to do. The builders defaulted every unknown this story exists to ask: hasher = BLAKE3 over a hand-written LE layout; serialisation = JSON; `Tick` = u64; arithmetic wraps (`wrapping_add`) with no overflow-checks decision; MatchRecord carries `final_hash` and `ticks`; bisect assumes a divergence never heals; RNG mix = SplitMix64 finaliser; content hash = BLAKE3 over `CONTENT_SCHEMA` alone (the empty pack). Put exactly that list to the designer as yes/no with the default as the recommendation.
+
 CLAUDE.md: 'Ask rather than invent... A wrong guess that compiles is worse than a question.' The Phase 0 docs are silent on several things every later replay will hash: the state hasher and its width (256-bit to match content_hash [u8;32] vs 64-bit per tick), the MatchRecord serialisation format, Tick width, overflow-checks in the hash-producing profile (integer overflow panics in debug and wraps in release; the fixed crate follows suit — a profile-dependent desync the hard rules do not name), whether MatchRecord gains final_hash and ticks (ARCHITECTURE's struct has neither, yet the acceptance criteria require verifying a recorded final hash and running 'to completion'), what 'bisect by tick' compares (two live instances, a replay plus a foreign hash log, or two builds), the DeterministicRng mix function, whether blindside-content joins the lint scope (it is in sim's dependency tree but outside DETERMINISM's constrained set), and explicit blessing of the feature-gated diagnostics diff as the one sanctioned ground-truth window. Also record the tick rate (Phase 1 ran 20 Hz; its 33 ms worst tick rules out 60 Hz) though it does not block Phase 0 code. The output is a decisions section in docs/HARNESS.md (BLD-39), not code. Human-gated (designer question round): expect about 5 calendar days and 1 round-trip(s) with the designer or testers beyond the 0.5 working days of work.
 
 Done when:
@@ -529,6 +539,8 @@ Done when:
 
 **Status:** Backlog  ·  **Spike**  ·  P0  ·  0.5 d  ·  depends on BLD-19
 
+**Built so far (2026-09-06, `claude/phase-0-harness`):** a token-level lint exists (`tools/determinism-lint`, commit 8ca2e22): rejects f32/f64, HashMap/HashSet, std::time, threads, rand-family and rayon dependencies, unsafe, std's keyed hashers, the common raw-pointer routes, process/env reads, `include!` and `#[path]` leaving src/, `[lib]`/`[[bin]]` path and build scripts, `package = ..` renames; 41 tests, 25 of them one evasion each. Two adversarial rounds: the first found six evasions, all closed; the second found thirteen more, of which the six it targeted are confirmed closed and the rest are stated in `--help` under WHAT THIS CANNOT SEE rather than claimed — including that its hand-written Cargo.toml reader is blinded by a `\"` escape or a BOM. It guards against an honest author's accidents; a hostile author is what review is for. Not yet: this story's fixture crate and pass/fail table in docs/HARNESS.md, the inject-desync exemption decision.
+
 DETERMINISM.md: 'CI lint rejects any of rules 1–4 appearing in the constrained crates. Add this before writing sim code, not after.' The mechanism is unspecified. A token grep false-positives on comments and misses `Fx::from_num(0.5)`, `use std::collections::*`, type aliases and `std::collections::hash_map::HashMap` full paths; clippy `disallowed_types`/`disallowed_methods` catch resolved paths but not float literals; cargo-deny catches the `rand` dependency. This spike finds the combination that passes a known-bad fixture set and records the result, including how the BLD-35 injection fixture is exempted without weakening the lint.
 
 Done when:
@@ -540,7 +552,9 @@ Done when:
 
 ### BLD-22 — Land the CI determinism lint and prove a PR adding f64 to blindside-sim goes red
 
-**Status:** Backlog  ·  **Story**  ·  P0  ·  1 d  ·  depends on BLD-19, BLD-21  ·  retires R4
+**Status:** In progress  ·  **Story**  ·  P0  ·  1 d  ·  depends on BLD-19, BLD-21  ·  retires R4
+
+**Built so far (2026-09-06, `claude/phase-0-harness`):** CI job `lint-rejects-f64` appends `pub fn bad() -> f64 { 0.0 }` to a copy of blindside-sim and passes only if the lint fails — it did (`FAIL -- 2 finding(s)`). `--check-all` rejects rand-family, rayon and libm dependencies. Not yet: required status check on main; the throwaway-branch demonstration link; the `std::fs/io/net/env` cases are covered by rule text but see BLD-21 for what the lint cannot see.
 
 PHASE-0-HARNESS.md criterion 5: 'CI lint rejects a PR adding f64 to blindside-sim.' Scope is blindside-sim, blindside-vm and blindside-gen per DETERMINISM.md (not just 'the sim crate' as ROADMAP says) and it does not apply to the harness, client or Python phases. CLAUDE.md's definition of done from Phase 3 onward relies on CI enforcing this, so it must be a required status check. ARCHITECTURE's 'no I/O' for blindside-sim is enforced here too (std::fs/io/net/env). This story creates the first workflow file; BLD-37 extends it to the three-OS matrix.
 
@@ -554,7 +568,9 @@ Done when:
 
 ### BLD-23 — Build the empty blindside-sim: Sim::new(&MatchRecord), step, tick, state_hash; World pub(crate)
 
-**Status:** Backlog  ·  **Story**  ·  P0  ·  0.5 d  ·  depends on BLD-19, BLD-22
+**Status:** In progress  ·  **Story**  ·  P0  ·  0.5 d  ·  depends on BLD-19, BLD-22
+
+**Built so far (2026-09-06, `claude/phase-0-harness`):** `Sim::new(seed)`, `step()`, `tick()`, `state_hash()` are the public surface and the harness never names `World` (it is `pub(crate)`). Differs from this story: constructed from a seed not a `&MatchRecord`; `step()` takes no commands; `World` holds two random-walking agents, not `{ tick }` alone; no `Belief` type exists.
 
 The canary needs a real Sim to step and hash; ARCHITECTURE.md fixes world.rs as `pub(crate) struct World` and belief.rs as `pub struct Belief`, and says 'World is never passed downstream of the sensor layer.' Laying the boundary down while the sim is empty prevents the harness from becoming the leak path. No game logic: World holds `tick` and nothing else (the injection fixture in BLD-35 adds one gated field); Phase 3 fills it after the Phase 2 gate. Sim is constructible only from a MatchRecord so the replay path is the only path from day one; the MatchRecord struct and its stub member types live here because blindside-sim may depend on nothing but vm and content.
 
@@ -567,7 +583,9 @@ Done when:
 
 ### BLD-24 — Add Fx, the fixed-point math module home, and stateless DeterministicRng with golden tests
 
-**Status:** Backlog  ·  **Story**  ·  P0  ·  1 d  ·  depends on BLD-19, BLD-20, BLD-22  ·  retires R4
+**Status:** In progress  ·  **Story**  ·  P0  ·  1 d  ·  depends on BLD-19, BLD-20, BLD-22  ·  retires R4
+
+**Built so far (2026-09-06, `claude/phase-0-harness`):** `pub type Fx = fixed::types::I32F32` defined once; `DeterministicRng::draw(tick, entity, purpose) -> Fx` is stateless SplitMix64 with order-independence, unit-interval and two pinned known-answer tests. Not yet: `fxmath` module, the 32-row golden table, mean-of-draws check, `Purpose` enum (purpose is a bare `u16`), the overflow-checks decision.
 
 DETERMINISM.md rule 1 (`type Fx = fixed::types::I32F32`), rule 4 (RNG is counter-based and stateless: `draw(seed, tick, entity_id, purpose_id) -> Fx`, so call order cannot affect results), and the practical note that trig and sqrt come from a single module, never platform math. ARCHITECTURE's signature is `draw(&self, tick, entity: u32, purpose: u16) -> Fx` on `DeterministicRng { seed: u64 }` — immutable, with no rng field in World; ROADMAP's older `&mut` form is superseded. Phase 0 establishes the alias, the module, the RNG and the overflow policy; sqrt/trig implementations are Phase 3 work. The golden tables are what will catch R4 on a third platform, so their expected values are checked in, not computed.
 
@@ -595,7 +613,9 @@ Done when:
 
 ### BLD-26 — Compute the content pack hash in blindside-content and refuse mismatching replays
 
-**Status:** Backlog  ·  **Story**  ·  P0  ·  0.5 d  ·  depends on BLD-19, BLD-20
+**Status:** In progress  ·  **Story**  ·  P0  ·  0.5 d  ·  depends on BLD-19, BLD-20
+
+**Built so far (2026-09-06, `claude/phase-0-harness`):** `content_hash()` exists but in blindside-harness `record.rs`, not blindside-content, and hashes `CONTENT_SCHEMA` only; `verify` refuses a record with a foreign content hash (tested). Not yet: hash over `content/**` bytes, golden constant, one-byte-change test.
 
 DETERMINISM.md: 'Replays carry a content pack hash. Without it, replays silently produce different results after a balance change and nobody notices for months.' ARCHITECTURE rule 2: 'Content pack hash goes in every replay.' The pack is empty in Phase 0 but the field must never be a placeholder: the function, its canonical byte order and the mismatch error exist from day one. Hash the canonical bytes of the data files in sorted-path order with LF endings (BLD-19 .gitattributes), not parsed structs, so a Windows checkout does not change the hash. Whether the hash covers the full pack or only the season-enabled set is a Phase 3 content-format decision; note it here, do not decide it.
 
@@ -608,7 +628,9 @@ Done when:
 
 ### BLD-27 — Implement the per-tick state hash with an explicit coverage list and mutation tests
 
-**Status:** Backlog  ·  **Story**  ·  P0  ·  1 d  ·  depends on BLD-20, BLD-23, BLD-24  ·  retires R4
+**Status:** In progress  ·  **Story**  ·  P0  ·  1 d  ·  depends on BLD-20, BLD-23, BLD-24  ·  retires R4
+
+**Built so far (2026-09-06, `claude/phase-0-harness`):** BLAKE3 over a hand-written little-endian layout with a `LAYOUT_VERSION`; `debug_fields` mirrors the same fields in the same order; agents hashed in `BTreeMap` key order; hash at tick 1000 pinned and asserted on three OSes. Not yet: per-field mutation tests, the hashed/excluded field list on `World`, per-tick hash cost print.
 
 PHASE-0-HARNESS.md: 'Hash must cover everything that can affect future ticks and nothing that cannot — including RNG call counters if any state is kept, excluding caches and derived values. Getting the hash wrong in either direction wastes weeks.' The RNG is stateless, so there are no counters today; keep it that way. Belief will be hashed in Phase 3 because policies read it. The hasher must be fixed-key and endianness-explicit: std DefaultHasher and #[derive(Hash)] over usize pass a single-machine canary and fail cross-platform. Design for growth — a hierarchical hash (per-subsystem sub-hashes) lets the BLD-28 diff localise divergence cheaply.
 
@@ -622,7 +644,9 @@ Done when:
 
 ### BLD-28 — Expose a feature-gated, string-only structural diff of two Sims for the canary
 
-**Status:** Backlog  ·  **Story**  ·  P0  ·  0.5 d  ·  depends on BLD-20, BLD-23, BLD-27
+**Status:** In progress  ·  **Story**  ·  P0  ·  0.5 d  ·  depends on BLD-20, BLD-23, BLD-27
+
+**Built so far (2026-09-06, `claude/phase-0-harness`):** `state_debug()` (field-path dump) and `perturb_for_test()` sit behind a `test-hooks` feature that only blindside-harness enables; the canary diffs two dumps in `canary.rs`. Differs: the feature is `test-hooks` not `diagnostics`, the diff lives in the harness not the sim, and nothing yet proves `&World` is unreachable through it (BLD-32).
 
 The canary must print more than two hashes; DETERMINISM.md: 'panic on first divergence with the tick number and a state diff.' World is pub(crate), so the diff can only be produced inside blindside-sim and exported as text — this is the one sanctioned ground-truth window for tooling and exactly the 'just for debugging' accessor CLAUDE.md warns about. It is designed to be useless as a leak: behind a `diagnostics` cargo feature, string paths and values only, never a typed &World, with the designer's blessing recorded via BLD-20.
 
@@ -639,6 +663,8 @@ Done when:
 
 **Status:** Backlog  ·  **Story**  ·  P0  ·  0.5 d  ·  depends on BLD-28, BLD-22
 
+**Built so far (2026-09-06, `claude/phase-0-harness`):** not started — and CI currently builds every step with `--workspace`, which is what this story forbids for hash-producing binaries. Feature unification is the reason `test-hooks` is not a privacy boundary today.
+
 BLD-28 gates the structural diff and state dump behind a `diagnostics` cargo feature and BLD-35 gates the HashMap injection behind `inject-desync`, treating both as boundaries. Cargo unifies features per package across a build invocation: `cargo build --workspace` with blindside-harness enabling `blindside-sim/diagnostics` enables it for blindside-sim in every dependent compiled in that build, including blindside-client and blindside-net when they exist, so the String dump of World becomes callable from the client at compile time and the injected HashMap path can be compiled into a shipped binary. ARCHITECTURE.md: 'Make it awkward to pass ground truth.' CLAUDE.md: a leak's damage 'will not be visible for months.' This story makes the feature gates real with a CI check and a build rule.
 
 Done when:
@@ -650,7 +676,9 @@ Done when:
 
 ### BLD-30 — Define MatchRecord serialisation, schema version, migration hook, and recorded final hash
 
-**Status:** Backlog  ·  **Story**  ·  P0  ·  1 d  ·  depends on BLD-20, BLD-23, BLD-27, BLD-26
+**Status:** In progress  ·  **Story**  ·  P0  ·  1 d  ·  depends on BLD-20, BLD-23, BLD-27, BLD-26
+
+**Built so far (2026-09-06, `claude/phase-0-harness`):** JSON `MatchRecord` `{schema, seed, content_hash, loadouts, policies, commands, ticks, final_hash}`; schema checked on load with a typed error; content-hash mismatch is a hard error carrying both hashes. Not yet: `migrate()` chain, sorted-commands rule, checked-in fixture, PR-template rule.
 
 PHASE-0-HARNESS.md: 'Replay format. Seed plus input log plus content pack hash. Load, re-run, verify the final state hash matches the recorded one.' ARCHITECTURE's MatchRecord has seed, schema, content_hash, loadouts, policies and commands ('the only live input') but no final hash and no length; both are needed to verify and to run 'to completion', and are added per the BLD-20 answer. DETERMINISM: 'Policies carry a schema version with a migration path' — the same pattern applies to the record from v1 so Phase 0 replays stay loadable a year on. Fx serialises as raw bits, never through a float. DESIGN/ROADMAP: a full match is kilobytes.
 
@@ -665,7 +693,9 @@ Done when:
 
 ### BLD-31 — Build the blindside-harness binary: run, record and verify subcommands, hash log, throughput
 
-**Status:** Backlog  ·  **Story**  ·  P0  ·  1 d  ·  depends on BLD-23, BLD-27, BLD-30, BLD-26
+**Status:** In progress  ·  **Story**  ·  P0  ·  1 d  ·  depends on BLD-23, BLD-27, BLD-30, BLD-26
+
+**Built so far (2026-09-06, `claude/phase-0-harness`):** `run`, `record`, `verify` exist; hash log is a JSON sidecar `<stem>.hashes.json` rather than plain `tick,hash` lines; throughput is printed by `batch` (23.8M matches/hour, release, empty sim). Not yet: `--hash-every`, `--dump-state-at`, the 10 ms step-cost measurement.
 
 PHASE-0-HARNESS.md: 'Loads a MatchRecord (seed, content hash, loadouts, policies, command log) and runs a match to completion with no renderer. Must run thousands of matches per hour on a laptop.' The harness is tooling — DETERMINISM does not apply to it, so it may use std::time for throughput and threads across matches — but it touches the sim only through the BLD-23 public API and never names World. The per-tick hash log is the input bisect (BLD-36) needs and the cheapest cross-OS diagnostic; CI uploads it in BLD-37. Phase 1's phase1/match/headless.py is the precedent, not a port.
 
@@ -692,7 +722,9 @@ Done when:
 
 ### BLD-33 — Build the desync canary: two Sims in lockstep, hash compared every tick, panic with diff
 
-**Status:** Backlog  ·  **Story**  ·  P0  ·  1 d  ·  depends on BLD-23, BLD-27, BLD-28, BLD-31  ·  retires R4
+**Status:** In progress  ·  **Story**  ·  P0  ·  1 d  ·  depends on BLD-23, BLD-27, BLD-28, BLD-31  ·  retires R4
+
+**Built so far (2026-09-06, `claude/phase-0-harness`):** criterion 1 met: two Sims via `Sim::new`, hash compared after every step, 10,000 ticks clean on three OSes, non-zero exit with tick, both hashes and a field diff written to `divergence.json`. Differs: built from a seed, not the record fixture this story names.
 
 PHASE-0-HARNESS.md: 'Two Sim instances in one process, constructed from identical inputs, stepped in lockstep. State hash computed every tick and compared. On divergence: panic with the tick number, both hashes, and a structural diff of the two states.' ROADMAP calls the canary the reason the project survives. Both instances must be built through Sim::new(&MatchRecord) — the same path the runner uses — so the canary tests what ships, and both must live in ONE process: std's RandomState is randomised per instance, which is what makes the HashMap injection in BLD-35 detectable. Comparison is every tick, not only at the end.
 
@@ -716,7 +748,9 @@ Done when:
 
 ### BLD-35 — Inject a HashMap-iteration non-determinism and prove the canary catches it in the tick
 
-**Status:** Backlog  ·  **Story**  ·  P0  ·  1 d  ·  depends on BLD-33, BLD-21, BLD-22, BLD-29  ·  retires R4
+**Status:** In progress  ·  **Story**  ·  P0  ·  1 d  ·  depends on BLD-33, BLD-21, BLD-22, BLD-29  ·  retires R4
+
+**Built so far (2026-09-06, `claude/phase-0-harness`):** `canary --inject` perturbs instance B at tick N using a real `std::collections::HashMap` iteration order and is caught in that tick (unit test covers N = 0, 1, 250, 1000). Weaker than this story in two ways the verifier flagged: it is a same-tick state mutation of one instance, not an order-dependent update of both, so the canary is proven against a state change rather than a real order bug; and CI has no injection job. Feature is `test-hooks`, not `inject-desync`.
 
 PHASE-0-HARNESS.md criterion 2 and its kill line: 'A canary that does not catch a known bug is worse than no canary, because it is trusted.' The fixture must live where the lint exempts it (BLD-21 decision), must mutate HASHED state (otherwise the hash correctly ignores it and the test proves nothing), and must use a real HashMap iteration so the actual failure mode is exercised: two instances in one process see different RandomState keys and therefore different iteration orders. This is permanent CI, not a one-off demo — it is re-verified after every refactor.
 
@@ -729,7 +763,9 @@ Done when:
 
 ### BLD-36 — Build one-command bisect: first divergent tick, both hashes, and the state diff
 
-**Status:** Backlog  ·  **Story**  ·  P0  ·  1.5 d  ·  depends on BLD-20, BLD-28, BLD-31, BLD-35  ·  retires R4
+**Status:** In progress  ·  **Story**  ·  P0  ·  1.5 d  ·  depends on BLD-20, BLD-28, BLD-31, BLD-35  ·  retires R4
+
+**Built so far (2026-09-06, `claude/phase-0-harness`):** criterion 4 met: `bisect <record> <hashes>` binary-searches re-runs (15 for 5,000 ticks), falls back to a linear scan for a transient mismatch, prints both hashes and the changed fields with raw bits; `--from-divergence` reproduces a canary file exactly; exit codes 0/1/2. Not yet: `diff-dumps`, checkpoint-every-N mode, the `git bisect run` example.
 
 PHASE-0-HARNESS.md: 'One command to re-run a divergent replay, bisect by tick, and dump the state diff at the divergence point. Build this now. Building it the first time you need it, at 1am in month nine, is how projects die.' The in-process canary already finds the tick linearly; bisect earns its keep against a hash log recorded elsewhere — another OS in CI, another commit — with the semantics fixed by BLD-20. Minimum reading: binary-search the foreign log against a local re-run to the first divergent checkpoint, then step linearly to the exact tick; for the cross-machine case, diff two diagnostics dumps (BLD-28). Exit codes are `git bisect run`-compatible so bisect-by-commit works with the canary as the test.
 
@@ -743,7 +779,9 @@ Done when:
 
 ### BLD-37 — Run build, lint, canary, golden replay and cross-OS hash compare on Linux/macOS/Windows CI
 
-**Status:** Backlog  ·  **Story**  ·  P0  ·  2 d  ·  depends on BLD-33, BLD-31, BLD-30, BLD-22, BLD-35, BLD-29  ·  retires R4
+**Status:** In progress  ·  **Story**  ·  P0  ·  2 d  ·  depends on BLD-33, BLD-31, BLD-30, BLD-22, BLD-35, BLD-29  ·  retires R4
+
+**Built so far (2026-09-06, `claude/phase-0-harness`):** three-OS matrix green on `0051189`: build, test, lint, 10k canary, 5k record, artifacts uploaded and `cmp`-compared byte-for-byte in a fourth job; lint self-test job. Not yet: required status checks on main, nightly variant, two consecutive green commits, `-p` instead of `--workspace` (BLD-29).
 
 PHASE-0-HARNESS.md criterion 3: 'The same replay produces identical final hashes on Linux, macOS, and Windows in CI.' DETERMINISM.md: the canary 'runs on every commit across Linux, macOS, and Windows.' No CI exists; the dev machine is Windows. This is where the 'one weekend' estimate breaks — runner quirks, line endings and macOS minutes. Required status checks are what turn CLAUDE.md's Phase 3 definition of done ('the desync canary passes on all three platforms') from something remembered into something enforced. R4 is formally answered at the Phase 3 gate; this is where it is first probed. Human-gated (three-OS CI debugging): expect about 7 calendar days and 0 round-trip(s) with the designer or testers beyond the 2 working days of work.
 
@@ -758,7 +796,9 @@ Done when:
 
 ### BLD-38 — Add the batch executor: N seeds in parallel across matches with a seed-to-hash table
 
-**Status:** Backlog  ·  **Story**  ·  P1  ·  1 d  ·  depends on BLD-31, BLD-37  ·  retires R4
+**Status:** In progress  ·  **Story**  ·  P1  ·  1 d  ·  depends on BLD-31, BLD-37  ·  retires R4
+
+**Built so far (2026-09-06, `claude/phase-0-harness`):** `batch --matches N --ticks T` runs seeds in parallel and reports matches/hour. Not yet: `seed,final_hash` table output, the J-independence test, the CI batch diff.
 
 ROADMAP Phase 0 lists a batch executor alongside the headless runner. Phase 3's gate ('1,000 matches run headless in under 10 minutes, bit-identical across Linux/macOS/Windows') and Phase 9's market verification are measured with it, so building it against the empty sim gives a baseline and a dry run of the gate mechanism. DETERMINISM rule 5: parallelism only between matches, never inside a tick. Phase 1's numbers imply ~9,600 ticks per match, so the Phase 3 gate is roughly 16k ticks/s aggregate — the batch runner must not be the bottleneck.
 
@@ -773,6 +813,8 @@ Done when:
 
 **Status:** Backlog  ·  **Task**  ·  P1  ·  0.5 d  ·  depends on BLD-20, BLD-21, BLD-36, BLD-37
 
+**Built so far (2026-09-06, `claude/phase-0-harness`):** `docs/HARNESS.md` does not exist; `README-phase0.md` (commit 25b3ac8) is the harness document for now. Every command in it was executed and its output pasted, then a second agent re-ran every command verbatim and compared; the lint section mirrors `--help` including the gap list. Not yet: the BLD-20 decisions (none were asked), the state-hash coverage list, ARCHITECTURE/ROADMAP reconciliation, the dependency audit.
+
 CLAUDE.md's definition of done: 'Anything you guessed at is listed explicitly in the summary.' The BLD-20 answers, the BLD-21 lint evasion table, the state-hash coverage list, bisect semantics and the golden-hash update procedure need one home. ARCHITECTURE.md's MatchRecord gains the approved fields; ROADMAP.md's deadwater-* names get a one-line note that ARCHITECTURE wins (CLAUDE.md: renaming is a git mv, do not spend time on it). A one-line determinism audit per pinned dependency (fixed rounding, smallvec spill, SlotMap iteration order when it arrives) belongs here so an upgrade is never silent.
 
 Done when:
@@ -784,6 +826,8 @@ Done when:
 ### BLD-40 — Verify all five Phase 0 acceptance criteria on one commit and report ready for the gate
 
 **Status:** Backlog  ·  **Task**  ·  P0  ·  0.5 d  ·  depends on BLD-34, BLD-35, BLD-36, BLD-37, BLD-38, BLD-32, BLD-39, BLD-29, BLD-25  ·  retires R4
+
+**Built so far (2026-09-06, `claude/phase-0-harness`):** the adversarial verifier's report plus CI run 34062222514 cover the five-criteria half of this on one commit. Not yet: the guessed-values list (BLD-20 is that list), working days recorded against the spec's one-weekend estimate, the parallel-window assertion script.
 
 CLAUDE.md: 'Do not report a phase gate as met... Report that the build is ready for the gate.' Walk the five PHASE-0-HARNESS.md checkboxes with evidence links (CI run URLs and commit hashes on the same HEAD), list every guess made per definition-of-done item 4, and state the constraint Phase 3 inherits: no game logic in blindside-sim until the Phase 2 gate report exists. This report, together with the Phase 1 and Phase 2 gate reports, is what the Phase 3 epic's can_start_when waits on. Human-gated (readiness report read by the designer): expect about 2 calendar days and 1 round-trip(s) with the designer or testers beyond the 0.5 working days of work.
 
