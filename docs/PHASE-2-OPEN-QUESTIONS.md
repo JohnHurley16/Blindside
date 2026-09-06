@@ -30,6 +30,29 @@ also the thing criterion 4 (a correction in under sixty seconds) is measured on.
 **Consequence.** The demonstration and correction stories get simpler; the segmentation
 story goes away; the ghost replay is a diff of choices at junctions rather than of paths.
 
+**Decision (designer, 2026-09-06): junction-level, and the blocks are discovered
+progressively.** The designer's framing, recorded because it is a principle for the whole
+game and not only for this phase:
+
+> Think of the base blocks the same as Minecraft items. As the game grows, devs add more,
+> so building behaviours can get more complex. But the equivalent of the wooden sword,
+> shovel, pickaxe and crafting table are built on day one.
+
+The three predicates and two actions are the day-one items. The tutorial introduces them
+the way a first night introduces a pickaxe: run one has no drift and only *unexplored
+branch* and *take branch* exist; run two brings drift, and *lost* and *go back* appear
+because now they can matter; run three is the full problem. Every later block — from a
+later phase, from a season, or downloaded from the machinery — arrives the same way.
+
+What this binds in Phase 2, throwaway or not: the induction, the tree render and the
+sentence render are written over a *list* of predicates and actions, never over the three
+by name, so that adding a fourth is a data change. That is the shape Phase 2 is testing.
+The gate's "three demonstrations" are three full runs after the two tutorial runs; the
+tutorial runs still count as induction evidence (a run in which *lost* is always false is
+evidence), but the success rate is measured only from the three full ones. No editing the
+tree by hand in this phase: R2 asks whether demonstration alone produces a legible tree,
+and a node editor would hide the answer.
+
 ## (b) Where does uncertainty come from?
 
 **Options.** Reuse Phase 1's odometry: heading-bias drift, position sigma growing with
