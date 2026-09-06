@@ -1,0 +1,28 @@
+[package]
+name = "blindside-harness"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Headless runner, desync canary, replay and bisect tooling."
+
+# This crate is tooling and is NOT subject to the DETERMINISM.md hard rules: it may use
+# serde, std::time (throughput timing), HashMap, floats for reporting, etc. It must never
+# reach into `World`; it sees a `Sim` only through tick/hash/debug.
+
+[lib]
+name = "blindside_harness"
+path = "src/lib.rs"
+
+[[bin]]
+name = "harness"
+path = "src/main.rs"
+
+[dependencies]
+# `test-hooks` unlocks Sim::state_debug / Sim::perturb_for_test for the canary and bisect.
+blindside-sim = { path = "../blindside-sim", features = ["test-hooks"] }
+blindside-content = { path = "../blindside-content" }
+blake3 = { workspace = true }
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
