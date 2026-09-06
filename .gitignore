@@ -1,6 +1,11 @@
 __pycache__/
 *.pyc
 .venv/
+renders/*.blend
+renders/test_*
+*.blend1
+renders/*.log
+renders/*_frames/
 *.mp4
 *.wav
 snap_*.png
