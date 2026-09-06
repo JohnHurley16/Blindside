@@ -167,7 +167,7 @@ class Policy:
                                  detail=f"{left:.0f}s left",
                                  fill=1.0 - left / max(T.LOAD_SECONDS, 1e-6), active=True)]
         if self.mode is PolicyMode.SEARCH:
-            spread = (t - self.search_t0) * T.RECALL_SEARCH_RADIUS_RATE
+            spread = 4.0 + T.RECALL_SEARCH_PITCH * self.search_angle
             return [DecisionNode("act.search", "SEARCH FOR THE SHAFT", "action",
                                  active=True, fired=True),
                     DecisionNode("act.search.spiral", "widening the circle", "sub",

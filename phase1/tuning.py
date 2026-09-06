@@ -276,8 +276,6 @@ RECALL_SEARCH_PITCH: Final[float] = 3.2            # cells of radius per radian,
 # the distance a spoof puts between belief and the truth before the match ends. Sweeping
 # a 35-cell radius takes about 190 cells of walking, which is roughly three minutes --
 # so a recall sent late genuinely cannot get home, and that is the decision.
-RECALL_SEARCH_SWEEP: Final[float] = 0.9            # unused: the spiral now sweeps at
-                                                   # walking pace, speed / radius
 # On recall the agent runs for the shaft it believes in, and if nothing is there it
 # searches outward until the real transponder answers. That search is the only thing
 # in the match that can undo a spoof, which is what makes the single command worth
