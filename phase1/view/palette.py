@@ -13,6 +13,9 @@ BACKGROUND: tuple[float, float, float] = (0.015, 0.015, 0.025)
 # identical to a confident one, so confidence drives colour, size and alpha together.
 POINT_LOW: np.ndarray = np.array([0.22, 0.32, 0.45])
 POINT_HIGH: np.ndarray = np.array([0.80, 0.97, 1.00])
+# Ground merely walked through, not pinged. Dim and small so mapped structure reads
+# as structure; there are roughly four of these for every sonar return.
+POINT_WALKED: np.ndarray = np.array([0.30, 0.34, 0.42])
 
 CONTACT: dict[SoundCharacter, Rgb] = {
     SoundCharacter.TONE: (1.00, 0.72, 0.25),      # something moving

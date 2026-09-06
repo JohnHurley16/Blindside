@@ -69,7 +69,7 @@ class Recorder:
         the fake wall height does something. Also makes belief and truth separate
         visually instead of overprinting each other."""
         camera = self.view.view.camera
-        camera.elevation = 90.0 - 38.0 * progress
+        camera.elevation = 62.0 - 30.0 * progress
         camera.azimuth = 22.0 * progress
 
     # ---- the whole match ----------------------------------------------------------------

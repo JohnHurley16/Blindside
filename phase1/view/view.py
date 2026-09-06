@@ -20,7 +20,14 @@ from ..belief.belief import Belief
 from ..match.sim import Sim
 from ..sound_character import SoundCharacter
 from . import palette
+from .caption_feed import CaptionFeed
 from .shapes import ring, to_segments
+
+FIX_ANIM_SECONDS: float = 0.7
+CAPTION_HOLD: float = 3.2
+CAPTION_FADE: float = 1.3
+FRIENDLY: dict[str, str] = {"DA": "DEPOSIT A", "DB": "DEPOSIT B",
+                           "S": "THE SHAFT", "HOME": "THE SHAFT"}
 
 
 class View:
@@ -33,7 +40,9 @@ class View:
                                         size=size, bgcolor=palette.BACKGROUND,
                                         keys="interactive", show=show)
         self.view = self.canvas.central_widget.add_view()
-        camera = scene.TurntableCamera(elevation=90, azimuth=0, fov=0, up="z")
+        # Not straight down. A flat sheet of dots hides the fact that this is a volume,
+        # and the wall height only does something once the camera is off the vertical.
+        camera = scene.TurntableCamera(elevation=62, azimuth=0, fov=0, up="z")
         camera.center = (100, 60, 0)
         camera.scale_factor = 140
         self.view.camera = camera
@@ -50,8 +59,10 @@ class View:
         self.signature = visuals.Line(parent=s, connect="segments", width=2)
         self.fronts = visuals.Line(parent=s, connect="segments", width=1.2)
         self.fix_flash = visuals.Line(parent=s, connect="segments", width=2)
+        self.intent = visuals.Line(parent=s, color=(0.40, 0.95, 0.72, 0.45), width=1.5)
+        self.intent_marker = visuals.Markers(parent=s)
         for v in (self.trail, self.ellipse, self.heading, self.contacts,
-                  self.signature, self.fronts, self.fix_flash):
+                  self.signature, self.fronts, self.fix_flash, self.intent):
             v.set_gl_state("translucent", depth_test=False)
 
         self.reveal_visuals: list[object] = []
@@ -62,15 +73,32 @@ class View:
                                    anchor_x="center", anchor_y="center",
                                    color=palette.BANNER, font_size=16, bold=True)
         self.legend = visuals.Text(
-            "cloud: brighter = more confident    amber wedge: something moving    "
-            "white wedge: a ping heard    magenta: machinery signature    "
-            "red: something broke    green: you, and how sure you are",
+            "bright dots: pinged wall     dim dots: ground it only walked through     "
+            "wedges: a bearing, no range     green: where it thinks it is",
             parent=self.canvas.scene, pos=(18, size[1] - 20), anchor_x="left",
-            anchor_y="bottom", color=palette.LEGEND, font_size=7)
-
+            anchor_y="bottom", color=palette.LEGEND, font_size=8)
         self.canvas.events.key_press.connect(self.on_key)
         self.canvas.events.resize.connect(self.on_resize)
         self._hud_cache: list[str] = [""] * len(self.hud_lines)
+        self.feed: CaptionFeed = CaptionFeed(self.b)
+        self._caption_visuals: list[tuple[object, object]] = []
+        for i in range(3):
+            y = size[1] * 0.70 + i * 56
+            head = visuals.Text("", parent=self.canvas.scene, pos=(size[0] / 2, y),
+                                anchor_x="center", anchor_y="center",
+                                color=palette.BANNER, font_size=15, bold=True)
+            detail = visuals.Text("", parent=self.canvas.scene, pos=(size[0] / 2, y + 23),
+                                  anchor_x="center", anchor_y="center",
+                                  color=palette.HUD, font_size=9)
+            self._caption_visuals.append((head, detail))
+        self._caption_cache: list[tuple[str, str]] = [("", "")] * 3
+        # For animating a fix. The correction lands in a single sim tick, which at
+        # 20 fps is one frame -- the most important visual in the test was finishing
+        # before the eye could start. So the display eases the map across instead.
+        self._prev_xy: np.ndarray | None = None
+        self._anim_from: np.ndarray | None = None
+        self._anim_start: float = -1e9
+        self._n_fixes_seen: int = 0
         self.revealed: bool = False
         self._wall_clock_zero: float | None = None
         self.timer = app.Timer(interval=1 / 60, connect=self.on_tick, start=show)
@@ -104,12 +132,15 @@ class View:
 
     def draw(self) -> None:
         b, t = self.b, self.sim.t
-        self._draw_cloud(b)
+        self.feed.update(t)
+        self._draw_cloud(b, t)
         self._draw_agent(b)
+        self._draw_intent(b)
         self._draw_contacts(b, t)
         self._draw_fronts(b, t)
         self._draw_fix(b, t)
         self._draw_hud(b, t)
+        self._draw_captions(t)
         if self.audio is not None:
             self.audio.update(b, t, self.view.camera.azimuth)   # type: ignore[attr-defined]
         if self.sim.over and not self.revealed:
@@ -117,22 +148,52 @@ class View:
         self.canvas.update()
 
     # ---- the map ------------------------------------------------------------------------
-    def _draw_cloud(self, b: Belief) -> None:
+    def _draw_cloud(self, b: Belief, t: float) -> None:
         """The point cloud, in the agent's estimated frame.
 
-        Nothing here corrects for drift, because the smear IS the map: points were
-        placed with whatever pose the agent held at the time, and a fix drags the
-        recent ones back. That is the single most important thing on screen.
+        Nothing corrects for drift here, because the smear IS the map: points were
+        placed with whatever pose the agent held at the time. What this does add is
+        time -- a fix is eased across FIX_ANIM_SECONDS so the ghost corridor can be
+        seen sliding onto the original rather than teleporting between two frames.
         """
         n = b.cloud.n
         if n == 0:
             self.cloud.visible = False
             return
+
+        if len(b.fixes) > self._n_fixes_seen:
+            self._n_fixes_seen = len(b.fixes)
+            if self._prev_xy is not None and b.fixes[-1].jump > 1.0:
+                self._anim_from = self._prev_xy
+                self._anim_start = t
+
+        xs = b.cloud.x[:n].copy()
+        ys = b.cloud.y[:n].copy()
+        progress = (t - self._anim_start) / FIX_ANIM_SECONDS
+        if self._anim_from is not None and 0.0 <= progress < 1.0:
+            eased = 1.0 - (1.0 - progress) ** 3
+            m = min(len(self._anim_from[0]), n)
+            xs[:m] = self._anim_from[0][:m] + (xs[:m] - self._anim_from[0][:m]) * eased
+            ys[:m] = self._anim_from[1][:m] + (ys[:m] - self._anim_from[1][:m]) * eased
+        elif progress >= 1.0:
+            self._anim_from = None
+        self._prev_xy = (b.cloud.x[:n].copy(), b.cloud.y[:n].copy())
+
         q = b.cloud.confidence[:n]
+        source = b.cloud.source[:n]
+        walked = source == 1
         rgb = palette.POINT_LOW[None, :] + (palette.POINT_HIGH - palette.POINT_LOW)[None, :] * q[:, None]
-        rgba = np.column_stack([rgb, 0.25 + 0.75 * q])
-        pos = np.column_stack([b.cloud.x[:n], b.cloud.y[:n], b.cloud.z[:n]])
-        self.cloud.set_data(pos, face_color=rgba, edge_width=0, size=2.0 + 5.0 * q, symbol="disc")
+        alpha = 0.30 + 0.70 * q
+        size = 2.5 + 5.0 * q
+        # Ground the agent only walked through is dimmer and smaller than ground it
+        # actually pinged. There are four of these for every sonar return, so drawing
+        # them alike is most of why an accumulated map reads as undifferentiated noise.
+        rgb[walked] = palette.POINT_WALKED
+        alpha[walked] = 0.20
+        size[walked] = 1.6
+        self.cloud.set_data(np.column_stack([xs, ys, b.cloud.z[:n]]),
+                            face_color=np.column_stack([rgb, alpha]),
+                            edge_width=0, size=size, symbol="disc")
         self.cloud.visible = True
         if len(b.trail) > 1:
             self.trail.set_data(np.array([(x, y, 0.05) for x, y, _ in b.trail]))
@@ -156,6 +217,52 @@ class View:
             self.beacons.set_data(pts, face_color=palette.BEACON, size=7, symbol="diamond")
             self.beacons.visible = True
 
+    def _draw_intent(self, b: Belief) -> None:
+        """Where the agent is trying to get to, in its own believed coordinates.
+
+        Without this the viewer cannot tell purposeful movement from thrashing, which
+        is most of the difference between a machine working and a machine lost.
+        """
+        policy = self.sim.policies["player"]
+        if policy.done or not policy.route or policy.i >= len(policy.route):
+            self.intent.visible = False
+            self.intent_marker.visible = False
+            return
+        wp = policy.route[policy.i]
+        self.intent.set_data(np.array([[b.x, b.y, 0.18], [wp.x, wp.y, 0.18]]))
+        self.intent_marker.set_data(np.array([[wp.x, wp.y, 0.18]]),
+                                    face_color=(0.40, 0.95, 0.72, 0.55),
+                                    size=13, symbol="ring", edge_width=0)
+        self.intent.visible = True
+        self.intent_marker.visible = True
+
+    def _target_name(self) -> str:
+        policy = self.sim.policies["player"]
+        if policy.done or not policy.route or policy.i >= len(policy.route):
+            return "nothing"
+        label = policy.route[policy.i].label
+        if label in FRIENDLY:
+            return FRIENDLY[label]
+        if label.startswith("player_"):
+            return "one of its own beacons"
+        return f"survey point {label}"
+
+    def _draw_captions(self, t: float) -> None:
+        active = self.feed.active(t, CAPTION_HOLD, CAPTION_FADE, limit=3)
+        for i, (head, detail) in enumerate(self._caption_visuals):
+            if i < len(active):
+                caption, a = active[i]
+                text, sub_text = caption.text, caption.detail
+                head.color = (*palette.BANNER, a) if caption.weight >= 2.0 else (*palette.HUD, a * 0.8)
+                head.font_size = 16 if caption.weight >= 2.0 else 11
+                detail.color = (*palette.HUD, a * 0.75)
+            else:
+                text, sub_text = "", ""
+            if self._caption_cache[i] != (text, sub_text):
+                self._caption_cache[i] = (text, sub_text)
+                head.text = text
+                detail.text = sub_text
+
     def _wedge_at(self, b: Belief, bearing: float, half: float, length: float,
                   z: float = 0.15) -> list[np.ndarray]:
         from .shapes import wedge
@@ -170,10 +277,10 @@ class View:
                 continue
             half = math.radians(T.BEARING_NOISE_NEAR_DEG
                                 + (T.BEARING_NOISE_FAR_DEG - T.BEARING_NOISE_NEAR_DEG) * (1 - c.quality))
-            pts = self._wedge_at(b, c.bearing, half, 25 + 35 * c.quality)
+            pts = self._wedge_at(b, c.bearing, half, 11 + 17 * c.quality)
             segs += pts
             rgb = palette.CONTACT.get(c.character, (1.0, 1.0, 1.0))
-            cols += [(*rgb, alpha * (0.35 + 0.65 * c.quality))] * len(pts)
+            cols += [(*rgb, alpha * (0.25 + 0.5 * c.quality))] * len(pts)
         if segs:
             self.contacts.set_data(np.array(segs), color=np.array(cols))
             self.contacts.visible = True
@@ -264,17 +371,17 @@ class View:
         policy = sim.policies["player"]
         lines = [
             f"T-{int(left) // 60}:{int(left) % 60:02d}    {window_text}",
-            f"cargo {b.cargo}/{T.CARGO_CAPACITY}    "
-            f"position uncertainty +/-{b.sigma_pos():.1f} cells    last fix {since_fix:.0f}s ago",
-            (f"last fix: {fix.beacon_id}  moved estimate {fix.jump:.1f} cells "
-             f"({fix.surprise:.1f}x what the ellipse allowed), heading {math.degrees(fix.dtheta):+.1f} deg"
-             if fix is not None else "last fix: none"),
-            f"pings sent {len(b.own_pings)}    contacts held {len(b.contacts)}    map points {b.cloud.n}",
-            "recall: " + ("USED" if sim.recall_used else "available (press R) - single use"),
-            "agent: " + ("HOLDING (machinery signature)" if policy.hold else str(policy.mode)),
+            "",
+            f"IT IS DOING: {self._doing(policy)}",
+            f"IT BELIEVES: it is carrying {b.cargo} of {T.CARGO_CAPACITY}, "
+            f"and that it knows where it is to within {b.sigma_pos():.0f} cells",
+            f"LAST POSITION FIX: {self._fix_phrase(fix, since_fix)}",
+            f"MAP: {b.cloud.n} points, {len(b.own_pings)} pings sent, "
+            f"{len(b.contacts)} contact{'' if len(b.contacts) == 1 else 's'} being tracked",
+            "RECALL: " + ("spent" if sim.recall_used else "available - press R, once only"),
         ]
-        if b.log:
-            lines.append("log: " + " | ".join(text for _, text in b.log[-3:]))
+        if policy.hold:
+            lines.append("HOLDING STILL - it can hear machinery")
         # Only touch a Text visual when the string actually changed: assigning to
         # .text rebuilds the glyph atlas, and doing that for seven lines every frame
         # cost more than drawing the entire point cloud.
@@ -294,6 +401,30 @@ class View:
             self.banner.text = banner
 
     # ---- after the end -------------------------------------------------------------------
+    def _doing(self, policy: object) -> str:
+        mode = str(getattr(policy, "mode", ""))
+        target = self._target_name()
+        if getattr(policy, "done", False):
+            return "waiting - it thinks it is home"
+        if mode == "load":
+            return "loading cargo where it believes a deposit is"
+        if mode == "search":
+            return "searching for a shaft that is not where it expected"
+        if mode == "home":
+            return f"heading home, currently making for {target}"
+        return f"surveying, currently making for {target}"
+
+    @staticmethod
+    def _fix_phrase(fix: object, since: float) -> str:
+        if fix is None:
+            return "none yet"
+        jump = getattr(fix, "jump", 0.0)
+        surprise = getattr(fix, "surprise", 0.0)
+        ago = f"{int(since) // 60}:{int(since) % 60:02d} ago"
+        if surprise >= 2.5 and jump >= 8.0:
+            return f"{ago} - and it moved the estimate {jump:.0f} cells, far more than expected"
+        return f"{ago} - moved the estimate {jump:.1f} cells"
+
     def _reveal(self) -> None:
         self.revealed = True
         r = self.sim.reveal()

@@ -11,6 +11,13 @@ from ..point_source import PointSource
 from .pose_correction import PoseCorrection
 
 
+_SOURCE_CODE: dict[PointSource, int] = {
+    PointSource.SONAR: 0,
+    PointSource.NEAR: 1,
+    PointSource.FALSE: 2,
+}
+
+
 class PointCloud:
     """Flat preallocated arrays, because this is redrawn every frame."""
 
@@ -22,6 +29,10 @@ class PointCloud:
         self.z: np.ndarray = np.zeros(capacity)
         self.confidence: np.ndarray = np.zeros(capacity)
         self.t: np.ndarray = np.zeros(capacity)
+        # Which sense produced each point, so the display can tell a wall the agent
+        # pinged from ground it merely walked through. Drawing them identically is
+        # what makes an accumulated map read as noise.
+        self.source: np.ndarray = np.zeros(capacity, dtype=np.uint8)
         self.n: int = 0
 
     def add(self, x: float, y: float, confidence: float, t: float,
@@ -37,6 +48,7 @@ class PointCloud:
         self.z[i] = 0.0 if source is PointSource.NEAR else float(self.rng.uniform(0.0, wall_height))
         self.confidence[i] = confidence
         self.t[i] = t
+        self.source[i] = _SOURCE_CODE[source]
         self.n += 1
 
     def relax(self, correction: PoseCorrection) -> None:
