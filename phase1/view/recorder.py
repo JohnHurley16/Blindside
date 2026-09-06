@@ -78,10 +78,12 @@ class Recorder:
 
         total_frames = int((T.MATCH_SECONDS + self.reveal_seconds) * self.fps)
         video_path = self.out_path.with_suffix(".video.mp4")
-        # veryfast, because the frames arrive faster than the encoder's default
-        # preset can take them: at this size that is ~96 MB/s of raw video into
-        # libx264, the pipe backpressures, and the whole render stalls waiting on the
-        # encoder rather than on the drawing. It cost about four times the wall clock.
+        # Measured, per frame, at 1600x1000: readback 56 ms, draw 12, encode 12, sim 2.
+        # So the cost of recording is dominated by pulling the framebuffer back off
+        # the GPU, which is the one thing a live game never does -- it draws and
+        # presents. veryfast keeps the encoder well clear of being the constraint,
+        # but it was never the constraint; an earlier note here claiming the pipe
+        # backpressured was wrong.
         writer = imageio.get_writer(str(video_path), fps=self.fps, codec="libx264",
                                     quality=8, macro_block_size=1,
                                     ffmpeg_params=["-preset", "veryfast"])
