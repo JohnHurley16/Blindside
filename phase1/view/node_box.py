@@ -48,78 +48,96 @@ class NodeBox:
             self.bar_fill.visible = False
 
     def place(self, x: float, y: float, width: float, height: float) -> None:
+        if (x, y, width, height) != (getattr(self, "x", None), getattr(self, "y", None),
+                                     getattr(self, "width", None), getattr(self, "height", None)):
+            self._cache = ()      # moved: text positions must be laid out again
         self.x, self.y, self.width, self.height = x, y, width, height
         self.frame.center = (x + width / 2, y + height / 2)
         self.frame.width = width
         self.frame.height = height
 
     def show(self, node: DecisionNode) -> None:
-        key = (node.label, node.answer, node.detail, round(node.fill, 3),
-               node.active, node.fired, node.kind)
-        if key == self._cache:
-            return
-        self._cache = key
-        self.set_visible(True)
+        # Two separate concerns. Assigning to a vispy Text rebuilds its glyph atlas,
+        # so strings and styling are only touched when they actually change -- while
+        # the bar geometry, which is cheap, is updated every frame. Keying the whole
+        # method on the bar fill meant every label in the graph was rebuilt on every
+        # frame, and the recorder fell from 14 fps to 3.
+        style_key = (node.label, node.answer, node.detail, node.active,
+                     node.fired, node.kind)
+        restyle = style_key != self._cache
+        self._cache = style_key
+        if restyle:
+            self.set_visible(True)
+            x, y, w, h = self.x, self.y, self.width, self.height
+            pad = 10.0
+
+            if node.kind == "action":
+                self.frame.color = palette.NODE_ACTION_FILL if node.fired else palette.NODE_FILL
+                self.frame.border_color = palette.NODE_ACTION_EDGE
+                self.label.color = palette.TREE_LIVE
+                self.label.font_size = 9.5
+                self.label.bold = True
+            elif node.kind == "sub":
+                self.frame.color = palette.NODE_SUB_FILL
+                self.frame.border_color = palette.NODE_SUB_EDGE
+                self.label.color = palette.HUD if node.active else palette.DIM
+                self.label.font_size = 8
+                self.label.bold = False
+            else:
+                fired = node.fired
+                self.frame.color = palette.NODE_TEST_HOT if fired else palette.NODE_FILL
+                self.frame.border_color = palette.NODE_EDGE_HOT if fired else palette.NODE_EDGE
+                self.label.color = palette.TITLE if node.active else palette.DIM
+                self.label.font_size = 9
+                self.label.bold = False
+
+            has_bar = node.fill >= 0.0
+            # Explicit rows. Deriving these from the box height packed the detail line
+            # into the bar and, in the short sub boxes, on top of the label itself.
+            if node.kind == "sub":
+                label_y = y + 11.0
+                detail_text, detail_y = "", 0.0
+                right_text, right_y = node.detail, y + 11.0
+                bar_y = y + 24.0
+            elif node.kind == "action":
+                label_y = y + h / 2
+                detail_text, detail_y = "", 0.0
+                right_text, right_y = node.answer, y + h / 2
+                bar_y = y + h - 7.0
+            else:
+                label_y = y + 15.0
+                detail_text, detail_y = node.detail, y + 31.0
+                right_text, right_y = node.answer, y + 15.0
+                bar_y = y + 43.0
+
+            self.label.text = node.label
+            self.label.pos = (x + pad, label_y)
+
+            self.answer.text = right_text
+            self.answer.pos = (x + w - pad, right_y)
+            if node.answer == "yes":
+                self.answer.color = palette.BANNER
+            elif node.answer == "no":
+                self.answer.color = palette.DIM
+            else:
+                self.answer.color = palette.DIM
+
+            if detail_text:
+                self.detail.visible = True
+                self.detail.text = detail_text
+                self.detail.pos = (x + pad, detail_y)
+            else:
+                self.detail.visible = False
+
         x, y, w, h = self.x, self.y, self.width, self.height
         pad = 10.0
-
-        if node.kind == "action":
-            self.frame.color = palette.NODE_ACTION_FILL if node.fired else palette.NODE_FILL
-            self.frame.border_color = palette.NODE_ACTION_EDGE
-            self.label.color = palette.TREE_LIVE
-            self.label.font_size = 9.5
-            self.label.bold = True
-        elif node.kind == "sub":
-            self.frame.color = palette.NODE_SUB_FILL
-            self.frame.border_color = palette.NODE_SUB_EDGE
-            self.label.color = palette.HUD if node.active else palette.DIM
-            self.label.font_size = 8
-            self.label.bold = False
-        else:
-            fired = node.fired
-            self.frame.color = palette.NODE_TEST_HOT if fired else palette.NODE_FILL
-            self.frame.border_color = palette.NODE_EDGE_HOT if fired else palette.NODE_EDGE
-            self.label.color = palette.TITLE if node.active else palette.DIM
-            self.label.font_size = 9
-            self.label.bold = False
-
         has_bar = node.fill >= 0.0
-        # Explicit rows. Deriving these from the box height packed the detail line
-        # into the bar and, in the short sub boxes, on top of the label itself.
         if node.kind == "sub":
-            label_y = y + 11.0
-            detail_text, detail_y = "", 0.0
-            right_text, right_y = node.detail, y + 11.0
             bar_y = y + 24.0
         elif node.kind == "action":
-            label_y = y + h / 2
-            detail_text, detail_y = "", 0.0
-            right_text, right_y = node.answer, y + h / 2
             bar_y = y + h - 7.0
         else:
-            label_y = y + 15.0
-            detail_text, detail_y = node.detail, y + 31.0
-            right_text, right_y = node.answer, y + 15.0
             bar_y = y + 43.0
-
-        self.label.text = node.label
-        self.label.pos = (x + pad, label_y)
-
-        self.answer.text = right_text
-        self.answer.pos = (x + w - pad, right_y)
-        if node.answer == "yes":
-            self.answer.color = palette.BANNER
-        elif node.answer == "no":
-            self.answer.color = palette.DIM
-        else:
-            self.answer.color = palette.DIM
-
-        if detail_text:
-            self.detail.visible = True
-            self.detail.text = detail_text
-            self.detail.pos = (x + pad, detail_y)
-        else:
-            self.detail.visible = False
 
         if has_bar:
             bar_w = w - pad * 2

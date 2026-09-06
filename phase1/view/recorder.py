@@ -78,9 +78,13 @@ class Recorder:
 
         total_frames = int((T.MATCH_SECONDS + self.reveal_seconds) * self.fps)
         video_path = self.out_path.with_suffix(".video.mp4")
+        # veryfast, because the frames arrive faster than the encoder's default
+        # preset can take them: at this size that is ~96 MB/s of raw video into
+        # libx264, the pipe backpressures, and the whole render stalls waiting on the
+        # encoder rather than on the drawing. It cost about four times the wall clock.
         writer = imageio.get_writer(str(video_path), fps=self.fps, codec="libx264",
                                     quality=8, macro_block_size=1,
-                                    ffmpeg_params=["-pix_fmt", "yuv420p"])
+                                    ffmpeg_params=["-preset", "veryfast"])
         started = time.perf_counter()
         try:
             for frame_index in range(total_frames):
