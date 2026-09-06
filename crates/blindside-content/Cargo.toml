@@ -1,0 +1,9 @@
+[package]
+name = "blindside-content"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Data-driven definitions: sensors, modules, chassis, ancients. Stub in Phase 0."
+
+[dependencies]

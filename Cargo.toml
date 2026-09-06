@@ -1,0 +1,25 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/blindside-sim",
+    "crates/blindside-vm",
+    "crates/blindside-content",
+    "crates/blindside-gen",
+    "crates/blindside-harness",
+    "tools/determinism-lint",
+]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2021"
+license = "UNLICENSED"
+publish = false
+
+[workspace.dependencies]
+# Fixed-point numerics for the sim. Fx = fixed::types::I32F32 (see DETERMINISM.md).
+fixed = "1"
+# Platform-independent state hash. Never std's DefaultHasher.
+blake3 = "1"
+
+[profile.release]
+debug = 1

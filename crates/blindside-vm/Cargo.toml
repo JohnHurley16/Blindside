@@ -1,0 +1,9 @@
+[package]
+name = "blindside-vm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Bytecode interpreter with an instruction budget. Stub in Phase 0."
+
+[dependencies]

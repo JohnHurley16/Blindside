@@ -9,3 +9,5 @@ renders/*_frames/
 *.mp4
 *.wav
 snap_*.png
+# Rust build output (Phase 0+)
+target/
