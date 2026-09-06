@@ -1,0 +1,21 @@
+[package]
+name = "blindside-sim"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Deterministic core. No I/O, no wall clock, fixed-point only, stateless RNG."
+
+# ARCHITECTURE.md: blindside-sim depends only on blindside-vm and blindside-content
+# (plus the numeric and hashing primitives named in DETERMINISM.md / PHASE-0-HARNESS.md).
+[dependencies]
+blindside-vm = { path = "../blindside-vm" }
+blindside-content = { path = "../blindside-content" }
+fixed = { workspace = true }
+blake3 = { workspace = true }
+
+[features]
+# Harness-only hooks: `Sim::state_debug` (ground-truth dump the canary diffs) and
+# `Sim::perturb_for_test` (the injected divergence). Off by default and never a default
+# feature; only blindside-harness enables it. The determinism lint checks this stays so.
+test-hooks = []
