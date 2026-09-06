@@ -1,43 +1,83 @@
-"""Colours. Grey-box on purpose -- ugly is fine, illegible is not."""
+"""Colour and type. Restrained on purpose: one accent per meaning, nothing decorative.
+
+The rule that keeps this readable is that a colour means one thing each. Green is
+always the agent and its own certainty. Cyan is ground it has actually sensed. Amber
+is something heard. Magenta is machinery. Yellow appears only when a fix moves the
+world under it, so yellow always means "what you were looking at just changed".
+"""
 from __future__ import annotations
 
 import numpy as np
 
 from ..sound_character import SoundCharacter
+from .event_kind import EventKind
 
 Rgb = tuple[float, float, float]
+Rgba = tuple[float, float, float, float]
 
-BACKGROUND: tuple[float, float, float] = (0.015, 0.015, 0.025)
+# ---- surfaces -----------------------------------------------------------------------
+BACKGROUND: Rgb = (0.035, 0.042, 0.055)
+PANEL: Rgba = (0.075, 0.089, 0.110, 0.94)
+PANEL_EDGE: Rgba = (0.20, 0.24, 0.30, 0.85)
 
-# Point confidence runs from dim slate to near white. A marginal return must not look
-# identical to a confident one, so confidence drives colour, size and alpha together.
-POINT_LOW: np.ndarray = np.array([0.22, 0.32, 0.45])
-POINT_HIGH: np.ndarray = np.array([0.80, 0.97, 1.00])
-# Ground merely walked through, not pinged. Dim and small so mapped structure reads
-# as structure; there are roughly four of these for every sonar return.
-POINT_WALKED: np.ndarray = np.array([0.30, 0.34, 0.42])
+# ---- the map ------------------------------------------------------------------------
+# Confidence drives colour, size and alpha together: a marginal return must not look
+# identical to a confident one.
+POINT_LOW: np.ndarray = np.array([0.20, 0.34, 0.46])
+POINT_HIGH: np.ndarray = np.array([0.62, 0.93, 1.00])
+# Ground merely walked through, not pinged. There are roughly four of these for every
+# sonar return, so drawing them alike is most of why a map reads as noise.
+POINT_WALKED: np.ndarray = np.array([0.26, 0.30, 0.38])
+
+AGENT: Rgba = (0.35, 1.00, 0.62, 1.00)
+ELLIPSE: Rgba = (0.35, 1.00, 0.62, 0.55)
+TRAIL: Rgba = (0.42, 0.52, 0.62, 0.30)
+BEACON: Rgba = (0.45, 0.72, 1.00, 0.95)
+BEACON_CHAIN: Rgba = (0.35, 0.55, 0.85, 0.30)
+SHAFT: Rgba = (0.40, 1.00, 0.85, 0.95)
+DEPOSIT: Rgba = (1.00, 0.86, 0.35, 0.85)
+INTENT: Rgba = (0.35, 1.00, 0.62, 0.40)
+FIX_FLASH: Rgb = (1.00, 0.92, 0.32)
+
+# Where the agent *believes* something is, worked out by crossing bearings over time.
+# Frequently wrong, and wrong in a way the reveal makes obvious.
+BELIEVED_HAZARD: Rgba = (0.95, 0.32, 0.85, 0.34)
+BELIEVED_RIVAL: Rgba = (1.00, 0.72, 0.28, 0.34)
 
 CONTACT: dict[SoundCharacter, Rgb] = {
-    SoundCharacter.TONE: (1.00, 0.72, 0.25),      # something moving
-    SoundCharacter.PING: (0.85, 0.95, 1.00),      # a ping heard, or its echo
-    SoundCharacter.CRASH: (1.00, 0.30, 0.25),     # something broke
+    SoundCharacter.TONE: (1.00, 0.72, 0.28),
+    SoundCharacter.PING: (0.80, 0.92, 1.00),
+    SoundCharacter.CRASH: (1.00, 0.34, 0.30),
 }
-SIGNATURE: Rgb = (0.95, 0.30, 0.95)               # machinery winding up
+SIGNATURE: Rgb = (0.95, 0.32, 0.85)
 
-AGENT: tuple[float, float, float, float] = (0.40, 1.00, 0.60, 1.00)
-ELLIPSE: tuple[float, float, float, float] = (0.30, 1.00, 0.50, 0.90)
-TRAIL: tuple[float, float, float, float] = (0.50, 0.60, 0.70, 0.35)
-BEACON: tuple[float, float, float, float] = (0.60, 0.80, 1.00, 0.90)
-FIX_FLASH: Rgb = (1.00, 0.95, 0.30)
+# ---- truth, only after the end ---------------------------------------------------------
+TRUTH_WALL: Rgba = (0.92, 0.28, 0.24, 0.30)
+TRUTH_FLOOD: Rgba = (0.22, 0.42, 0.92, 0.22)
+TRUTH_TRAIL_PLAYER: Rgba = (1.00, 0.32, 0.24, 0.90)
+TRUTH_TRAIL_RIVAL: Rgba = (1.00, 0.62, 0.22, 0.55)
+TRUTH_BEACON: Rgba = (1.00, 0.52, 0.32, 0.90)
+TRUTH_DEPOSIT: Rgba = (1.00, 0.90, 0.32, 0.90)
 
-# Truth, drawn only after the match is over.
-TRUTH_WALL: tuple[float, float, float, float] = (0.90, 0.25, 0.20, 0.35)
-TRUTH_FLOOD: tuple[float, float, float, float] = (0.20, 0.40, 0.90, 0.25)
-TRUTH_TRAIL_PLAYER: tuple[float, float, float, float] = (1.00, 0.30, 0.20, 0.90)
-TRUTH_TRAIL_RIVAL: tuple[float, float, float, float] = (1.00, 0.60, 0.20, 0.60)
-TRUTH_BEACON: tuple[float, float, float, float] = (1.00, 0.50, 0.30, 0.90)
-TRUTH_DEPOSIT: tuple[float, float, float, float] = (1.00, 0.90, 0.30, 0.90)
+# ---- type --------------------------------------------------------------------------------
+TITLE: Rgb = (0.88, 0.93, 0.98)
+HUD: Rgb = (0.72, 0.79, 0.87)
+DIM: Rgb = (0.46, 0.53, 0.62)
+BANNER: Rgb = (1.00, 0.86, 0.42)
+LEGEND: Rgb = (0.44, 0.50, 0.58)
 
-HUD: Rgb = (0.85, 0.90, 0.95)
-BANNER: Rgb = (1.00, 0.85, 0.40)
-LEGEND: Rgb = (0.50, 0.55, 0.60)
+TREE_ROOT: Rgb = (0.88, 0.93, 0.98)
+TREE_LIVE: Rgb = (0.42, 1.00, 0.68)
+TREE_IDLE: Rgba = (0.40, 0.46, 0.55, 0.85)
+TREE_DOT: Rgba = (0.42, 1.00, 0.68, 0.95)
+
+EVENT: dict[EventKind, Rgb] = {
+    EventKind.FIX: (0.55, 0.72, 0.90),
+    EventKind.DISAGREE: (1.00, 0.92, 0.32),
+    EventKind.CONTACT: (0.80, 0.92, 1.00),
+    EventKind.HAZARD: (0.95, 0.32, 0.85),
+    EventKind.CARGO: (0.45, 1.00, 0.70),
+    EventKind.COMMAND: (0.40, 1.00, 0.85),
+    EventKind.PHASE: (0.95, 0.62, 0.25),
+    EventKind.TROUBLE: (1.00, 0.42, 0.32),
+}

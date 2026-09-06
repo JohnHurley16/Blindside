@@ -86,6 +86,47 @@ class Policy:
         self.escapes = 0
         self.mode = PolicyMode.HOME
 
+    def active_nodes(self) -> set[str]:
+        """Which branches of the policy are firing right now, by id.
+
+        This is the Phase 1 stand-in for the execution trace Phase 4 will capture from
+        the behaviour-tree VM: which nodes fired, in what order. Exposing it lets the
+        display show the machine thinking rather than only the result of it thinking.
+        """
+        live: set[str] = {"root"}
+        if self.done:
+            live.add("done")
+            return live
+        if self.mode is PolicyMode.LOAD:
+            live |= {"load", "load.wait"}
+            return live
+        if self.mode is PolicyMode.SEARCH:
+            live |= {"search", "search.spiral"}
+            return live
+        if self.recalled:
+            live.add("recalled")
+        if self.hold:
+            live |= {"hold"}
+            return live
+        if self.mode is PolicyMode.HOME:
+            live.add("home")
+        else:
+            live.add("survey")
+        live.add("drive")
+        if self.escape_heading is not None and self.escapes > 0:
+            live.add("drive.escape")
+        else:
+            live.add("drive.steer")
+        b = self.b
+        if self.cautious and b.sigma_pos() > T.CAUTIOUS_RETURN_SIGMA * 0.75:
+            live.add("guard.uncertain")
+        if b.dist_since_drop >= T.BEACON_DROP_EVERY_CELLS * 0.8:
+            live.add("drive.beacon")
+        cooldown = T.CAUTIOUS_PING_COOLDOWN_S if self.cautious else T.AGGRESSIVE_PING_COOLDOWN_S
+        if b.ticks_since_ping * T.DT >= cooldown * 0.8:
+            live.add("drive.ping")
+        return live
+
     def heard_shaft(self) -> bool:
         """Has the survey-placed transponder actually answered? Belief knows this."""
         return any(f.beacon_id == self.shaft_beacon_id for f in self.b.fixes[-4:])

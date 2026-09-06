@@ -21,6 +21,7 @@ from ..sensing.returns import (
     Return,
 )
 from ..sound_character import SoundCharacter
+from .bearing_tracker import BearingTracker
 from .contact import Contact
 from .fix_record import FixRecord
 from .heard_sound import HeardSound
@@ -69,6 +70,10 @@ class Belief:
         self.own_pings: list[OwnPing] = []
         self.heard: list[HeardSound] = []
         self.signature: HeardSound | None = None
+        # What it has worked out about things it can only hear. Bearings crossed over
+        # time give a position; until it has moved enough, these stay empty.
+        self.hazard_track: BearingTracker = BearingTracker(memory_seconds=240.0)
+        self.rival_track: BearingTracker = BearingTracker(memory_seconds=70.0)
         self.last_fix: FixRecord | None = None
         self.fixes: list[FixRecord] = []
         self.log: list[tuple[float, str]] = []
@@ -108,6 +113,8 @@ class Belief:
                         self.cargo = r.count
                         self.log.append((t, f"cargo now {self.cargo}"))
         self.recent_near = [h for h in self.recent_near if t - h[0] < 1.5]
+        self.hazard_track.forget_before(t)
+        self.rival_track.forget_before(t)
         cutoff = t - T.CONTACT_FADE_S
         self.contacts = [c for c in self.contacts if c.t_last > cutoff]
 
@@ -137,7 +144,12 @@ class Belief:
         heard = HeardSound(t, bw, r.quality, r.character)
         if r.character is SoundCharacter.SIGNATURE:
             self.signature = heard
+            self.hazard_track.add(self.x, self.y, bw, r.quality, t)
+            self.hazard_track.invalidate()
             return
+        if r.character is SoundCharacter.PING and r.quality > 0.25:
+            self.rival_track.add(self.x, self.y, bw, r.quality, t)
+            self.rival_track.invalidate()
         self.heard.append(heard)
         for c in self.contacts:
             if c.matches(bw, t, T.CONTACT_MERGE_DEG, T.CONTACT_MERGE_S):
@@ -205,6 +217,8 @@ class Belief:
                 known.x, known.y = correction.apply_one(known.x, known.y, known.t_placed)
         for c in self.contacts:
             c.rotate(correction.dtheta, correction.weight_at(c.t_last))
+        self.hazard_track.relax(correction)
+        self.rival_track.relax(correction)
 
     # ---- actions the policy tells us about -------------------------------------------------
     def note_beacon_drop(self, beacon_id: str, t: float) -> None:
