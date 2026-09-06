@@ -5,3 +5,4 @@ renders/*.blend
 renders/test_*
 renders/frames/
 *.blend1
+renders/*.log
