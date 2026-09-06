@@ -71,22 +71,31 @@ Open the `.blend`, grab a `FOOT.*` empty, and drag: that is the whole rig.
 
 ## Anatomy: every part has a job
 
+Modelled on real quadruped robots (legs dominate, actuators visible at the hips, a broad
+upper leg housing the knee drive, thin lower leg, rubber ball feet, knees back) and on
+what makes film droids read: one silhouette, one dominant eye, two-tone panels with a
+single accent, lived-in wear, every detail a mechanism, and a head on a real joint.
+
 | part | job | where |
 |---|---|---|
-| hull | sealed pressure body; the deck rail is the module mount | lofted, tapered |
-| sensor head | turns to attend to things; carries the face slots | on the neck, damped-tracks `LOOK` |
-| active sonar | forward-looking transducer strip | `face` slot, across the head |
-| optical | lamp reflector + lens, small camera beside it; the only light the agent emits forward | `eye` slot, under the sonar strip |
-| passive acoustic | hydrophone line array; a line of elements is how you get a bearing | `side_l` / `side_r`, along each flank |
-| beacon rack | dispenser magazine with a chute; beacons drop behind you | rear deck |
-| magnetometer | sensor pod on a boom, away from the leg actuators' magnetic noise | rear deck, boom aft and up |
-| structural monitor | contact geophone pucks at the ankles (the feet already touch rock) plus a conditioner box | ankles + a deck slot |
-| cargo bay | belly bay with a hatch | `belly` slot |
-| comms mast | acoustic modem to the surface | tail |
-| conduits | power to the hip actuators | hull to each hip |
-| running lights | readable in the dark from its own light; part of the honest silhouette | low on each flank |
-| legs | hex-section struts, linear actuators on femur and tibia, ankle joint, rubber pad | IK-driven |
+| lower chassis | sealed body: batteries, computer, IMU (dead reckoning lives here) | graphite, faceted |
+| top shell | removable cover with battery and compute hatches and latches | pale, so it reads in the dark |
+| deck rail, handle | hardpoints; the handle is the recovery hook (wrecks get salvaged) | top |
+| hip stacks | abduction motor drum on the chassis corner; flexion + knee motors at the femur top | four corners |
+| femur blade | broad upper leg housing the knee belt drive under a cover | pale |
+| tibia | thin tapered strut, ankle, rubber ball foot | dark |
+| pan-tilt head | pan drum on a chassis prow bracket, yoke, tilt motor one side, bearing the other; payload centred on the tilt axis | front |
+| active sonar | forward-looking transducer strip | `face` slot on the head |
+| optical | lamp reflector + lens and a camera; the only forward emission | `eye` slot on the head |
+| passive acoustic | hydrophone line array along each flank; a line of elements gives a bearing | `side_l` / `side_r` at the seam |
+| beacon rack | dispenser magazine with a chute at the tail edge | rear deck |
+| magnetometer | pod on a hinged boom, away from the actuators' magnetic noise | rear deck |
+| structural monitor | geophone collars at the ankles plus a conditioner box | ankles + deck |
+| cargo bay | belly pannier with a hatch | `belly` slot |
+| comms mast | acoustic modem to the surface | tail corner |
+| cooling grilles, E-stop, charge port, cables | what a real machine has | flanks, rear |
+| running lights | readable in the dark from its own light; part of the honest silhouette | flanks |
 
-Leg configuration is a few numbers per class: `knee_rise` below the hip reads as a dog,
-above reads as a spider. Quadrupeds are dog-like; the Hauler is a six-legged insect.
-A Scout with no optical module has no lamp: a quiet loadout looks quiet.
+A Scout with no optical module has no lamp: a quiet loadout looks quiet. The Hauler is
+the same anatomy with six legs.
+
