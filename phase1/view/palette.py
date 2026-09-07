@@ -95,3 +95,28 @@ EVENT: dict[EventKind, Rgb] = {
     EventKind.PHASE: (0.95, 0.62, 0.25),
     EventKind.TROUBLE: (1.00, 0.42, 0.32),
 }
+
+# ---- the truth scene ----------------------------------------------------------------------
+# SPECTATOR-DISPLAY.md section 6.1, added rather than substituted: the palette pass that
+# collapses the fifty values above into twenty is slice 6, and doing it in the same commit
+# as the truth scene would make a re-run unattributable.
+#
+# Two orthogonal channels do the heavy lifting, both learned in one beat and never
+# explained: warm and filled is real, cool and sparse is believed; solid fill is the
+# thing, hollow outline is a belief about the thing.
+ROCK: Rgb = (0.082, 0.067, 0.051)          # #15110D  solid rock at the base of a wall
+ROCK_LIT: Rgb = (0.227, 0.180, 0.133)      # #3A2E22  the top of a wall and its lit faces
+FLOOR: Rgb = (0.165, 0.133, 0.098)         # #2A2219  dry passage, tinted darker with depth
+WATER: Rgb = (0.086, 0.125, 0.180)         # #16202E  flooded -- cool on purpose
+BONE: Rgb = (0.949, 0.902, 0.824)          # #F2E6D2  the player's machine, true
+EMBER: Rgb = (1.000, 0.478, 0.184)         # #FF7A2F  the rival, true
+WARM_DIM: Rgb = (0.478, 0.400, 0.314)      # #7A6650  true comets, chamber labels
+GHOST: Rgb = (0.624, 0.910, 1.000)         # #9FE8FF  believed pose, all hollow marks
+COOL_DIM: Rgb = (0.227, 0.322, 0.376)      # #3A5260  believed trail, residue spokes
+
+# one meaning each, used nowhere else, ever
+HAZARD: Rgb = (1.000, 0.310, 0.847)        # #FF4FD8  the machinery
+LIE: Rgb = (1.000, 0.824, 0.247)           # #FFD23F  a fix that moved the world; a hot tether
+CARGO: Rgb = (0.310, 0.878, 0.541)         # #4FE08A  the objective: deposits, hold, shaft
+KILL: Rgb = (1.000, 0.231, 0.188)          # #FF3B30  a machine dying; error past the alarm
+VOID: Rgb = (0.024, 0.031, 0.043)          # #06080B  outside everything

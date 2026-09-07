@@ -20,33 +20,30 @@ import numpy as np
 from .. import tuning as T
 from ..audio.mixer import Mixer
 from ..audio.voice import SAMPLE_RATE
-from ..match.sim import Sim
+from ..match.match_view import MatchView
 from .view import View
 
 
 class Recorder:
-    def __init__(self, sim: Sim, out_path: str, fps: int = 20,
-                 size: tuple[int, int] = (1400, 900), with_audio: bool = True,
+    def __init__(self, match: MatchView, out_path: str, fps: int = 20,
+                 size: tuple[int, int] = (T.CANVAS_W, T.CANVAS_H), with_audio: bool = True,
                  reveal_seconds: float = 12.0, recall_at: float | None = None) -> None:
-        self.sim: Sim = sim
+        self.match: MatchView = match
         self.out_path: Path = Path(out_path)
         self.fps: int = fps
         self.size: tuple[int, int] = size
         self.reveal_seconds: float = reveal_seconds
         self.recall_at: float | None = recall_at
         self.mixer: Mixer | None = Mixer(offline=True) if with_audio else None
-        self.view: View = View(sim, audio=self.mixer, show=False, size=size)
+        self.view: View = View(match, audio=self.mixer, show=False, size=size)
         self.audio_chunks: list[np.ndarray] = []
 
     # ---- one frame ---------------------------------------------------------------------
     def _advance_to(self, target_t: float) -> None:
-        while self.sim.t < target_t and not self.sim.over:
-            if (self.recall_at is not None and self.sim.t >= self.recall_at
-                    and not self.sim.recall_used):
-                self.sim.recall()
-            self.sim.step()
-            if self.sim.tick % 10 == 0:
-                self.sim.record_truth_trail()
+        if (self.recall_at is not None and self.match.t >= self.recall_at
+                and not self.match.recall_used):
+            self.match.recall()
+        self.match.advance_to(target_t)
 
     def _frame(self) -> np.ndarray:
         """RGB with even dimensions.
@@ -79,11 +76,10 @@ class Recorder:
         total_frames = int((T.MATCH_SECONDS + self.reveal_seconds) * self.fps)
         video_path = self.out_path.with_suffix(".video.mp4")
         # Measured, per frame, at 1600x1000: readback 56 ms, draw 12, encode 12, sim 2.
-        # So the cost of recording is dominated by pulling the framebuffer back off
-        # the GPU, which is the one thing a live game never does -- it draws and
-        # presents. veryfast keeps the encoder well clear of being the constraint,
-        # but it was never the constraint; an earlier note here claiming the pipe
-        # backpressured was wrong.
+        # The feasibility spike re-measured that and the attribution was wrong: readback
+        # at 2000x1125 is 13.4 ms and the rest of render() is the draw. veryfast keeps
+        # the encoder well clear of being the constraint, but it was never the
+        # constraint; an earlier note here claiming the pipe backpressured was wrong.
         writer = imageio.get_writer(str(video_path), fps=self.fps, codec="libx264",
                                     quality=8, macro_block_size=1,
                                     ffmpeg_params=["-preset", "veryfast"])
@@ -113,7 +109,7 @@ class Recorder:
                     last_report = now
                     elapsed = now - started
                     print(f"  {t_target:6.1f}s / {T.MATCH_SECONDS + self.reveal_seconds:.0f}s "
-                          f"({done * 100:4.1f}%)  points {self.sim.beliefs['player'].cloud.n:6d}"
+                          f"({done * 100:4.1f}%)  points {self.match.beliefs['player'].cloud.n:6d}"
                           f"  eta {eta / 60:.1f} min", flush=True)
         finally:
             writer.close()

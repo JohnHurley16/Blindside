@@ -296,3 +296,66 @@ ECHO_TIMES: Final[tuple[float, ...]] = (155.0, 156.5)
 MAX_POINTS: Final[int] = 250_000
 ELLIPSE_SIGMAS: Final[float] = 2.0
 WALL_POINT_HEIGHT: Final[float] = 2.2
+
+# ---- display: the spectator screen ---------------------------------------------------------------
+# SPECTATOR-DISPLAY.md section 8. Only the constants slice 1 consumes are here; the rest
+# of that block arrives with the slice that first reads it.
+GLYPH_LENGTH_CELLS: Final[float] = 2.4      # 2x the true 0.6-cell footprint; at CLOSE that is 75 px
+COMET_SECONDS: Final[float] = 20.0          # a moving gradient reads as motion at 6 px/s; a dot does not
+TETHER_MIN_CELLS: Final[float] = 3.0        # below this the tether is noise, so it is thin and unlabelled
+TETHER_HOT_CELLS: Final[float] = 12.0       # past this the gap is the story, and turns lie-yellow
+TETHER_ALARM_CELLS: Final[float] = 30.0     # past this it is kill-red with a pip at each end
+HAZARD_COUNTDOWN_FROM_S: Final[float] = 15.0  # the clock appears this long before lethal, so it is a wait
+DEPTH_TINT_FLOOR: Final[float] = 0.45       # how dark the far end of the cave gets, by graph distance
+STALL_SECONDS: Final[float] = 4.0           # a pause longer than this is a jam, not a manoeuvre
+STALL_MOVE_CELLS: Final[float] = 0.3        # under a third of what a 0.5 s trail sample travels at speed
+ERROR_SAMPLE_HZ: Final[float] = 2.0         # the rate the truth channel records error, for the traces
+
+# ---- display: the third dimension ------------------------------------------------------------------
+CAVE_WALL_HEIGHT_CELLS: Final[float] = 8.0  # tall enough to read as rock; measured: 3 reads as a kerb
+CAVE_FACE_SHADES: Final[tuple[float, float, float, float]] = (0.84, 0.46, 0.62, 1.00)
+# +x/+y/-x/-y: a fixed world light, so orbiting moves the shadows rather than carrying
+# them. The spike's four values, rotated: it lit +x, and at the default azimuth of 0 the
+# camera is south of the cave, so every face a viewer ever saw was the 0.46 one and the
+# rock read as a flat brown field. The light is now south-east, which puts the brightest
+# face on the rim the default camera is looking at.
+CAVE_BASE_SHADE: Final[float] = 0.42        # the wall foot, so a wall has a visible vertical
+CAVE_CAP_SHADE: Final[float] = 0.30         # the top of a rock cell, which at a 60-90 degree
+                                            # elevation is most of what is on screen. At 0.90 the
+                                            # cave read as a brown desert with dark cracks in it.
+                                            # 0.30 puts the cap under even the darkest floor -- the
+                                            # far end of the cave is DEPTH_TINT_FLOOR of the near
+                                            # end -- so every room is lighter than the rock around
+                                            # it at every depth, and the lit faces are the only
+                                            # bright part of the stone. Dark tops, lit rims.
+TETHER_Z_CELLS: Final[float] = 9.0          # one cell above the rock: a rope over the cave, not a floor line
+ELEVATION_MIN_DEG: Final[float] = 60.0      # measured: below this an 8-cell wall hides over 23% of the floor
+ELEVATION_MAX_DEG: Final[float] = 90.0
+ELEVATION_DEFAULT_DEG: Final[float] = 72.0  # 92% of the floor visible, walls still showing their faces
+CAMERA_WIDE_CELLS: Final[float] = 225.0     # the whole 200x120 cave across the main view, with a margin
+CAMERA_CLOSE_CELLS: Final[float] = 40.0     # holds the 18-cell lethal disc and both machines; 31.3 px/cell
+CAMERA_EASE_S: Final[float] = 1.2           # an ease, never a cut
+CAMERA_MIN_DWELL_S: Final[float] = 6.0      # a camera that is always drifting is not trusted
+CAMERA_MAX_HOLD_S: Final[float] = 45.0      # after this, cut to whatever is actually moving
+CAMERA_NEAR_CELLS: Final[float] = 20.0      # two machines this close are one shot
+CAMERA_HAZARD_WATCH_CELLS: Final[float] = 15.0
+# Measured over seed 7: the nearest machine during windows 1-4 is 44.4 cells, and during
+# window 5 the player is at 11.5 when the warning arms. Anything in 12..44 gives the beat
+# sheet exactly, so this sits in the middle of that gap.
+
+# ---- display: the spoof's held breath -----------------------------------------------------------------
+SPOOF_ARM_CELLS: Final[float] = 5.5         # 5 s of arming at 1.1 cells/s, so the ring closes before the lie
+SPOOF_ARM_LEAD_S: Final[float] = 8.0        # arming may not show earlier than this before SPOOF_AFTER_S,
+                                            # or a beacon reddens in minute two for a lie that cannot fire
+
+# ---- display: the screen ------------------------------------------------------------------------------
+CANVAS_W: Final[int] = 1600                 # smallest width holding a 1252 main view, a 300 rail and 9 pt type
+CANVAS_H: Final[int] = 900
+HEADER_H: Final[float] = 52.0
+TITLE_H: Final[float] = 26.0                # the main slot's title; the inset carries its own
+TIMELINE_H: Final[float] = 150.0
+MARGIN: Final[float] = 16.0
+RAIL_W: Final[float] = 300.0                # words, never pictures
+PIP_INSET_FRACTION: Final[float] = 0.24     # of the main view in each axis, so the two rectangles are
+                                            # similar and a swap would rescale rather than reframe
+MINIMAP_PX_PER_CELL: Final[float] = 1.0     # 200x120 into a 200x120 viewport: the image is never resampled

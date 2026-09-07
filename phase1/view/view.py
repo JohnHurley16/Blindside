@@ -1,13 +1,21 @@
-"""Belief-only display.
+"""The spectator display: one cave you can look into, with the machine's own map over it.
 
-Laid out as three regions rather than telemetry floating over a picture: the policy
-deciding on the left, the map it has built in the middle, and the shape of the match
-along the bottom. Words live in fixed places, so position carries meaning and only
-the one event happening now has to be read.
+SPECTATOR-DISPLAY.md, slice 1. The main region holds the cave as it really is, in three
+dimensions, with a director camera that holds the whole place when nothing is happening
+and moves in on the beat when something is. The map the machine has built is the small
+picture in the corner -- unchanged from the display the gate failed on, on its old
+camera, given the inset's rectangle and otherwise untouched. The minimap in the opposite
+corner is the one thing on screen that never changes meaning.
 
-Truth appears exactly once, after the match is over, via `Sim.reveal()`.
+Truth is big by default because the gate failed on legibility and everything legible is
+on the truth side: the filled cave, the eleven named rooms, the drawn rival, the
+countdown clock, the tether with a number on it. The belief scene has no names in it by
+construction -- the machine does not know what room it is in.
 
-Camera: left drag orbits, wheel zooms. R sends Recall.
+What this class may see: `MatchView`, which yields Beliefs, Policies and a frozen
+`StageFrame`. There is no `Sim` here and no `World` reachable from anything it holds.
+
+Camera: the director drives it. Slice 1 binds no mouse. R sends Recall.
 """
 from __future__ import annotations
 
@@ -20,19 +28,18 @@ from vispy.scene import visuals
 
 from .. import tuning as T
 from ..belief.belief import Belief
-from ..match.sim import Sim
+from ..match.match_view import MatchView
+from ..match.stage_frame import StageFrame
 from ..sound_character import SoundCharacter
 from . import palette
-from .decision_graph import DecisionGraphView
+from .director import Director
 from .event_feed import EventFeed
-from .map_key import MapKey
+from .minimap import Minimap
 from .shapes import ring, to_segments, wedge
 from .status_panel import StatusPanel
 from .timeline import TimelineView
+from .truth_panel import TruthPanel
 
-HEADER_H: float = 44.0
-PANEL_W: float = 292.0
-TIMELINE_H: float = 62.0
 FIX_ANIM_SECONDS: float = 0.7
 
 FRIENDLY: dict[str, str] = {"DA": "deposit A", "DB": "deposit B",
@@ -40,32 +47,85 @@ FRIENDLY: dict[str, str] = {"DA": "deposit A", "DB": "deposit B",
 STATUS_LABELS: tuple[str, ...] = ("CARGO", "IT THINKS IT KNOWS WHERE IT IS TO",
                                   "LAST POSITION FIX", "MAP IT HAS BUILT",
                                   "YOUR ONE COMMAND")
+MAIN_TITLE: str = "THE CAVE     what is actually there"
+INSET_TITLE: str = "ITS MAP     what it thinks is there"
 
 
 class View:
-    def __init__(self, sim: Sim, audio: object | None = None, show: bool = True,
-                 size: tuple[int, int] = (1400, 900)) -> None:
-        self.sim: Sim = sim
+    def __init__(self, match: MatchView, audio: object | None = None, show: bool = True,
+                 size: tuple[int, int] = (T.CANVAS_W, T.CANVAS_H)) -> None:
+        self.match: MatchView = match
         self.audio = audio
-        self.b: Belief = sim.beliefs["player"]
+        self.b: Belief = match.beliefs["player"]
         self.size: tuple[int, int] = size
         w, h = size
 
         self.canvas = scene.SceneCanvas(title="BLINDSIDE", size=size,
-                                        bgcolor=palette.BACKGROUND,
+                                        bgcolor=palette.VOID,
                                         keys="interactive", show=show)
         overlay = self.canvas.scene
+        frame = match.stage()
 
-        # The map gets its own box so the panels are never drawn over it.
+        # ---- the three scenes. Order matters: the two overlays are drawn last, over
+        # the main view, and `clip_children` keeps each one inside its own rectangle.
+        self.truth_view = scene.ViewBox(parent=overlay, bgcolor=palette.VOID)
+        self.truth_view.camera = scene.TurntableCamera(
+            elevation=T.ELEVATION_DEFAULT_DEG, azimuth=0.0, fov=0, up="z")
+        self.truth_view.camera.center = (100.0, 60.0, 0.0)
+        self.truth_view.interactive = False       # the director drives it; slice 4 is the mouse
+
+        # The belief scene is exactly what it was, on exactly the camera it had. A
+        # layout change and nothing else -- the slice-3 rebuild is a separate look.
         self.view = scene.ViewBox(parent=overlay, bgcolor=palette.BACKGROUND)
-        self.view.pos = (PANEL_W, HEADER_H)
-        self.view.size = (w - PANEL_W, h - HEADER_H - TIMELINE_H)
-        camera = scene.TurntableCamera(elevation=58, azimuth=0, fov=0, up="z")
-        camera.center = (100, 60, 0)
-        camera.scale_factor = 150
-        self.view.camera = camera
+        belief_camera = scene.TurntableCamera(elevation=58, azimuth=0, fov=0, up="z")
+        belief_camera.center = (100, 60, 0)
+        belief_camera.scale_factor = 150
+        self.view.camera = belief_camera
+        self.view.interactive = False
 
-        s = self.view.scene
+        self.minimap_view = scene.ViewBox(parent=overlay, bgcolor=palette.VOID)
+        self.minimap_view.camera = scene.PanZoomCamera(aspect=1)
+        self.minimap_view.camera.rect = (0, 0, frame.grid.shape[1], frame.grid.shape[0])
+        self.minimap_view.interactive = False     # it pans on its own drag; switch it off
+
+        self.truth: TruthPanel = TruthPanel(self.truth_view.scene, frame)
+        self.minimap: Minimap = Minimap(self.minimap_view.scene, frame.grid)
+        self.director: Director = Director(vertical_fraction=1.0)
+
+        self._belief_visuals(self.view.scene)
+        self._chrome(overlay, w, h)
+
+        self.feed: EventFeed = EventFeed(self.b)
+        self._header_cache: str = ""
+        self._prev_xy: tuple[np.ndarray, np.ndarray] | None = None
+        self._anim_from: tuple[np.ndarray, np.ndarray] | None = None
+        self._anim_start: float = -1e9
+        self._fix_easing: bool = False
+        self._n_fixes_seen: int = 0
+        self.revealed: bool = False
+        self.reveal_visuals: list[object] = []
+        self._wall_clock_zero: float | None = None
+        self._last_t: float = 0.0
+        self._main: tuple[float, float, float, float] = (0.0, 0.0, float(w), float(h))
+
+        self.canvas.events.key_press.connect(self.on_key)
+        self.canvas.events.resize.connect(self.on_resize)
+        self._layout(float(w), float(h))
+        # The frame loop runs on a Qt timer rather than vispy's app.Timer.
+        #
+        # A vispy Timer created here never fired even once, while a second Timer in
+        # the same process fired normally -- so the window painted its chrome and then
+        # sat there forever, which is what a black screen turned out to be. Driving it
+        # from the canvas's draw event instead advanced exactly one frame, because an
+        # update() requested from inside a draw is coalesced into the draw already in
+        # progress. A Qt timer has neither problem and is what vispy is sitting on
+        # anyway.
+        self.live: bool = show
+        self.timer: object | None = None
+
+    # ---- construction -------------------------------------------------------------------
+    def _belief_visuals(self, s: object) -> None:
+        """Unchanged from the display the gate was run on."""
         self.cloud = visuals.Markers(parent=s)
         self.cloud.set_gl_state("translucent", depth_test=False)
         self.trail = visuals.Line(parent=s, color=palette.TRAIL, width=1)
@@ -84,79 +144,93 @@ class View:
         self.believed = visuals.Line(parent=s, connect="segments", width=1.5)
         for v in (self.trail, self.ellipse, self.heading, self.contacts, self.signature,
                   self.fronts, self.fix_flash, self.intent, self.believed,
-                  self.beacon_chain):
+                  self.beacon_chain, self.beacons, self.places, self.agent,
+                  self.intent_marker):
             v.set_gl_state("translucent", depth_test=False)
 
-        # ---- chrome ----
-        self.panel_left = self._panel(overlay, PANEL_W / 2, h / 2, PANEL_W, h)
-        self.panel_header = self._panel(overlay, w / 2, HEADER_H / 2, w, HEADER_H)
-        self.panel_timeline = self._panel(overlay, w / 2, h - TIMELINE_H / 2, w, TIMELINE_H)
+    def _chrome(self, overlay: object, w: float, h: float) -> None:
+        """Words and grounds. Every `Rectangle` here is touched only in `_layout()`:
+        setting any property on one regenerates its geometry and forces a synchronous
+        repaint, and a *static* one costs nothing."""
+        self.panel_header = self._panel(overlay, w / 2, T.HEADER_H / 2, w, T.HEADER_H)
+        self.panel_rail = self._panel(overlay, w - T.RAIL_W / 2, h / 2, T.RAIL_W, h)
+        self.panel_timeline = self._panel(overlay, w / 2, h - T.TIMELINE_H / 2,
+                                          w, T.TIMELINE_H)
 
-        self.title = visuals.Text("BLINDSIDE", parent=overlay, pos=(18, HEADER_H / 2),
+        self.title = visuals.Text("BLINDSIDE", parent=overlay, pos=(18, T.HEADER_H / 2),
                                   anchor_x="left", anchor_y="center", color=palette.TITLE,
-                                  font_size=13, bold=True)
+                                  font_size=15, bold=True)
         self.subtitle = visuals.Text(
-            "you cannot drive it - you can only watch, and recall it once",
-            parent=overlay, pos=(168, HEADER_H / 2), anchor_x="left",
-            anchor_y="center", color=palette.DIM, font_size=8.5)
-        self.header_right = visuals.Text("", parent=overlay, pos=(w - 18, HEADER_H / 2),
+            "nobody is driving it", parent=overlay, pos=(196, T.HEADER_H / 2),
+            anchor_x="left", anchor_y="center", color=palette.DIM, font_size=11)
+        self.header_right = visuals.Text("", parent=overlay, pos=(w - 18, T.HEADER_H / 2),
                                          anchor_x="right", anchor_y="center",
-                                         color=palette.BANNER, font_size=10, bold=True)
-
-        self.graph = DecisionGraphView(overlay, 16.0, HEADER_H + 18.0, PANEL_W - 32)
-        self._rule(overlay, 14, h - TIMELINE_H - 176, PANEL_W - 28)
-        self.status = StatusPanel(overlay, 8.0, h - TIMELINE_H - 150, PANEL_W - 16,
+                                         color=palette.BANNER, font_size=11, bold=True)
+        self.main_title = visuals.Text(MAIN_TITLE, parent=overlay, anchor_x="left",
+                                       anchor_y="center", color=palette.HUD,
+                                       font_size=11, bold=True, pos=(T.MARGIN, 0))
+        self.compass = visuals.Text("N", parent=overlay, anchor_x="right",
+                                    anchor_y="center", color=palette.DIM,
+                                    font_size=11, pos=(0, 0))
+        self.inset_title = visuals.Text(INSET_TITLE, parent=overlay, anchor_x="left",
+                                        anchor_y="bottom", color=palette.DIM,
+                                        font_size=9, pos=(0, 0))
+        self.status = StatusPanel(overlay, 0.0, 0.0, T.RAIL_W - 2 * T.MARGIN,
                                   STATUS_LABELS)
-        self.key = MapKey(overlay, PANEL_W + 24, h - TIMELINE_H - 140)
-        self.timeline = TimelineView(overlay, PANEL_W + 18, h - TIMELINE_H + 6,
-                                     w - PANEL_W - 36, TIMELINE_H - 12)
-
-        self.feed: EventFeed = EventFeed(self.b)
-        self._header_cache: str = ""
-        self._prev_xy: tuple[np.ndarray, np.ndarray] | None = None
-        self._anim_from: tuple[np.ndarray, np.ndarray] | None = None
-        self._anim_start: float = -1e9
-        self._n_fixes_seen: int = 0
-        self.revealed: bool = False
-        self.reveal_visuals: list[object] = []
-        self._wall_clock_zero: float | None = None
-        self._in_draw: bool = False
-
-        self.canvas.events.key_press.connect(self.on_key)
-        self.canvas.events.resize.connect(self.on_resize)
-        self._layout(w, h)
-        # The frame loop runs on a Qt timer rather than vispy's app.Timer.
-        #
-        # A vispy Timer created here never fired even once, while a second Timer in
-        # the same process fired normally -- so the window painted its chrome and then
-        # sat there forever, which is what a black screen turned out to be. Driving it
-        # from the canvas's draw event instead advanced exactly one frame, because an
-        # update() requested from inside a draw is coalesced into the draw already in
-        # progress. A Qt timer has neither problem and is what vispy is sitting on
-        # anyway.
-        self.live: bool = show
-        self.timer: object | None = None
+        self.timeline = TimelineView(overlay, T.MARGIN, h - T.TIMELINE_H + 6,
+                                     w - 2 * T.MARGIN, T.TIMELINE_H - 12)
 
     # ---- layout ------------------------------------------------------------------------
     def _layout(self, w: float, h: float) -> None:
-        """Place everything from the current canvas size.
+        """Everything positional is derived from the *live* canvas size.
 
-        The layout is absolute pixels, so without this every label sits where a
-        1400x900 window would have put it and the whole thing overprints itself the
-        moment the window is any other size.
+        `show()` clamps the canvas to the screen and `render()` does not, so the live
+        frame and the recorded frame are different sizes -- a layout tuned by eye in the
+        window is not the layout in the mp4. The inset is a fraction of the main view
+        and the minimap is one pixel per cell, so neither is ever hand-placed.
         """
-        self.view.pos = (PANEL_W, HEADER_H)
-        self.view.size = (max(w - PANEL_W, 50), max(h - HEADER_H - TIMELINE_H, 50))
-        self.panel_left.center = (PANEL_W / 2, h / 2)
-        self.panel_left.height = h
-        self.panel_header.center = (w / 2, HEADER_H / 2)
+        main_x, main_y = T.MARGIN, T.HEADER_H + T.TITLE_H
+        main_w = max(w - 3 * T.MARGIN - T.RAIL_W, 200.0)
+        main_h = max(h - T.HEADER_H - T.TITLE_H - T.TIMELINE_H, 150.0)
+        self._main = (main_x, main_y, main_w, main_h)
+        self.truth_view.pos = (main_x, main_y)
+        self.truth_view.size = (main_w, main_h)
+
+        inset_w = main_w * T.PIP_INSET_FRACTION
+        inset_h = main_h * T.PIP_INSET_FRACTION
+        inset_x = main_x + main_w - T.MARGIN - inset_w
+        inset_y = main_y + T.MARGIN
+        self.view.pos = (inset_x, inset_y)
+        self.view.size = (inset_w, inset_h)
+
+        mini_w = self.minimap.cols * T.MINIMAP_PX_PER_CELL
+        mini_h = self.minimap.rows * T.MINIMAP_PX_PER_CELL
+        mini_x = main_x + T.MARGIN
+        mini_y = main_y + main_h - T.MARGIN - mini_h
+        self.minimap_view.pos = (mini_x, mini_y)
+        self.minimap_view.size = (mini_w, mini_h)
+        _assert_overlays_clear(main_w, main_h,
+                               (inset_x - main_x, inset_y - main_y, inset_w, inset_h),
+                               (mini_x - main_x, mini_y - main_y, mini_w, mini_h))
+
+        # The director frames in cells across the rectangle, so it needs to know how
+        # much of that width fits in the height: the aspect, undone by the tilt.
+        elevation = math.radians(self.truth_view.camera.elevation)
+        self.director.vertical_fraction = (main_h / main_w) / max(math.sin(elevation), 1e-3)
+
+        self.panel_header.center = (w / 2, T.HEADER_H / 2)
         self.panel_header.width = w
-        self.panel_timeline.center = (w / 2, h - TIMELINE_H / 2)
+        self.panel_rail.center = (w - T.RAIL_W / 2, h / 2)
+        self.panel_rail.height = h
+        self.panel_timeline.center = (w / 2, h - T.TIMELINE_H / 2)
         self.panel_timeline.width = w
-        self.header_right.pos = (w - 18, HEADER_H / 2)
+        self.header_right.pos = (w - T.RAIL_W - 2 * T.MARGIN, T.HEADER_H / 2)
         self.subtitle.visible = w > 760
-        self.key.move(PANEL_W + 24, h - TIMELINE_H - 24 - self.key.height)
-        self.timeline.move(PANEL_W + 18, h - TIMELINE_H + 6, max(w - PANEL_W - 36, 80))
+        self.main_title.pos = (main_x, T.HEADER_H + T.TITLE_H / 2)
+        self.compass.pos = (main_x + main_w, T.HEADER_H + T.TITLE_H / 2)
+        self.inset_title.pos = (inset_x, inset_y - 4)
+        self.status.move(w - T.RAIL_W + T.MARGIN, T.HEADER_H + T.MARGIN + 10)
+        self.timeline.move(T.MARGIN, h - T.TIMELINE_H + 20, max(w - 2 * T.MARGIN, 80))
 
     def on_resize(self, ev: object) -> None:
         w, h = self.canvas.size
@@ -169,17 +243,11 @@ class View:
                                  color=palette.PANEL, border_color=palette.PANEL_EDGE,
                                  border_width=1, parent=parent)
 
-    @staticmethod
-    def _rule(parent: object, x: float, y: float, w: float) -> object:
-        line = visuals.Line(parent=parent, color=palette.PANEL_EDGE, width=1)
-        line.set_data(np.array([[x, y, 0.0], [x + w, y, 0.0]]))
-        return line
-
     # ---- input ------------------------------------------------------------------------
     def on_key(self, ev: object) -> None:
         key = getattr(ev, "key", None)
         if key is not None and key.name.lower() == "r":
-            if self.sim.recall() and self.audio is not None:
+            if self.match.recall() and self.audio is not None:
                 self.audio.recall_sent()      # type: ignore[attr-defined]
 
     # ---- frame ------------------------------------------------------------------------
@@ -188,28 +256,21 @@ class View:
 
         Every attempt to own the timer inside this class failed, and failed
         inconsistently -- fired once, then not at all. A timer created by the caller
-        and held in a local that outlives app.run() works every time. Since a vispy
-        Timer's lifetime is the thing in question, the reference lives where it is
-        obviously alive.
+        and held in a local that outlives app.run() works every time.
         """
         return
 
     def advance(self) -> None:
         if self._wall_clock_zero is None:
             self._wall_clock_zero = time.perf_counter()
-        target = time.perf_counter() - self._wall_clock_zero
-        steps = 0
-        while self.sim.t < target and not self.sim.over and steps < 8:
-            self.sim.step()
-            if self.sim.tick % 10 == 0:
-                self.sim.record_truth_trail()
-            steps += 1
+        self.match.advance_to(time.perf_counter() - self._wall_clock_zero, max_steps=8)
         self.draw()
         if self.live:
             self.canvas.update()
 
     def draw(self) -> None:
-        b, t = self.b, self.sim.t
+        b, t = self.b, self.match.t
+        frame = self.match.stage()
         self.feed.update(t)
         self._draw_cloud(b, t)
         self._draw_places(b)
@@ -219,12 +280,34 @@ class View:
         self._draw_contacts(b, t)
         self._draw_fronts(b, t)
         self._draw_fix(b, t)
+        self._draw_truth(frame, b)
         self._draw_panels(b, t)
         self.timeline.update(self.feed, t)
         if self.audio is not None:
             self.audio.update(b, t, self.view.camera.azimuth)   # type: ignore[attr-defined]
-        if self.sim.over and not self.revealed:
+        if self.match.over and not self.revealed:
             self._reveal()
+
+    # ---- the cave -------------------------------------------------------------------------
+    def _draw_truth(self, frame: StageFrame, b: Belief) -> None:
+        """The camera runs on *sim* time, not on the wall clock, so a recorded match
+        and a live one move the camera identically."""
+        dt = max(0.0, frame.t - self._last_t)
+        self._last_t = frame.t
+        self.director.update(frame, dt, self._fix_easing)
+
+        _, _, main_w, main_h = self._main
+        camera = self.truth_view.camera
+        camera.center = (self.director.cx, self.director.cy, 0.0)
+        camera.scale_factor = _scale_for(self.director.cells, main_w, main_h)
+        elevation = math.radians(camera.elevation)
+        fx = self.director.cells
+        fy = fx * (main_h / main_w)
+        self.truth.update(frame, (b.x, b.y, b.theta),
+                          (self.director.cx, self.director.cy, fx, fy,
+                           math.sin(elevation), math.cos(elevation)))
+        self.minimap.update(frame, self.director.cx, self.director.cy,
+                            self.director.cells, self.director.vertical_fraction)
 
     # ---- the map ------------------------------------------------------------------------
     def _draw_cloud(self, b: Belief, t: float) -> None:
@@ -245,7 +328,8 @@ class View:
         xs = b.cloud.x[:n].copy()
         ys = b.cloud.y[:n].copy()
         progress = (t - self._anim_start) / FIX_ANIM_SECONDS
-        if self._anim_from is not None and 0.0 <= progress < 1.0:
+        self._fix_easing = self._anim_from is not None and 0.0 <= progress < 1.0
+        if self._fix_easing and self._anim_from is not None:
             eased = 1.0 - (1.0 - progress) ** 3
             m = min(len(self._anim_from[0]), n)
             xs[:m] = self._anim_from[0][:m] + (xs[:m] - self._anim_from[0][:m]) * eased
@@ -318,7 +402,7 @@ class View:
                                                b.y + s * ex + c * ey, np.full(64, 0.1)]))
 
     def _draw_intent(self, b: Belief) -> None:
-        policy = self.sim.policies["player"]
+        policy = self.match.policies["player"]
         if policy.done or not policy.route or policy.i >= len(policy.route):
             self.intent.visible = False
             self.intent_marker.visible = False
@@ -445,16 +529,8 @@ class View:
         else:
             self.fix_flash.visible = False
 
-    # ---- panels ---------------------------------------------------------------------------
+    # ---- the rail ---------------------------------------------------------------------------
     def _draw_panels(self, b: Belief, t: float) -> None:
-        sim = self.sim
-        policy = sim.policies["player"]
-        report = policy.decision_report(t)
-        for node in report:
-            if node.target:
-                node.label = f"{node.label} {self._place_name(node.target).upper()}"
-        self.graph.update(report)
-
         since = b.ticks_since_fix * T.DT
         fix = b.last_fix
         surprised = fix is not None and fix.surprise >= 2.5 and fix.jump >= 8.0
@@ -469,17 +545,18 @@ class View:
             fix_text,
             (f"{(b.cloud.n // 50) * 50} points, {len(b.own_scans)} sweeps" if b.sensor == "lidar"
              else f"{(b.cloud.n // 50) * 50} points, {len(b.own_pings)} pings"),
-            "spent" if sim.recall_used else "ready - press R",
+            "spent" if self.match.recall_used else "ready - press R",
         ), (
             None,
             palette.BANNER if b.sigma_pos() > 12 else palette.TITLE,
             palette.BANNER if surprised else palette.TITLE,
             None,
-            palette.DIM if sim.recall_used else palette.TREE_LIVE,
+            palette.DIM if self.match.recall_used else palette.TREE_LIVE,
         ))
 
-        if sim.over and sim.result is not None:
-            header = f"MATCH OVER - {sim.result.player_outcome}, cargo {sim.result.cargo}"
+        result = self.match.result
+        if self.match.over and result is not None:
+            header = f"MATCH OVER - {result.player_outcome}, cargo {result.cargo}"
         elif t >= T.EXTRACT_WINDOW_OPENS:
             header = "EXTRACTION WINDOW OPEN"
         else:
@@ -495,27 +572,33 @@ class View:
             return FRIENDLY[label]
         return "its own beacon" if label.startswith("player_") else f"survey point {label}"
 
-    def _target_name(self) -> str:
-        policy = self.sim.policies["player"]
-        if policy.done or not policy.route or policy.i >= len(policy.route):
-            return "nothing"
-        return self._place_name(policy.route[policy.i].label)
-
     # ---- after the end ------------------------------------------------------------------------
+    @staticmethod
+    def _over_the_cave(visual: object) -> object:
+        """Anything drawn in the inset sits over the cave mesh's depth, and vispy's
+        "translucent" preset leaves depth testing on -- so an overlay that does not
+        switch it off is discarded without a word."""
+        visual.set_gl_state("translucent", depth_test=False)   # type: ignore[attr-defined]
+        return visual
+
     def _reveal(self) -> None:
+        """The true outline over the map the machine built, in the belief scene.
+
+        Slice 9 retargets this as a scripted swap so it lands in the main rectangle;
+        until then it is what it was, in the picture it was always drawn in.
+        """
         self.revealed = True
-        r = self.sim.reveal()
+        r = self.match.reveal()
         s = self.view.scene
 
         walls = np.column_stack([r.walls, np.full(len(r.walls), -0.1)])
-        wall_vis = visuals.Markers(parent=s)
+        wall_vis = self._over_the_cave(visuals.Markers(parent=s))
         wall_vis.set_data(walls, face_color=palette.TRUTH_WALL, size=2.5, edge_width=0)
-        wall_vis.set_gl_state("translucent", depth_test=False)
         self.reveal_visuals.append(wall_vis)
 
         if len(r.flooded):
             flooded = np.column_stack([r.flooded, np.full(len(r.flooded), -0.1)])
-            flood_vis = visuals.Markers(parent=s)
+            flood_vis = self._over_the_cave(visuals.Markers(parent=s))
             flood_vis.set_data(flooded, face_color=palette.TRUTH_FLOOD, size=2, edge_width=0)
             self.reveal_visuals.append(flood_vis)
 
@@ -523,29 +606,66 @@ class View:
                                     ("rival", palette.TRUTH_TRAIL_RIVAL, 1.5)):
             path = r.truth_trail.get(name)
             if path:
-                self.reveal_visuals.append(visuals.Line(
+                self.reveal_visuals.append(self._over_the_cave(visuals.Line(
                     parent=s, pos=np.array([(x, y, 0.3) for x, y, _ in path]),
-                    color=colour, width=width))
+                    color=colour, width=width)))
 
         ax, ay, ar = r.ancient
-        self.reveal_visuals.append(visuals.Line(parent=s, pos=ring(ax, ay, ar, z=0.3),
-                                                color=(*palette.SIGNATURE, 0.9), width=2))
+        self.reveal_visuals.append(self._over_the_cave(
+            visuals.Line(parent=s, pos=ring(ax, ay, ar, z=0.3),
+                         color=(*palette.SIGNATURE, 0.9), width=2)))
         ends = np.array([[x, y, 0.35] for (x, y, _, _) in r.agents.values()])
-        end_vis = visuals.Markers(parent=s)
+        end_vis = self._over_the_cave(visuals.Markers(parent=s))
         end_vis.set_data(ends, face_color=palette.TRUTH_TRAIL_PLAYER, size=12, symbol="x")
         self.reveal_visuals.append(end_vis)
 
         own = np.array([[x, y, 0.35] for (x, y, owner) in r.beacons.values() if owner == "player"])
         if len(own):
-            beacon_vis = visuals.Markers(parent=s)
+            beacon_vis = self._over_the_cave(visuals.Markers(parent=s))
             beacon_vis.set_data(own, face_color=palette.TRUTH_BEACON, size=7, symbol="diamond")
             self.reveal_visuals.append(beacon_vis)
 
         for dx, dy in r.deposits.values():
-            self.reveal_visuals.append(visuals.Line(parent=s, pos=ring(dx, dy, 3, n=24, z=0.3),
-                                                    color=palette.TRUTH_DEPOSIT, width=2))
+            self.reveal_visuals.append(self._over_the_cave(
+                visuals.Line(parent=s, pos=ring(dx, dy, 3, n=24, z=0.3),
+                             color=palette.TRUTH_DEPOSIT, width=2)))
 
     # ---- offscreen -----------------------------------------------------------------------------
     def snapshot(self, path: str) -> None:
         self.draw()
         io.write_png(path, self.canvas.render())
+
+
+# ---- framing ------------------------------------------------------------------------------------
+def _scale_for(cells: float, w: float, h: float) -> float:
+    """`scale_factor` that puts `cells` across the rectangle's width.
+
+    vispy's orthographic turntable stretches the *longer* axis by the aspect, so the
+    scale factor is the short axis. Framing is stated in cells rather than in
+    `scale_factor` three times over: scale_factor means different things at different
+    aspect ratios, the live and recorded canvases are different sizes, and a scene that
+    changes rectangle has to keep its framing.
+    """
+    return cells * h / w if w > h else cells
+
+
+def _assert_overlays_clear(main_w: float, main_h: float,
+                           inset: tuple[float, float, float, float],
+                           minimap: tuple[float, float, float, float]) -> None:
+    """The overlays must not cover the beat.
+
+    At CLOSE framing the subject is centred, so the machinery's 9-cell ring reaches a
+    known radius from the centre of the main view. This asserts the clearance rather
+    than the fraction, so a future `PIP_INSET_FRACTION` that covers the machinery fails
+    loudly at start-up instead of quietly eating the target beat.
+    """
+    px_per_cell = main_w / T.CAMERA_CLOSE_CELLS
+    reach = T.ANCIENT_RADIUS * px_per_cell
+    cx, cy = main_w / 2.0, main_h / 2.0
+    for name, (x, y, w, h) in (("the inset", inset), ("the minimap", minimap)):
+        near_x = min(max(cx, x), x + w)
+        near_y = min(max(cy, y), y + h)
+        clearance = math.hypot(near_x - cx, near_y - cy) - reach
+        assert clearance > 0.0, (
+            f"{name} covers the CLOSE hazard ring by {-clearance:.0f} px: "
+            "lower PIP_INSET_FRACTION or widen RAIL_W")

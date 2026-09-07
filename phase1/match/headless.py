@@ -33,7 +33,7 @@ def run_headless(recall_at: float | None = None, seed: int = T.SEED,
             sim.record_truth_trail()
         if sim.t >= next_report:
             next_report += report_every
-            for name, agent in sim.world.agents.items():
+            for name, agent in sim._world.agents.items():
                 b = sim.beliefs[name]
                 err = math.hypot(agent.x - b.x, agent.y - b.y)
                 herr = math.degrees((b.theta - agent.heading + math.pi) % (2 * math.pi) - math.pi)
@@ -48,7 +48,7 @@ def run_headless(recall_at: float | None = None, seed: int = T.SEED,
                 timeline.append((entry[0], name, entry[1]))
             seen[name] = len(belief.log)
 
-    for event in sim.world.events:
+    for event in sim._world.events:
         timeline.append((event.t, "TRUTH", str(event)))
     timeline.sort(key=lambda e: e[0])
 

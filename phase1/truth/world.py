@@ -71,7 +71,10 @@ class World:
         beacon.reassert_period = T.SPOOF_REASSERT_S
         lie = math.hypot(beacon.x - was_x, beacon.y - was_y)
         self.spoof_done = True
-        self.log("spoof", victim=victim, id=cloned_id, x=beacon.x, y=beacon.y, lie_cells=round(lie, 1))
+        # was_x/was_y are logged so the spectator can draw the dashed line back to
+        # where the victim still records the beacon. Nothing in the sim reads them.
+        self.log("spoof", victim=victim, id=cloned_id, x=beacon.x, y=beacon.y,
+                 was_x=was_x, was_y=was_y, lie_cells=round(lie, 1))
         return lie
 
     # ---- deposits ------------------------------------------------------------------

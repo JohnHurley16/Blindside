@@ -29,6 +29,15 @@ class StatusPanel:
                              anchor_x="left", anchor_y="center",
                              color=palette.TITLE, font_size=10.5, bold=True))
 
+    def move(self, x: float, y: float) -> None:
+        """Reposition, without touching any `.text`. The layout is derived from the live
+        canvas size, and the live and recorded canvases are different sizes."""
+        self.x, self.y = x, y
+        for index in range(len(self.labels)):
+            row_y = y + index * ROW_HEIGHT
+            self.label_visuals[index].pos = (x + 12, row_y)
+            self.value_visuals[index].pos = (x + 12, row_y + 14)
+
     def set(self, values: tuple[str, ...], colours: tuple[object, ...] | None = None) -> None:
         for index, value in enumerate(values):
             if index >= len(self.value_visuals):
