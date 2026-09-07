@@ -2,7 +2,27 @@
 
 This file is the board. Edit it directly. It was generated once from `docs/dev-plan.json`; that file is disposable.
 
-**197 stories · 478.25 working days · ~47.8 months at ten working days a month.** Solo, nights and weekends. `DESIGN.html` calls 18–24 months to Phase 8 a floor; treat any total under that as optimism.
+**197 stories · 478.25 working days · ~47.8 months at ten working days a month**, plus the 19-story P1X epic the failed gate opened (12 more days). Solo, nights and weekends. `DESIGN.html` calls 18–24 months to Phase 8 a floor; treat any total under that as optimism.
+
+
+> ## Where this actually stands, 2026-09-07
+>
+> **The Phase 1 gate failed.** A non-engineer watched the eight minutes and was bored
+> (`docs/phase1-playtests/2026-09-06-gate.md`). That is R1, the risk the whole design rests on,
+> and per `CLAUDE.md` Phase 2 does not start until it is met — so everything in the Phase 2 epic
+> below is written but not startable, including the Phase 2 build that already exists.
+>
+> **What the failure produced, all of it new work not in the 197 stories:** a diagnosis measured
+> from a tick-by-tick replay (the display's most dramatic moment — a machine standing 0.04 cells
+> outside a lethal radius — was invisible; the last 79 s of the match are frozen; no map fix for
+> the final 236 s; 34 of 50 events are two strings on a 16-second metronome; the rival is never
+> drawn); a redesigned spectator display (`docs/SPECTATOR-DISPLAY.md`); an amendment to
+> `PHASE-1-SPECTATOR-TEST.md` so the spectator view may draw truth while the operator view may
+> not; slice one of that display built and running in 3D; and a decision on what the machinery is
+> (`docs/THE-MACHINERY.md`, the Assayer).
+>
+> **The epic below that matters is P1X.** The 197 stories are still right about Phases 2–9; they
+> are simply not what is being worked on, because a failed gate outranks a plan.
 
 ## Order of work
 
@@ -21,7 +41,14 @@ This file is the board. Edit it directly. It was generated once from `docs/dev-p
 
 Tick a story when it is done and move its `Status:` line. `Ready` means every dependency is done or there were none; the first epics in the order of work can start today.
 
-### Ready now (6)
+### Ready now (10)
+
+- [ ] **P1X-10** The readout row: the two numbers under near-identical labels *(P1X, P0, 0.5d)*
+- [ ] **P1X-11** The palette pass: one meaning per colour, four type sizes, a 9pt floor *(P1X, P0, 1d)*
+- [ ] **P1X-12** The cold open: the rules in twenty-two words before the clock starts *(P1X, P0, 0.5d)*
+- [ ] **P1X-14** The last 79 s are frozen: the policy will not abandon a waypoint *(P1X, P0, 0.75d)*
+- [ ] **P1X-15** No map fix for the final 236 s *(P1X, P0, 0.5d)*
+- [ ] **P1X-16** The event feed is a metronome *(P1X, P0, 0.5d)*
 
 > **Phase 1's gate failed on 2026-09-06** (`docs/phase1-playtests/2026-09-06-gate.md`). Per CLAUDE.md Phase 2 does not start, whatever its stories say below; the Phase 2 build that exists was made on the wrong reading and is not advanced by it. The next move is BLD-16b: re-run the gate on the live window with Recall in the player's hand, which is the cheapest experiment that separates "the display is illegible" from "the run phase is boring".
 
@@ -32,7 +59,7 @@ Tick a story when it is done and move its `Status:` line. `Ready` means every de
 - [ ] **BLD-7** Record Phase 1's velocity data point and state the plan's estimate unit and total *(BLD-1, P1, 0.25d)*
 - [ ] **BLD-20** Spike: put the harness's load-bearing unknowns to the designer in one written round *(BLD-18, P0, 0.5d)*
 
-### Blocked on a dependency (172)
+### Blocked on a dependency (175)
 
 - [ ] **BLD-9** Apply the two-viewings gate decision: sonar is the gate configuration; retune so the Recall arc can succeed in it *(BLD-1, P0, 1.5d)* — after BLD-8
 - [ ] **BLD-10** Reconcile tuning.py commentary with its values; write the measured beat sheet *(BLD-1, P1, 0.5d)* — after BLD-9
@@ -209,6 +236,7 @@ Tick a story when it is done and move its `Status:` line. `Ready` means every de
 
 ### In progress
 
+- [ ] **P1X-9** Build the Assayer: geometry, cycle, pointing hazard, graded damage *(P1X, P0, 2d)*
 - [ ] **BLD-16** Run the Phase 1 gate playtest with a non-engineer and write the readiness report *(BLD-1, P0, 0.5d)*
 - [ ] **BLD-19** Create the Cargo workspace, pin the toolchain, and lock blindside-sim's dependency tree *(BLD-18, P0, 0.5d)*
 - [ ] **BLD-22** Land the CI determinism lint and prove a PR adding f64 to blindside-sim goes red *(BLD-18, P0, 1d)*
@@ -228,9 +256,68 @@ Tick a story when it is done and move its `Status:` line. `Ready` means every de
 
 ### Done
 
+- [x] **P1X-1** Record the failed gate with the tester's words and the diagnosis *(P1X, P0, 0.25d)*
+- [x] **P1X-2** Measure the dead air tick by tick *(P1X, P0, 0.5d)*
+- [x] **P1X-3** Redesign the spectator display *(P1X, P0, 1d)*
+- [x] **P1X-4** Amend the spec so the spectator view may draw truth *(P1X, P0, 0.1d)*
+- [x] **P1X-5** Prove 3D fits the frame budget *(P1X, P0, 0.5d)*
+- [x] **P1X-6** Slice one: the truth channel and the 3D picture-in-picture view *(P1X, P0, 2.5d)*
+- [x] **P1X-7** Close the invariant against every route a verifier found *(P1X, P0, 0.5d)*
+- [x] **P1X-8** Decide what the machinery is, how it harms, and the damage model *(P1X, P0, 1d)*
 - [x] **BLD-15** Designer self-test: twenty minutes on the gate build before the external session *(BLD-1, P0, 0.25d)*
 - [x] **BLD-2** Fix SEARCH-mode crash: decision_report reads undefined T.RECALL_SEARCH_RADIUS_RATE *(BLD-1, P0, 0.25d)*
 - [x] **BLD-3** Verify and commit the in-progress Phase 1 retune, one commit per concern *(BLD-1, P0, 0.75d)*
+
+## P1X — Answer R1: make eight minutes worth watching
+
+**Phase 1, re-opened by the gate.** Everything here exists because a stranger was bored, and the
+only thing that closes it is a stranger who is not. It is not in the original 197 stories because
+the plan assumed the gate passed. Nothing in Phases 2–9 starts until this does.
+
+- **Gate — pass:** a non-engineer, watching the LIVE window with Recall in her hand and one
+  sentence of instruction, talks to the screen, guesses at what is happening, forms a wrong theory
+  and corrects it, and feels the Recall decision. Run twice: truth on, then truth off.
+- **Gate — kill:** she is bored again with a live decision in front of her and a display that
+  shows her the world. Then R1 is real, the run phase does not carry a match, and Phases 2–9 are
+  built on a premise that does not hold. Stop and report.
+- **Estimate:** 12 working days of build, plus the designer's decisions and two playtest sessions.
+
+| Key | Type | Summary | Pri | Days | Depends on | Status |
+|---|---|---|---|---|---|---|
+| P1X-1 | Task | Record the failed gate with the tester's words and the diagnosis | P0 | 0.25 | — | Done (`01e156e`) |
+| P1X-2 | Spike | Measure the dead air tick by tick and name every stretch nothing changes | P0 | 0.5 | P1X-1 | Done |
+| P1X-3 | Design | Redesign the spectator display; four proposals, three judges, one plan | P0 | 1 | P1X-2 | Done (`70ba674`) |
+| P1X-4 | Decision | Amend the spec so the spectator view may draw truth | P0 | 0.1 | P1X-3 | Done (`0175f69`) |
+| P1X-5 | Spike | Prove 3D fits the frame budget; measure both panels and the minimap | P0 | 0.5 | P1X-3 | Done — 26.8 ms median, cheaper than the 2D it replaces |
+| P1X-6 | Story | Slice one: the truth channel and the 3D picture-in-picture view | P0 | 2.5 | P1X-4, P1X-5 | Done (`e2cfd46`) |
+| P1X-7 | Bug | Close the invariant against every route a verifier found | P0 | 0.5 | P1X-6 | Done — 12 of 12 routes caught |
+| P1X-8 | Design | Decide what the machinery is, how it harms, and the damage model | P0 | 1 | — | Done (`97563a1`, the Assayer) |
+| P1X-9 | Story | Build the Assayer: geometry, cycle, pointing hazard, graded damage | P0 | 2 | P1X-8 | In progress |
+| P1X-10 | Story | The readout row: the two numbers under near-identical labels | P0 | 0.5 | P1X-6 | Backlog |
+| P1X-11 | Story | The palette pass: one meaning per colour, four type sizes, a 9pt floor | P0 | 1 | P1X-6 | Backlog |
+| P1X-12 | Story | The cold open: the rules in twenty-two words before the clock starts | P0 | 0.5 | P1X-6 | Backlog |
+| P1X-13 | Story | The release beat: a near miss needs an exhale, not just an alarm | P1 | 0.5 | P1X-9 | Backlog |
+| P1X-14 | Bug | The last 79 s are frozen: the policy resets its escape counter instead of abandoning the waypoint | P0 | 0.75 | — | Backlog |
+| P1X-15 | Bug | No map fix for the final 236 s, so the cloud never snaps in the second half | P0 | 0.5 | — | Backlog |
+| P1X-16 | Bug | The event feed is a metronome: 34 of 50 events are two strings every 16 s | P0 | 0.5 | — | Backlog |
+| P1X-17 | Decision | Should the player have a reason to go to the machinery? Today only the rival does, so only the rival is ever at risk | P0 | 0.25 | P1X-8 | **Designer** |
+| P1X-18 | Task | Designer self-test on the live window before the next session | P0 | 0.25 | P1X-9..P1X-16 | Backlog |
+| P1X-19 | Task | Re-run the gate live, truth on then truth off, and write the report | P0 | 0.5 | P1X-18 | Backlog |
+
+### P1X-17 — Should the player have a reason to go to the machinery?
+
+**Measured 2026-09-07.** Across seeds 1–8 the player spends **45 seconds total** inside the
+9-cell radius, on three seeds, and **none of it frozen**. The hazard is live 4 s in every 75, a
+5.3% duty cycle, so the expected number of player deaths is **0.6** — and the observed zero is
+luck, not safety. The rival dies three times because it *parks* there: `INTERFACE_S` is 80 seconds
+of standing still to download, which puts it 3.4 cells from the centre.
+
+So the asymmetry is exposure, and exposure follows motive. `docs/DESIGN-PRINCIPLES.md` §2 already
+supplies the motive — the machinery is where new blocks come from — but in Phase 1 only the
+aggressive rival wants them. Give the player's policy a reason to interface and the risk/reward
+decision the machinery was designed to carry has someone to carry it for.
+
+Designer: [ ] yes, the player should want what the machinery has  [ ] no, leave it the rival's business
 
 ## BLD-1 — Phase 1 close-out: run the spectator gate and record what it proved
 
