@@ -52,7 +52,13 @@ several seconds before it becomes dangerous. Kills an agent that ignores it.
 
 ## Display
 
-The player sees **belief only**. Ground truth is never rendered during the run.
+The **operator** view — what a player sees while playing — is belief only, and ground truth
+is never rendered in it. The **spectator** view draws truth beside belief, because the gate asks
+a stranger to follow a match she is not playing, and a viewer who is as lost as the machine has
+no way to feel the machine being wrong. (Amended 2026-09-07 by the designer, after the first
+gate failed: `docs/phase1-playtests/2026-09-06-gate.md`. `DESIGN.html` line 238 already leaned
+this way — "truth for spectators, belief for players". The invariant is untouched: a policy
+still never observes ground truth, and the truth channel is one-way to the screen.)
 
 Primary view is a **sparse 3D point cloud** of accumulated sensor returns, orbitable.
 Dense where the agent has pinged, sparse where it has only passed through, empty where it
