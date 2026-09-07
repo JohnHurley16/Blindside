@@ -23,6 +23,8 @@ Tick a story when it is done and move its `Status:` line. `Ready` means every de
 
 ### Ready now (6)
 
+> **Phase 1's gate failed on 2026-09-06** (`docs/phase1-playtests/2026-09-06-gate.md`). Per CLAUDE.md Phase 2 does not start, whatever its stories say below; the Phase 2 build that exists was made on the wrong reading and is not advanced by it. The next move is BLD-16b: re-run the gate on the live window with Recall in the player's hand, which is the cheapest experiment that separates "the display is illegible" from "the run phase is boring".
+
 - [ ] **BLD-8** Spike: sweep Recall timings for both player sensors; find why lidar never reaches SEARCH *(BLD-1, P0, 0.75d)*
 - [ ] **BLD-4** Pin the Phase 1 Python environment in requirements.txt *(BLD-1, P1, 0.25d)*
 - [ ] **BLD-5** Write the spectator-test protocol and scoring rubric for Phase 1 and Phase 5 *(BLD-1, P0, 0.5d)*
@@ -442,9 +444,9 @@ Done when:
 
 ### BLD-16 — Run the Phase 1 gate playtest with a non-engineer and write the readiness report
 
-**Status:** In progress  ·  **Story**  ·  P0  ·  0.5 d  ·  depends on BLD-14, BLD-15  ·  retires R1
+**Status:** Done (fail)  ·  **Story**  ·  P0  ·  0.5 d  ·  depends on BLD-14, BLD-15  ·  retires R1
 
-**Gate (2026-09-06):** the session was run on 2026-09-06 and the designer reports pass on all three signals. The observations (what was said, when, and what happened at Recall) are not yet in the repo; the readiness report waits on them.
+**Gate (2026-09-06): FAIL.** The observations are in `docs/phase1-playtests/2026-09-06-gate.md`. She was silent until the end, bored in the middle, and reported that it was hard to understand and needed more action -- "all that changes is things kinda beep and nothing really is obvious". No moment of engagement to drift from, so on the spec's own split this reads as a design problem rather than pacing. One confound: she watched the video, not the live window, so the Recall criterion was structurally unavailable. R1 is live.
 
 This is the Phase 1 gate and the one failure that no later work repairs (ROADMAP: risk R1, confidence Low). No commit or document records it having been run. The designer wants Rust to start as soon as this lands; the report is what unblocks the Phase 2 group and, transitively, Phase 3. The build agent cannot declare the gate met; it reports readiness and the observations (CLAUDE.md definition of done). Human-gated (external playtest with a non-engineer): expect about 7 calendar days and 1 round-trip(s) with the designer or testers beyond the 0.5 working days of work.
 
