@@ -306,16 +306,18 @@ the plan assumed the gate passed. Nothing in Phases 2–9 starts until this does
 
 ### P1X-17 — Should the player have a reason to go to the machinery?
 
-**Measured 2026-09-07.** Across seeds 1–8 the player spends **45 seconds total** inside the
-9-cell radius, on three seeds, and **none of it frozen**. The hazard is live 4 s in every 75, a
-5.3% duty cycle, so the expected number of player deaths is **0.6** — and the observed zero is
-luck, not safety. The rival dies three times because it *parks* there: `INTERFACE_S` is 80 seconds
-of standing still to download, which puts it 3.4 cells from the centre.
+**Measured 2026-09-07, after a first attempt got it wrong** (the sweep set `T.SEED` after import,
+but `Sim.__init__` binds that default at import time, so it re-ran one world eight times). With
+the seed actually passed: across seeds 1–8 there are five deaths and **one is the player** —
+seed 3 at 6:56, ending that match `destroyed`. Time spent inside the 9-cell radius is **28 s for
+the player against 224 s for the rival**, because the rival *parks* there: `INTERFACE_S` is 80
+seconds of standing still to download.
 
-So the asymmetry is exposure, and exposure follows motive. `docs/DESIGN-PRINCIPLES.md` §2 already
-supplies the motive — the machinery is where new blocks come from — but in Phase 1 only the
-aggressive rival wants them. Give the player's policy a reason to interface and the risk/reward
-decision the machinery was designed to carry has someone to carry it for.
+So the asymmetry is eight-to-one exposure, not immunity — the player is at real risk and dies on
+one seed in eight. The question is still worth asking, but it is a question about frequency rather
+than about whether the player is in the game at all: exposure follows motive, and
+`docs/DESIGN-PRINCIPLES.md` §2 says the machinery is where new blocks come from, while in Phase 1
+only the aggressive rival wants them.
 
 Designer: [ ] yes, the player should want what the machinery has  [ ] no, leave it the rival's business
 

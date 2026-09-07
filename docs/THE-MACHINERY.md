@@ -725,18 +725,25 @@ That answers both halves of the note and nothing else.
 
 ## 11. The riskiest assumption
 
-> **Measured 2026-09-07, and it retires the first of these.** The worry below — that a pointing
-> hazard silently deletes a death on a seed nobody swept — was answerable from the sim as it
-> stands, with no implementation and no fitting, by recording every agent's closest approach
-> during every lethal window across seeds 1–8 and asking what a cos² lobe would do at *every* aim
-> origin. Result: there are **three deaths in eight seeds, all of them the rival**. Two (seed 1 at
-> 3.38 cells, seed 5 at 3.80) are so deep inside that they die *at any angle* — the lobe cannot
-> save them. Only seed 7's, at 8.12 cells, is angle-sensitive, and it dies anywhere within 32° of
-> the axis. Over all 72 aim origins the lobe keeps a minimum of **2 of 3** deaths and never fewer;
-> 26 of the 72 keep all three. So direction risks exactly one marginal kill at the rim, and the
-> case it removes is the one where "it was on the flank" is the right answer rather than a loss.
-> `ANCIENT_AIM_0` is chosen from the 26, not fitted to a beat. Script:
-> `scratchpad/lobe_sweep2.py`, reproducible.
+> **Measured 2026-09-07, corrected the same day.** The worry below — that a pointing hazard
+> silently deletes a death on a seed nobody swept — is answerable from the sim as it stands. My
+> first sweep of it was **wrong and its numbers should not be used**: it set `T.SEED` after
+> import, but `Sim.__init__(self, seed: int = T.SEED)` binds that default at import time, so
+> eight "seeds" were one world with only the sensor noise varying. It reported three deaths, all
+> the rival. A verifier caught it.
+>
+> Corrected, with the seed actually passed to `Sim(seed)`: across seeds 1–8 there are **five
+> deaths**, and **one of them is the player** — seed 3 at 6:56, which ends that match with
+> RESULT `destroyed`. Rival deaths are seeds 2, 4 and 6 at 4:26 and seed 7 at 6:56; seeds 1, 5
+> and 8 have none. Exposure inside the 9-cell radius across the eight seeds is 28 s for the
+> player against 224 s for the rival — an eight-to-one difference, which is the real asymmetry
+> and it is exposure, not immunity.
+>
+> A verifier re-ran the aim-origin sweep against the five deaths that actually exist: over the 72
+> origins the lobe keeps a minimum of 3 and a maximum of 5, and **22 origins keep all five**.
+> `ANCIENT_AIM_0_DEG = 40.0` is in that set. So the conclusion below stands — direction costs at
+> most a marginal kill at the rim — but the evidence I first published for it did not, and two of
+> the four deaths my sweep never saw are angle-sensitive, including the player's.
 
 
 **The one I most want overruled, because it is the one that costs money: that direction should
