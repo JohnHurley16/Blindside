@@ -1,0 +1,15 @@
+[package]
+name = "acoustic-spike"
+version = "0.1.0"
+edition = "2021"
+description = "BLD-64 throwaway: measure range-bounded acoustic propagation models. Not a workspace member. Floats allowed."
+
+[workspace]
+
+[dependencies]
+
+[profile.release]
+opt-level = 3
+debug = false
+lto = "fat"
+codegen-units = 1
