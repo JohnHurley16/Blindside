@@ -1,0 +1,13 @@
+{
+  "seed": 1,
+  "enabled_predicates": ["unexplored_branch_exists"],
+  "enabled_actions": ["take_branch"],
+  "params": {},
+  "steps": [
+    {"tick": 40,  "junction": 0, "predicates": {"unexplored_branch_exists": true}, "raw": {}, "action": "take_branch"},
+    {"tick": 130, "junction": 1, "predicates": {"unexplored_branch_exists": true}, "raw": {}, "action": "take_branch"},
+    {"tick": 240, "junction": 3, "predicates": {"unexplored_branch_exists": true}, "raw": {}, "action": "take_branch"},
+    {"tick": 350, "junction": 6, "predicates": {"unexplored_branch_exists": true}, "raw": {}, "action": "take_branch"}
+  ],
+  "outcome": {"success": false, "ticks": 500, "lost": false}
+}

@@ -1,0 +1,18 @@
+{
+ "params": {},
+ "root": {
+  "predicate": "carrying_cargo",
+  "yes": {
+   "action": "return_to_beacon"
+  },
+  "no": {
+   "predicate": "unexplored_branch_exists",
+   "yes": {
+    "action": "take_branch"
+   },
+   "no": {
+    "action": "return_to_beacon"
+   }
+  }
+ }
+}

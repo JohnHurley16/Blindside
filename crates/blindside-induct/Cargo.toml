@@ -1,0 +1,28 @@
+# Standalone on this branch. The Cargo workspace lives on another branch; this crate joins
+# it when the branches merge. Until then it carries its own Cargo.lock.
+#
+# blindside-induct is an unconstrained crate in ARCHITECTURE's sense: the sim never depends
+# on it, so floats and std collections are allowed. It still has no clock and no randomness
+# anywhere in the algorithm, and identical input gives identical output.
+
+[package]
+name = "blindside-induct"
+version = "0.1.0"
+edition = "2021"
+# Option::is_none_or, used in the search and the fit ranking, landed in 1.82.
+rust-version = "1.82"
+description = "Demonstration traces -> decision trees: the minimal separator, for BLINDSIDE"
+publish = false
+
+[lib]
+name = "blindside_induct"
+path = "src/lib.rs"
+
+[[bin]]
+name = "induct"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

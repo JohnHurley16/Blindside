@@ -14,3 +14,5 @@ snap_*.png
 docs/dev-plan.json
 # Rust build output
 target/
+__pycache__/
+*.pyc

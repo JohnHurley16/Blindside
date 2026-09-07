@@ -1,0 +1,4 @@
+{
+  "predicates": {"unexplored_branch_exists": true, "uncertainty_exceeds": false, "carrying_cargo": false},
+  "raw": {"uncertainty_exceeds": 2.31}
+}

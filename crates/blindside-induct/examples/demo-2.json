@@ -1,0 +1,21 @@
+{
+  "seed": 2,
+  "enabled_predicates": ["unexplored_branch_exists", "uncertainty_exceeds", "carrying_cargo"],
+  "enabled_actions": ["take_branch", "return_to_beacon"],
+  "params": {"uncertainty_exceeds": {"theta": 3.0}},
+  "steps": [
+    {"tick": 40,   "junction": 0, "predicates": {"unexplored_branch_exists": true,  "uncertainty_exceeds": false, "carrying_cargo": false}, "raw": {"uncertainty_exceeds": 0.40}, "action": "take_branch"},
+    {"tick": 130,  "junction": 1, "predicates": {"unexplored_branch_exists": true,  "uncertainty_exceeds": false, "carrying_cargo": false}, "raw": {"uncertainty_exceeds": 1.20}, "action": "take_branch"},
+    {"tick": 240,  "junction": 3, "predicates": {"unexplored_branch_exists": true,  "uncertainty_exceeds": false, "carrying_cargo": false}, "raw": {"uncertainty_exceeds": 2.80}, "action": "take_branch"},
+    {"tick": 350,  "junction": 5, "predicates": {"unexplored_branch_exists": true,  "uncertainty_exceeds": true,  "carrying_cargo": false}, "raw": {"uncertainty_exceeds": 3.40}, "action": "return_to_beacon"},
+    {"tick": 460,  "junction": 3, "predicates": {"unexplored_branch_exists": true,  "uncertainty_exceeds": true,  "carrying_cargo": false}, "raw": {"uncertainty_exceeds": 3.70}, "action": "return_to_beacon"},
+    {"tick": 570,  "junction": 1, "predicates": {"unexplored_branch_exists": true,  "uncertainty_exceeds": true,  "carrying_cargo": false}, "raw": {"uncertainty_exceeds": 3.90}, "action": "return_to_beacon"},
+    {"tick": 680,  "junction": 0, "predicates": {"unexplored_branch_exists": true,  "uncertainty_exceeds": false, "carrying_cargo": false}, "raw": {"uncertainty_exceeds": 0.30}, "action": "take_branch"},
+    {"tick": 770,  "junction": 1, "predicates": {"unexplored_branch_exists": true,  "uncertainty_exceeds": false, "carrying_cargo": false}, "raw": {"uncertainty_exceeds": 1.10}, "action": "take_branch"},
+    {"tick": 880,  "junction": 2, "predicates": {"unexplored_branch_exists": true,  "uncertainty_exceeds": false, "carrying_cargo": false}, "raw": {"uncertainty_exceeds": 1.90}, "action": "take_branch"},
+    {"tick": 990,  "junction": 6, "predicates": {"unexplored_branch_exists": false, "uncertainty_exceeds": false, "carrying_cargo": true},  "raw": {"uncertainty_exceeds": 2.60}, "action": "return_to_beacon"},
+    {"tick": 1100, "junction": 2, "predicates": {"unexplored_branch_exists": true,  "uncertainty_exceeds": false, "carrying_cargo": true},  "raw": {"uncertainty_exceeds": 2.90}, "action": "return_to_beacon"},
+    {"tick": 1210, "junction": 1, "predicates": {"unexplored_branch_exists": false, "uncertainty_exceeds": false, "carrying_cargo": true},  "raw": {"uncertainty_exceeds": 2.95}, "action": "return_to_beacon"}
+  ],
+  "outcome": {"success": true, "ticks": 1300, "lost": false}
+}
