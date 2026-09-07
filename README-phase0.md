@@ -9,20 +9,50 @@ somewhere to hide.
 ## Layout
 
 ```
-Cargo.toml                    workspace root
-rust-toolchain.toml           pins stable
+Cargo.toml                    workspace root; pins fixed and blake3 `=x.y.z`; release
+                              profile sets overflow-checks AND debug-assertions
+rust-toolchain.toml           pins the exact stable (1.98.1)
+.gitattributes                eol=lf for *.rs *.toml *.md *.yml *.json *.sh Cargo.lock
+                              content/** fixtures/** ci/**
+.gitignore                    target/, plus the harness output the CI steps write into the
+                              repository root (hash logs, dumps, batch tables, replay.json)
+                              so re-running them locally cannot be committed by accident;
+                              anchored to the root, so fixtures/ stays tracked
+docs/HARNESS.md               the reference: the BLD-20 question round, CLI, bisect
+                              semantics, state-hash coverage, golden-hash procedure, lint
+                              evasions, dependency audit, the parallel window
+docs/PHASE-0-READINESS.md     the five acceptance criteria with the command and output for
+                              each, every guess made, and days spent (BLD-40)
+.github/PULL_REQUEST_TEMPLATE.md  the five determinism rules no lint can check (BLD-34)
+ci/no-tooling-features.txt    crates whose resolved features must not include the sim's
+                              `diagnostics` or `inject-desync` gates (BLD-29)
+ci/fixtures/unsafe-*          pass and fail halves of the rule-8 SAFETY-comment check;
+                              read by the lint, never compiled
 crates/blindside-sim          deterministic core (constrained, see docs/DETERMINISM.md)
 crates/blindside-vm           bytecode VM (constrained) - stub
-crates/blindside-content      content definitions - stub
+crates/blindside-content      content definitions (held to the same rules); content pack hash
 crates/blindside-gen          world generation (constrained) - stub
-crates/blindside-harness      headless runner, canary, record/verify, bisect, batch
-                              (unconstrained; builds the `harness` binary)
+crates/blindside-harness      headless runner, canary, record/verify, bisect, batch,
+                              diff-dumps, golden (unconstrained; builds `harness`)
 tools/determinism-lint        CI lint for the constrained crates
+tools/assert-empty-sim.sh     the parallel-window assertion: the sim is still empty
+content/                      the content pack; absent in Phase 0 = the empty pack
+fixtures/phase0-empty-10k.record   the checked-in replay: seed 0xDEADBEEF, 10,000 ticks
 ```
 
-`Sim::state_debug()` and `Sim::perturb_for_test()` expose ground truth, so they live
-behind `blindside-sim`'s `test-hooks` feature. `blindside-harness` is the only crate that
-enables it; the canary's field-level diffs and `--inject` depend on it.
+Ground truth (`World`) is `pub(crate)`. The one window onto it is
+`blindside_sim::diagnostics::{diff, dump}` -- strings only, compiled only under the sim's
+`diagnostics` feature, which `blindside-harness` enables for the canary's field-level diffs
+and bisect's state dumps. `crates/blindside-harness/tests/world_unreachable.rs` proves at
+compile time (trybuild) that `World` cannot be named or reached through that API. The
+canary's `--injected` needs a second feature, `inject-desync`: with it the sim carries the
+BLD-35 fixture (`Sim::set_inject_tick`; on the armed tick every instance folds a fresh
+`HashMap`'s iteration order into a hashed field); without it `--injected` exits 2. The
+harness's own tests enable it through a dev-dependency, so `cargo test` exercises the real
+thing while `cargo build -p blindside-harness` does not carry it. Neither feature is a
+default, and neither is a privacy boundary: Cargo unifies features per build, so
+hash-producing binaries are built with `-p <crate>` and CI's `feature-gates` job asserts
+the resolved feature sets are clean (BLD-29; `docs/HARNESS.md` section 7).
 
 ## Build
 
@@ -37,337 +67,357 @@ cargo build --workspace --release      # for throughput numbers
 cargo test --workspace
 ```
 
-`blindside-sim` checks that two sims with the same seed hash identically for 1000 ticks,
-that the hash changes every tick, that different seeds differ, that the `state_debug()`
-dump and the hash move together (change one and the other changes too — they are meant to
-cover the same fields), and that `DeterministicRng::draw` is repeatable and
-order-independent. One test pins the literal hash at tick 1000 for seed `0xDEADBEEF`; that
-constant is the cross-platform anchor CI's `cross-platform` job checks the other way round.
+`blindside-sim` (31 tests) checks that two sims with the same seed hash identically for
+1000 ticks, that the hash changes every tick, that different seeds differ, and that the
+diagnostics dump and the hash move together (they cover the same fields). Per hashed field
+of `World` a mutation test proves the hash sees it; the deliberately excluded cache field
+(`moved_last_step`) proves the hash ignores it; the same agents inserted in two orders hash
+once. Golden hashes for the empty sim on seed `0xDEADBEEF` at ticks 0, 1, 1000 and 10,000
+are pinned; the tick-1000 one is the cross-platform anchor CI's `cross-platform` job checks
+the other way round. `DeterministicRng::draw` is repeatable, in `[0, 1)`, and 1,000 draws in
+an order shuffled by `blindside_sim::testing::permutation` (itself built on `draw`, so no
+rand-family crate anywhere) equal the sorted-order draws; the mean of 10,000 draws is within
+0.02 of 0.5, accumulated in `Fx`. `golden_tables.rs` (generated by `harness golden`, 40 RNG
+rows and 48 `Fx` arithmetic rows as raw bits) is asserted row by row. `Fx::MAX * 2` panics
+under both `cargo test` and `cargo test --release`. The record types validate: schema 0
+migrates as identity, an unknown schema and an unsorted command log are typed errors. With
+`inject-desync` on (as `cargo test --workspace` builds it) two armed instances agree until
+the injection tick and disagree from it, 20 rounds; with it off `set_inject_tick` reports
+the fixture absent.
 
-`blindside-harness` checks the round trips the CLI is made of: record then verify is clean,
-a log with one tampered hash reports that tick, a log belonging to another record is
-rejected, an injected divergence is caught in the tick it was injected, and a log corrupted
-from tick 1234 onward is bisected to tick 1234 in at most 16 re-runs.
+`blindside-content` (6 tests): the empty pack's hash is the documented constant; adding a
+one-byte file to a temp pack changes it; entry order does not; path, bytes, boundaries and
+count all do; nested directories hash with `/` paths and dotfiles are skipped.
+
+`blindside-harness` checks the round trips the CLI is made of (24 CLI tests, 31 unit, 3 in
+the binary): record then verify is clean, a record from another content pack or a newer
+schema is rejected with both hashes and exit 2, `--hash-every N` keeps ticks `0, N, 2N, ...`
+plus the final tick, 10,000 `step()` calls take under 10 ms, an injected divergence is
+caught in the tick it was armed for (and names `inject_fold`), 20 injection runs fire every
+time, a log corrupted from tick 1234 onward is bisected to tick 1234 in at most 16 re-runs,
+a foreign checkpoint log every 100 ticks is narrowed and then walked to the exact tick, the
+batch table is byte-identical for J=1 and J=8, a `--content` directory that is named but
+absent is exit 2 while the absent built-in default is not, and `golden` prints the
+checked-in tables (compared with whitespace collapsed, since rustfmt splits the long rows:
+116 generated lines against 476 checked in). `tests/fixture.rs` loads
+`fixtures/phase0-empty-10k.record` through `migrate()`, checks its 281-byte size and LF
+endings, re-serialises it byte-identically and re-runs it to its final hash.
+`tests/workspace.rs` reads `cargo metadata`: blindside-sim depends on no workspace crate but
+vm and content, every external dependency of sim/vm/content/gen is pinned `=x.y.z`, no
+rand-family crate (or rayon, libm) is reachable from them even through dev-dependencies,
+the sim's default feature set is empty, the harness has no GUI, renderer or audio
+dependency and a closed direct-dependency list, and the constrained crate roots carry
+`#![deny(unsafe_code)]`. It also runs `cargo tree -e features` for every crate in
+`ci/no-tooling-features.txt` and fails if `diagnostics` or `inject-desync` is in the
+resolved set (BLD-29), which is the same check CI's `feature-gates` job runs.
+`tests/world_unreachable.rs` is the trybuild compile-fail suite.
 
 `determinism-lint`'s tests are listed under "Determinism lint" below.
 
 ## Tools
+
+> **`docs/HARNESS.md` is the reference.** It carries the annotated version of everything
+> below plus what this section does not repeat: bisect's semantics (§5), what the state
+> hash covers (§4), the golden-hash update procedure (§8), the lint's evasion table (§9),
+> the dependency audit (§10), and the decisions the build took with no designer answer,
+> written as a yes/no question round (§1). This section is the short version, and every
+> transcript in it was produced by running the command.
 
 Two things trip people up before anything else:
 
 - **The package is `blindside-harness`; only the binary is `harness`.** `cargo run -p
   harness` fails, with ``error: package(s) `harness` not found in workspace``. Use
   `cargo run -p blindside-harness -- <subcommand>`, or run the built binary directly at
-  `target/release/harness` (`harness.exe` on Windows, which is the name in the usage lines
-  below because they were pasted from a Windows run).
-- **The hash sidecar is named after the replay.** `record --out replay.json` writes
-  `replay.hashes.json`, not `hashes.json`. Pass `--hashes` to choose another name (CI
-  does).
+  `target/release/harness` (`harness.exe` on Windows, which is what the usage lines below
+  say because they were pasted from a Windows run).
+- **The hash log is named after the record.** `verify` and `canary` write one by default,
+  at `<record stem>.hashlog` in the current directory; `run` and `record` write one only
+  when `--hash-log <PATH>` asks. `--hash-every N` thins it to ticks `0, N, 2N, …` plus the
+  final tick, so the last line is always the final hash. `batch` writes no log: its output
+  is the `seed,final_hash` table.
 
-Subcommands, from `harness --help`. The top-level help prints only the one-line summary
-of each; the Usage column is each subcommand's own `--help` line, verbatim:
+Subcommands, from `harness --help`. The top-level help prints only the one-line summary of
+each; the Usage column is each subcommand's own `--help` line, verbatim:
 
 | Subcommand | Usage | What it does |
 |---|---|---|
-| `run` | `harness.exe run <REPLAY>` | re-runs a `MatchRecord` to its tick count, compares the final hash against the recorded one, reports throughput |
-| `canary` | `harness.exe canary [OPTIONS] --ticks <TICKS>` | two sims in lockstep, hashes compared every tick; `--inject` plants a `HashMap`-ordering desync, `--inject-tick` picks the tick, `--divergence` names the report file |
-| `record` | `harness.exe record [OPTIONS] --seed <SEED> --ticks <TICKS> --out <OUT>` | runs a fresh match and writes the replay plus a per-tick hash log (`--hashes` names it) |
-| `verify` | `harness.exe verify <REPLAY> <HASHES>` | re-runs a replay and checks *every* per-tick hash, not just the last |
-| `bisect` | `harness.exe bisect [OPTIONS] [REPLAY] [HASHES]` | finds the first disagreeing tick and dumps the state there; `--from-divergence <FILE>` reproduces a `divergence.json` from `canary` instead |
-| `batch` | `harness.exe batch [OPTIONS] --matches <MATCHES> --ticks <TICKS>` | N sequential matches, one thread, reports matches per hour; `--seed` is the first match's seed |
+| `run` | `harness.exe run [OPTIONS] <RECORD>` | re-runs a `MatchRecord` to its tick count, compares the final hash against the recorded one, prints final tick, wall-clock, ticks/s, matches/hour at 9,600 ticks/match and the per-tick hash cost; `--dump-state-at <TICK>` writes `diagnostics::dump` there |
+| `record` | `harness.exe record [OPTIONS] --seed <SEED> --ticks <TICKS> --out <OUT>` | runs a fresh empty match and writes the replay with `final_hash` filled in |
+| `verify` | `harness.exe verify [OPTIONS] <RECORD>` | re-runs a record, compares the final hash to the recorded one (exit 1 with both hashes on a mismatch), refuses a record from another content pack (exit 2, both hashes) |
+| `canary` | `harness.exe canary [OPTIONS] --record <RECORD>` | two sims built from that one record through `Sim::new`, stepped in lockstep, hashes compared every tick; `--injected` arms the `HashMap`-ordering desync in both instances (needs a build with `--features inject-desync`, else exit 2), `--inject-tick` picks the tick (default 5000), `--divergence` names the report file |
+| `bisect` | `harness.exe bisect [OPTIONS] <--hash-log <PATH>\|--injected\|--from-divergence <PATH>>` | finds the first tick a local re-run disagrees with the foreign side on and dumps the local state there; the foreign side is a plain hash log recorded elsewhere, the BLD-35 fixture, or a `divergence.json` from `canary` |
+| `diff-dumps` | `harness.exe diff-dumps <A> <B>` | field-level diff of two state dumps from two machines; exit 1 if they differ |
+| `batch` | `harness.exe batch [OPTIONS] --seeds <A..B> --out <OUT>` | one empty match per seed, at most `--jobs J` at once, writes a `seed,final_hash` table sorted by seed (byte-identical for any J) and reports matches/hour and aggregate ticks/s |
+| `golden` | `harness.exe golden` | prints `crates/blindside-sim/src/golden_tables.rs` (RNG draws and `Fx` arithmetic as raw bits) to stdout; redirect over the checked-in file, then `cargo fmt --all` |
 
-Exit codes are the same everywhere and are what CI keys off:
+Global flag: `--content <DIR>`, the content pack a record is validated against. The default
+is `<workspace>/content`, and it is allowed to be missing — Phase 0 ships no `content/` and
+the empty pack *is* the pack. A directory you name yourself must exist:
+
+```
+$ harness.exe run fixtures/phase0-empty-10k.record --content ./no-such-pack
+harness: error: --content ./no-such-pack: no such directory. (The built-in default may be
+absent -- that is the empty pack -- but a directory named on the command line must exist.)
+[exit 2]
+```
+
+Exit codes are the same everywhere and are what CI and `git bisect run` key off:
 
 | Code | Meaning |
 |---|---|
 | 0 | ran, and everything that was compared agreed |
-| 1 | a determinism failure: canary divergence, hash mismatch, reproduced desync |
-| 2 | could not run: bad arguments, unreadable file, or a file that does not belong (wrong schema, wrong content hash, log from another seed) |
+| 1 | a determinism failure: canary divergence, hash mismatch, located or reproduced desync, two dumps that differ |
+| 2 | could not run: bad arguments, unreadable file, or a file that does not belong (wrong schema, wrong content hash, `--injected` without the `inject-desync` feature) |
 
-Exit 2 is not a determinism result. `verify replay.json other.hashes.json`, where the log
-was recorded from a different seed, prints `harness: error: hash log seed 8 does not match
-record seed 7` and exits 2 — it never ran the comparison, so nothing was proven either way.
+Exit 2 is not a determinism result: nothing was compared.
 
-### Worked example: record, verify, run, bisect
+### The hash log
 
-Every command and every line of output below was run in this workspace after
-`cargo build --workspace --release`. The hashes are reproducible: they are the point. The
-timings are not.
-
-Record a 5000-tick match on seed 7:
+Plain text, one `tick,hash` line per logged tick, LF, no header — so `diff`, `cmp` and
+`sha256sum` compare two machines' logs without this binary, which is how CI's
+`cross-platform` job works:
 
 ```
-$ cargo run -p blindside-harness --release --quiet -- record --seed 7 --ticks 5000 --out replay.json
+$ head -3 hashes.hashlog
+0,e299d9f373c4ff513633802b5ce9a28237fa0989f068467b704014d42031d12b
+1,664104ee0d3ea2b949a36d65e7dde6fc5c3af2f2d4debeba6103a38283cabd3a
+2,d8fa48b8307f511973e2f2fa7758c8bf9daa5d6d32d031b32c74500a9178ac8d
+$ tail -1 hashes.hashlog
+5000,d61455307886d124f1b6913f95bc70fde56633488e23a80163fb9303500a5b1a
+```
+
+Carrying no seed and no tick count is the price of a format `diff` understands: a log from
+*another* record is reported as a divergence at tick 0, not as a usage error, because
+nothing structural distinguishes the two.
+
+### Worked examples
+
+One run of the release build, in a scratch directory. `<repo>` replaces the absolute path
+the binary prints; nothing else is edited.
+
+**Record a replay, then verify it.** `record` runs a fresh empty match and writes the
+record with `final_hash` filled in; `verify` re-runs it and compares.
+
+```
+$ harness.exe record --seed 7 --ticks 5000 --out replay.json --hash-log hashes.hashlog
 recorded seed 7, 5000 ticks
-replay: replay.json
-hashes: replay.hashes.json  (5001 entries, ticks 0..=5000)
-content hash: fac419fd5b17256e1b5936b050341963b88061362cb143271c5bbb4f1f5557a3
-final hash: f9fe7a4608b97e6b3167a872d3f22fa03d23901f6ae877a6d46774b7e3215fa8
-```
+record: replay.json
+content hash: 3dbd5a09e7a3cb05765522ff5d618722f3ab7784973a3e7c3b8a43c095404ba1
+final hash: d61455307886d124f1b6913f95bc70fde56633488e23a80163fb9303500a5b1a
+hash log: hashes.hashlog  (5001 line(s), 5001 entries, every tick to 5000)
+[exit 0]
 
-Two files. `replay.json` is the `MatchRecord` from `docs/ARCHITECTURE.md`, 271 bytes:
-
-```
-{
-  "schema": 0,
-  "seed": 7,
-  "content_hash": "fac419fd5b17256e1b5936b050341963b88061362cb143271c5bbb4f1f5557a3",
-  "loadouts": [],
-  "policies": [],
-  "commands": [],
-  "ticks": 5000,
-  "final_hash": "f9fe7a4608b97e6b3167a872d3f22fa03d23901f6ae877a6d46774b7e3215fa8"
-}
-```
-
-`loadouts`, `policies` and `commands` are the match's inputs and are in the format now so
-Phase 3 changes their type, not the file's shape. The Phase 0 sim takes none of them, so
-they are always empty, and a record with anything in them is refused: `run` prints
-`harness: error: Phase 0 sim accepts no loadouts, policies or commands; record has some`
-and exits 2. `replay.hashes.json` is one hash per tick, `0..=5000`, so 5001 entries. Exit
-0; the only failure mode is not being able to write.
-
-Now the sidecar trap, then the real thing:
-
-```
-$ cargo run -p blindside-harness --release --quiet -- verify replay.json hashes.json
-harness: error: cannot read hashes.json: The system cannot find the file specified. (os error 2)
-```
-
-Exit 2. (The text after the colon is the operating system's; Linux and macOS say `No such
-file or directory`.) The file `record` actually wrote is `replay.hashes.json`:
-
-```
-$ cargo run -p blindside-harness --release --quiet -- verify replay.json replay.hashes.json
-OK: 5000 ticks, every per-tick hash matches
-final hash: f9fe7a4608b97e6b3167a872d3f22fa03d23901f6ae877a6d46774b7e3215fa8
-```
-
-Exit 0. `verify` checks all 5001 hashes and then the record's own final hash, so it catches
-a divergence that heals before the last tick — which a final-hash-only check would miss.
-
-`run` is the cheaper check: replay, compare the final hash only, report throughput.
-
-```
-$ cargo run -p blindside-harness --release --quiet -- run replay.json
-replay: replay.json
-seed: 7  ticks: 5000
-final hash: f9fe7a4608b97e6b3167a872d3f22fa03d23901f6ae877a6d46774b7e3215fa8
-recorded  : f9fe7a4608b97e6b3167a872d3f22fa03d23901f6ae877a6d46774b7e3215fa8
-ticks/s: 69060773  (elapsed 0.000s)
+$ harness.exe verify replay.json
+verify: replay.json  (seed 7, 5000 ticks)
+final hash: d61455307886d124f1b6913f95bc70fde56633488e23a80163fb9303500a5b1a
+recorded  : d61455307886d124f1b6913f95bc70fde56633488e23a80163fb9303500a5b1a
+wall-clock: 0.001s
+hash log: replay.hashlog  (5001 line(s), 5001 entries, every tick to 5000)
 OK: final hash matches record
+[exit 0]
 ```
 
-Exit 0. Elapsed rounds to zero because a Phase 0 tick moves two agents; treat `ticks/s`
-here as a measurement of the harness loop, not of a match. When the hashes disagree the
-last line becomes `MISMATCH: final hash differs from record` and the exit code is 1:
+**Run the checked-in fixture and dump a state.** The dump is the only form in which ground
+truth crosses a machine boundary: strings, produced inside the sim behind the `diagnostics`
+feature. Fixed-point values print as decimal *and* raw bits, because the bits are what the
+hash covers.
 
 ```
-$ cargo run -p blindside-harness --release --quiet -- run tampered.json
-replay: tampered.json
-seed: 7  ticks: 5000
-final hash: f9fe7a4608b97e6b3167a872d3f22fa03d23901f6ae877a6d46774b7e3215fa8
-recorded  : 09fe7a4608b97e6b3167a872d3f22fa03d23901f6ae877a6d46774b7e3215fa8
-ticks/s: 68870523  (elapsed 0.000s)
-MISMATCH: final hash differs from record
-```
-
-(`tampered.json` is `replay.json` with the first hex digit of `final_hash` changed by hand.)
-
-`bisect` takes a replay and a hash log recorded on the *other* side — another machine,
-another OS, another build — and finds the first tick they disagree on. Against its own log
-there is nothing to find:
-
-```
-$ cargo run -p blindside-harness --release --quiet -- bisect replay.json replay.hashes.json
-bisect: seed 7, 5000 ticks, local re-run vs replay.hashes.json
-OK: 5000 ticks, no tick differs from the recorded hashes
-```
-
-Exit 0. To see it work you need a log that disagrees from some tick onward and never
-re-converges, which is the shape of a real desync. Record a second match and splice its
-tail onto the first log. In the pretty-printed log the hash for tick `t` is on line
-`5 + t`, so tick 1233 is line 1238 and tick 1234 is line 1239:
-
-```
-$ cargo run -p blindside-harness --release --quiet -- record --seed 8 --ticks 5000 --out other.json
-recorded seed 8, 5000 ticks
-replay: other.json
-hashes: other.hashes.json  (5001 entries, ticks 0..=5000)
-content hash: fac419fd5b17256e1b5936b050341963b88061362cb143271c5bbb4f1f5557a3
-final hash: 4036c6177eb91e23ff1caddf5559541abedf825e67ced610da7262663b39d303
-
-$ head -n 1238 replay.hashes.json > spliced.hashes.json
-$ tail -n +1239 other.hashes.json >> spliced.hashes.json
-```
-
-`spliced.hashes.json` still says `"seed": 7` and still covers 5000 ticks, so it passes the
-structural check and looks exactly like a log from a machine that agreed with this one
-until tick 1234:
-
-```
-$ cargo run -p blindside-harness --release --quiet -- bisect replay.json spliced.hashes.json
-bisect: seed 7, 5000 ticks, local re-run vs spliced.hashes.json
-DIVERGENCE at tick 1234  (found by binary search, 15 re-run(s))
-  recorded: 9514f6910c9734e1decf2b71199121824d2ae75dc649806415be231150fafcb4
-  local   : 2f0b6bc5e9e0c68ddb359e2ec9510d2bda14565dc030a82418a1a7e5ab6b70e1
-  tick 1233 matched on both sides
-local state at tick 1234 (hash 2f0b6bc5e9e0c68ddb359e2ec9510d2bda14565dc030a82418a1a7e5ab6b70e1):
-  seed = 7
-  tick = 1234
+$ harness.exe run fixtures/phase0-empty-10k.record --dump-state-at 5000
+record: <repo>/fixtures/phase0-empty-10k.record  (seed 3735928559, 10000 ticks)
+final tick: 10000
+final hash: 653b9057c4dd809407213920a217794adafd41c7ea92976e6bf344b76a5639bc
+recorded  : 653b9057c4dd809407213920a217794adafd41c7ea92976e6bf344b76a5639bc
+wall-clock: 0.003s  (step-only pass 0.000s, hashing pass 0.002s)
+ticks/s: 66622252  => 24983344 matches/hour at 9600 ticks/match
+hash cost per tick: 227 ns  (10001 hashes, every tick; 0.002s of the hashing pass)
+state at tick 5000 written to phase0-empty-10k.tick5000.dump:
+  seed = 3735928559
+  tick = 5000
+  inject_fold = 0x0000000000000000
   agents.len = 2
-  agents[1].pos.x = 6.765475479 (0x00000006c3f63374)
-  agents[1].pos.y = -2.8720977975 (0xfffffffd20be32e1)
-  agents[2].pos.x = 20.3524284617 (0x000000145a38c06d)
-  agents[2].pos.y = 8.7124642332 (0x00000008b6640e55)
-5 field(s) changed across tick 1233 -> 1234 (suspects):
-  tick
-      before: 1233
-      after : 1234
-  agents[1].pos.x
-      before: 6.4553729629 (0x000000067493528f)
-      after : 6.765475479 (0x00000006c3f63374)
-  agents[1].pos.y
-      before: -2.696634121 (0xfffffffd4da962e1)
-      after : -2.8720977975 (0xfffffffd20be32e1)
-  agents[2].pos.x
-      before: 19.9427038648 (0x00000013f1550a5d)
-      after : 20.3524284617 (0x000000145a38c06d)
-  agents[2].pos.y
-      before: 9.209923477 (0x0000000935bd8b84)
-      after : 8.7124642332 (0x00000008b6640e55)
-the recorded side supplied hashes only; the diff above is the local instance's change across the divergent tick
+  agents[1].pos.x = 13.5116733697 (0x0000000d82fd06a5)
+  agents[1].pos.y = -19.1461968874 (0xffffffecda92d73e)
+  agents[2].pos.x = 48.2984460506 (0x000000304c66f5db)
+  agents[2].pos.y = -23.487017158 (0xffffffe88352d7f2)
+OK: final hash matches record
+[exit 0]
 ```
 
-Exit 1. Fifteen re-runs, not 5000: a desync never heals, so the mismatch is monotone in
-tick and the log can be binary-searched. Fixed-point values print as decimal *and* raw bits
-because the bits are what the hash covers. The recorded side contributed hashes only — no
-state crosses the machine boundary — so the diff is the local instance's own change across
-the divergent tick, i.e. the list of fields that moved during the tick that first
-disagreed. If instead the final hashes agree and only some middle tick differs, the desync
-assumption is wrong (that is an edited or corrupt log), and `bisect` says so: it falls back
-to a linear scan and reports `found by linear scan (transient mismatch: final hash
-matches)`.
+Timings are not reproducible and should not be quoted as measurements; the hashes are, and
+are the point. (`hash cost per tick` in particular is stable only when hashing every tick —
+227–249 ns across runs. At a sparse `--hash-every` it has ranged from 1.1 µs to 6.3 µs on
+the same machine, because it is then dividing a handful of hashes by a whole run's noise.)
 
-Clean up: `rm replay.json replay.hashes.json other.json other.hashes.json
-spliced.hashes.json` — none of these are gitignored.
-
-### Desync canary
-
-Two `Sim` instances from identical inputs, stepped in lockstep, hashes compared every tick.
-This is acceptance criterion 1 and what CI runs on all three platforms:
+**The desync canary, unarmed.** Acceptance criterion 1: two `Sim`s built from one record
+through `Sim::new`, stepped in lockstep, compared after every step.
 
 ```
-$ cargo run -p blindside-harness --release --quiet -- canary --ticks 10000
-canary: seed 3735928559, 10000 ticks, two instances in lockstep
+$ harness.exe canary --record fixtures/phase0-empty-10k.record
+canary: <repo>/fixtures/phase0-empty-10k.record  (seed 3735928559, 10000 ticks), two
+instances in lockstep
 OK: 10000 ticks, hashes identical every tick
-final hash: b40a42e73ef385bab5d204300e96d2c9c02a5398ac35ffeb83edf1a467c21326
+final hash: 653b9057c4dd809407213920a217794adafd41c7ea92976e6bf344b76a5639bc
+wall-clock: 0.005s
+hash log: phase0-empty-10k.hashlog  (10001 line(s), 10001 entries, every tick to 10000)
+[exit 0]
 ```
 
-Exit 0. The default seed is `0xDEADBEEF` (3735928559); `--seed` changes it.
-
-A canary nobody has seen fail is not evidence of anything, so `--inject` deliberately
-perturbs instance B on one tick using an ordering read out of a `std::collections::HashMap`
-— the rule-2 violation from `docs/DETERMINISM.md`, the classic desync. The acceptance
-criterion is that the reported tick equals the injection tick. Default injection tick is
-`ticks / 2`; `--inject-tick` sets it.
+**The desync canary, armed.** `--injected` needs a build carrying the sim's `inject-desync`
+feature. Without it the run refuses rather than passing quietly:
 
 ```
-$ cargo run -p blindside-harness --release --quiet -- canary --ticks 10000 --inject
-canary: seed 3735928559, 10000 ticks, two instances in lockstep
-injected at tick 5000: perturbed instance B with HashMap iteration order [1, 2] (2 agent(s) touched)
+$ harness.exe canary --record fixtures/phase0-empty-10k.record --injected
+canary: <repo>/fixtures/phase0-empty-10k.record  (seed 3735928559, 10000 ticks), two
+instances in lockstep
+harness: error: --injected: this build of blindside-sim has no inject-desync fixture
+(build with --features inject-desync)
+[exit 2]
+```
+
+With it (`cargo run -p blindside-harness --release --features inject-desync -- …`), both
+instances fold a fresh `HashMap`'s iteration order into a hashed field on tick 5000, and
+the canary catches it in that tick — acceptance criterion 2:
+
+```
+injected at tick 5000: both instances folded a fresh HashMap's iteration order into
+World.inject_fold
 DESYNC at tick 5000
-  hash A: 85f768a766d2129644d709ac5794a9d4d309b5443907f2464d59241d7acadb44
-  hash B: b955c209c8f274f14ba3d7b9afaa014b96a9bf61091ee1e301da1d71cd8a6b1f
-  2 differing field(s):
-  agents[1].pos.x
-      A: 13.5116733697 (0x0000000d82fd06a5)
-      B: 14.5116733697 (0x0000000e82fd06a5)
-  agents[2].pos.x
-      A: 48.2984460506 (0x000000304c66f5db)
-      B: 50.2984460506 (0x000000324c66f5db)
+  hash A: af4820cb4e377063c6fbd6559da32048e65c4bfaba8252b1ae2c6a0e30f8223b
+  hash B: 7324d1284ecbd7ebd005b0555ba7809c7992da477f74b0366d0ade342f675bda
+  1 differing field(s):
+  inject_fold
+      A: 0x8c8741fd167d45e7
+      B: 0x2c4a81760dbcd6f1
 divergence written to divergence.json
 reproduce with: harness bisect --from-divergence divergence.json
+[exit 1]
 ```
 
-The order on the `injected` line is whatever this process's `HashMap` happened to
-produce, so about half of all runs print `[2, 1]` instead (twelve runs here: five `[1, 2]`,
-seven `[2, 1]`), and with `[2, 1]` hash B is
-`f0ac0288249fbb3eebd676bf75637d21173ad65edb504101c2af4c65fea6067b` and B's values are
-`15.5116733697 (0x0000000f82fd06a5)` and `49.2984460506 (0x000000314c66f5db)` — hash A,
-`DESYNC at tick 5000` and the exit code do not change, because the order *is* the
-non-determinism and instance A never sees it.
+> **Two runs of the armed canary print different numbers, and that is the fixture
+> working.** A `HashMap`'s iteration order comes from a `RandomState` seeded per process,
+> so both hashes and both `inject_fold` values change every run. Three consecutive runs
+> here gave folds `0x8c8741fd167d45e7 / 0x2c4a81760dbcd6f1`,
+> `0x306ab3437a155adb / 0x13e2b155046eb28f` and
+> `0xc820ccaf873dd709 / 0xd1394de1639768b9`. Reproducible is what CI asserts: the exit
+> code, the tick, and the field named in the diff. Never pin an armed canary's hashes and
+> never compare two machines' armed runs.
 
-Exit 1, and the divergence tick equals the injection tick. The report is also written to
-`divergence.json` (`--divergence` changes the path), carrying the seed, tick, both hashes,
-the field diff, and the exact ordering that was injected — the ordering is what makes the
-failure re-runnable, since a `HashMap`'s iteration order is not the same twice.
-
-That file is the second input `bisect` accepts, and this is criterion 4, one command:
+**Bisect against a foreign hash log.** The case bisect exists for: a log recorded on
+another machine, another OS or another commit. Here `hashes.hashlog` was copied and
+corrupted from tick 3000 onward.
 
 ```
-$ cargo run -p blindside-harness --release --quiet -- bisect --from-divergence divergence.json
-bisect: reproducing divergence.json (seed 3735928559, 10000 ticks, divergence at tick 5000)
-  recorded injection at tick 5000 with order [1, 2]
-recorded divergence:
-DESYNC at tick 5000
-  hash A: 85f768a766d2129644d709ac5794a9d4d309b5443907f2464d59241d7acadb44
-  hash B: b955c209c8f274f14ba3d7b9afaa014b96a9bf61091ee1e301da1d71cd8a6b1f
-  2 differing field(s):
+$ harness.exe bisect --record replay.json --hash-log foreign.hashlog
+bisect: replay.json  (seed 7, 5000 ticks), local re-run vs foreign.hashlog  (5001 entries,
+every tick to 5000)
+DIVERGENCE at tick 3000  (found by binary search over 5001 checkpoint(s), 14 re-run(s))
+  recorded: f4b0d389a224410848d1471998543975a60ebf9ae33505a2cb840761a836d144
+  local   : c4b0d389a224410848d1471998543975a60ebf9ae33505a2cb840761a836d144
+  tick 2999 matched on both sides
+local state at tick 3000 (hash c4b0d389…a836d144):
+  seed = 7
+  tick = 3000
+  … (agents[1].pos.x, agents[1].pos.y, agents[2].pos.x, agents[2].pos.y)
+5 field(s) changed across tick 2999 -> 3000 (suspects):
+  tick
+      before: 2999
+      after : 3000
   agents[1].pos.x
-      A: 13.5116733697 (0x0000000d82fd06a5)
-      B: 14.5116733697 (0x0000000e82fd06a5)
-  agents[2].pos.x
-      A: 48.2984460506 (0x000000304c66f5db)
-      B: 50.2984460506 (0x000000324c66f5db)
-fresh local instance at tick 5000: hash 85f768a766d2129644d709ac5794a9d4d309b5443907f2464d59241d7acadb44  (matches A: true, matches B: false)
-re-run with the recorded injection:
-DESYNC at tick 5000
-  hash A: 85f768a766d2129644d709ac5794a9d4d309b5443907f2464d59241d7acadb44
-  hash B: b955c209c8f274f14ba3d7b9afaa014b96a9bf61091ee1e301da1d71cd8a6b1f
-  2 differing field(s):
-  agents[1].pos.x
-      A: 13.5116733697 (0x0000000d82fd06a5)
-      B: 14.5116733697 (0x0000000e82fd06a5)
-  agents[2].pos.x
-      A: 48.2984460506 (0x000000304c66f5db)
-      B: 50.2984460506 (0x000000324c66f5db)
-  diff identical to the recorded one
-REPRODUCED: divergence at tick 5000
+      before: 7.807158166 (0x00000007cea1eae6)
+      after : 8.2472922162 (0x000000083f4e8aed)
+  … (three more)
+the recorded side supplied hashes only; the diff above is the local instance's change
+across the divergent tick
+dump of the local state at tick 3000 written to replay.tick3000.dump
+[exit 1]
 ```
 
-If your canary run printed `[2, 1]`, this block reads `with order [2, 1]`, every `hash B`
-is `f0ac0288…`, the B values are the `[2, 1]` ones, and the last line is still
-`REPRODUCED` — the file carries the order, so the re-run does not consult a `HashMap`
-again.
+Fourteen re-runs for a 5,000-tick record. `--injected` (acceptance criterion 4) and
+`--from-divergence` are the other two foreign sides; `docs/HARNESS.md` §5 has both, the
+exit-code contract and the `git bisect run` example.
 
-Exit 1 means reproduced — the failure is still there, which is what you want to see before
-you start fixing it. Exit 0 here means `NOT REPRODUCED`: the recorded injection no longer
-diverges, so either it is fixed or it was never deterministic in the first place. A
-divergence file with no recorded injection (a real desync between two instances, not an
-injected one) cannot be re-run, so the recorded diff stands as reported and the local
-instance is only checked against both sides' hashes.
-
-### Batch throughput
-
-`docs/PHASE-0-HARNESS.md` asks for thousands of matches per hour on a laptop. `batch` runs
-N matches of T ticks sequentially on one thread — deliberately single-threaded, so the
-number is per core:
+**Diff two dumps from two machines.** Needs neither machine's `Sim`: a dump is text.
 
 ```
-$ cargo run -p blindside-harness --release --quiet -- batch --matches 200 --ticks 5000
-batch: 200 matches x 5000 ticks, seeds 3735928559..=3735928758
-elapsed: 0.017s
-matches/hour: 41271625
-ticks/s: 57321701
-digest: 4f8e25ee2dfb94d0d6f597d2ac7c188bb491ac3d623d07b2e2b737c0f4f04bc7
+$ harness.exe diff-dumps phase0-empty-10k.tick5000.dump copy.dump
+diff-dumps: A = phase0-empty-10k.tick5000.dump  B = copy.dump
+OK: identical (8 field(s))
+[exit 0]
 ```
 
-Exit 0 always: `batch` measures, it does not compare. Match *i* uses seed + *i*, and the
-digest is the XOR of every final hash — order-independent, enough to tell two batch runs
-apart, and enough to stop the optimiser deleting the work. The rate is meaningless as a
-prediction of Phase 3 throughput (two agents, no sensors, no policies); it is a floor and a
-regression tripwire.
+**Batch: one match per seed, and the same table for any `--jobs`.** Parallelism *between*
+matches only, never inside a tick (DETERMINISM.md rule 5). Workers pull the next seed from
+a shared counter, so the schedule depends on timing; rows are sorted by seed before the
+table is written, so the table does not.
+
+```
+$ harness.exe batch --seeds 0..1000 --ticks 9600 --jobs 8 --out j8.csv
+batch: 1000 seed(s) 0..=999 x 9600 ticks, 8 job(s)
+elapsed: 0.036s
+matches/hour: 101158831  aggregate ticks/s: 269756882
+table: j8.csv  (1000 line(s), seed,final_hash sorted by seed)
+[exit 0]
+
+$ harness.exe batch --seeds 0..1000 --ticks 9600 --jobs 1 --out j1.csv
+batch: 1000 seed(s) 0..=999 x 9600 ticks, 1 job(s)
+elapsed: 0.136s
+matches/hour: 26431543  aggregate ticks/s: 70484116
+table: j1.csv  (1000 line(s), seed,final_hash sorted by seed)
+[exit 0]
+
+$ cmp j1.csv j8.csv && echo identical
+identical
+
+$ head -1 j8.csv
+0,2d2a08bdd4d9fa98dfd0248800795e9ad85a63f65057f6fc98522e9c310b764f
+```
+
+BLD-38's budget for that command is 60 s; a 16-logical-core Windows laptop does it in
+0.036 s at `--jobs 8` and 0.136 s at `--jobs 1`. Read that as a floor and a regression
+tripwire, not a Phase 3 prediction — a Phase 0 tick moves two agents.
+
+**Regenerate the golden tables.** 116 lines out; the checked-in file is 476, because
+rustfmt splits the long rows. `golden_prints_the_checked_in_tables` compares the two with
+whitespace collapsed, so it asserts the content is unchanged modulo formatting.
+
+```
+$ harness.exe golden | wc -l
+116
+
+cargo run -p blindside-harness -- golden > crates/blindside-sim/src/golden_tables.rs
+cargo fmt --all
+```
+
+### The parallel window
+
+```
+$ bash tools/assert-empty-sim.sh
+assert-empty-sim: the Phase 0 parallel window, at <repo>
+
+blindside-sim
+  ok    module list is the Phase 0 set
+  ok    World's fields are the Phase 0 set
+  ok    fxmath.rs declares no items (header only)
+  ok    no Belief type is declared anywhere under crates/
+
+no Phase 3 subject matter in blindside-sim / -gen / -content
+  ok    no sensor, belief, acoustic, cave, ancient or policy declaration
+
+the stub crates
+  ok    blindside-gen declares no items (a lint target, not yet a generator)
+  ok    blindside-vm declares only VmBudget (Phase 4 writes the interpreter)
+  ok    blindside-content's public items are the pack hash and nothing else
+
+assert-empty-sim: OK -- the sim is still empty; Phase 0 built only tooling.
+[exit 0]
+```
+
+Phase 0 was built before the Phase 1 report existed and alongside Phase 2, so the sim had
+to stay empty while the tooling around it was finished. This asserts that it did, on every
+commit and again at readiness; `docs/HARNESS.md` §12 says what each check defends and why
+`World` holds four fields rather than one. BLD-66 re-runs it before the first Phase 3
+commit.
 
 ### Determinism lint
 
@@ -392,9 +442,17 @@ tokens below was written in these files", which is narrower than "this code is
 deterministic".
 
 **What it checks.** The *spellings* of `docs/DETERMINISM.md` rules 1-5 — the tokens those
-constructs are written with — in `crates/blindside-sim`, `crates/blindside-vm` and
-`crates/blindside-gen` (`tools/determinism-lint`); the crate layout, on every run; and the
-dependency list, with `--check-all`. Every `src/**/*.rs` is lexed with `proc-macro2` (the
+constructs are written with — the spelling half of rule 8 (a `// SAFETY:` line above
+every `unsafe` and every `#[allow(unsafe_code)]`), and `ARCHITECTURE.md`'s "no I/O"
+(`std::fs`, `std::io`, `std::net`), in `crates/blindside-sim`,
+`crates/blindside-vm` and `crates/blindside-gen` (`tools/determinism-lint`); the crate
+layout, on every run; and the dependency list, with `--check-all`. One exemption: inside an
+item under `#[cfg(feature = "inject-desync")]` — that exact spelling, an outer attribute,
+never a `mod` — `HashMap`, `HashSet` and the std hashers pass. That is the canary's
+injection fixture (`World::inject_desync`), the one sanctioned HashMap in a constrained
+crate; the exemption ends with the item and covers nothing else (a float in it is still a
+finding). `blindside-content` is held to the same rules by this repo's standing orders but
+is not in the lint's crate list (the BLD-20 question on scope is open). Every `src/**/*.rs` is lexed with `proc-macro2` (the
 front end `syn` is built on) and scanned at the token level. Comments and doc comments are
 ignored; string literals are opaque except for a pointer format spec, so
 `"f64 HashMap std::time rand"` in a string is not a finding and `"{:p}"` is. Braced use
@@ -432,9 +490,10 @@ expand, resolve or type-check.
   thread::spawn(..)`, `use std::fmt::*; Pointer::fmt(..)`. Every path check matches the
   spelled `<root>::<name>`; catching these means banning root renames and glob imports,
   a rule `DETERMINISM.md` does not state.
-- *Rules 6-8.* Iteration by stable ID, IDs not derived from name hashes, justified
-  `unsafe`. `BTreeMap<NameHash, _>` reads perfectly and is still non-deterministic. The
-  desync canary catches those; this lint cannot.
+- *Rules 6-8.* Iteration by stable ID, IDs not derived from name hashes, and whether a
+  `// SAFETY:` line is *true* (its presence is checked; its argument is not).
+  `BTreeMap<NameHash, _>` reads perfectly and is still non-deterministic. The desync canary
+  and review catch those; this lint cannot.
 
 Rejected, with the label each finding prints:
 
@@ -446,10 +505,12 @@ Rejected, with the label each finding prints:
 | `rule 3` (wall clock) | idents `SystemTime`, `Instant`; paths `std::time`, `core::time` |
 | `rule 3` (address) | `*const`, `*mut`; paths `std::ptr`, `core::ptr`, `fmt::Pointer`; idents `as_ptr`, `as_mut_ptr`, `addr_of`, `addr_of_mut`, `into_raw`, `transmute`, `NonNull`; a `{:p}` / `{:#p}` format spec (any fill, width or argument name; `{{:p}}` is an escaped brace and passes) in a string literal that is not a doc comment |
 | `rule 3` (environment) | paths `std::process`, `std::env`; macros `env!`, `option_env!` (a variable named `env` is fine) |
+| `no I/O` | paths `std::fs`, `std::io`, `std::net` — `ARCHITECTURE.md` gives `blindside-sim` "no I/O", and a file or socket is an input the replay does not carry. `std::fmt` is *not* banned: a `Display` impl writes into a formatter, not to a device |
 | `rule 4` | ident `rand`; any ident beginning `rand_` |
 | `rule 5` | ident `rayon`; paths `std::thread`, `core::thread` |
 | `lint scope` | source the `src/` walk would not read: `include!`; `#[path = ".."]`, bare or inside `cfg_attr`, that leaves `src/` or does not name a `.rs` file (the walk reads only `*.rs`); in `Cargo.toml`, a `path` under `[lib]` or `[[bin]]` (the root is `src/lib.rs`; see *a hostile manifest* above for what the reader misses) and a build script (`build.rs`, or `[package] build = ".."` other than `false`, since it runs unlinted before the crate compiles); no `src/lib.rs` at all |
-| `dependency tree` | `--check-all` only: a `[dependencies]` / `[build-dependencies]` entry whose *package* is outside the allow-list `blindside-vm`, `blindside-content`, `fixed`, `blake3`. A `package = ".."` rename is checked by the package name in both the inline-table and `[dependencies.<key>]` spellings, and `workspace = true` is resolved through the nearest ancestor `Cargo.toml` with a `[workspace]` table; a `workspace = true` key that workspace does not declare is also a finding. `[dev-dependencies]` only warn, and so does `workspace = true` with no workspace above at all (Cargo could not build that crate either) |
+| `rule 8` | `unsafe`, `#[allow(unsafe_code)]` or `#[expect(unsafe_code)]` (in any spelling that names both words, `cfg_attr` included) whose comment block directly above — attribute lines between are skipped — has no line starting `// SAFETY:`; `#![allow(unsafe_code)]` anywhere. Doc comments and strings that say `unsafe` are not tokens and pass |
+| `dependency tree` | `--check-all` only: a `[dependencies]`, `[build-dependencies]` or `[dev-dependencies]` entry whose *package* is outside the allow-list `blindside-vm`, `blindside-content`, `fixed`, `blake3` (dev-dependencies are inside the check so the rand ban stays one rule; tests draw from `blindside_sim::testing`). A `package = ".."` rename is checked by the package name in both the inline-table and `[dependencies.<key>]` spellings, and `workspace = true` is resolved through the nearest ancestor `Cargo.toml` with a `[workspace]` table; a `workspace = true` key that workspace does not declare is also a finding. `workspace = true` with no workspace above at all only warns (Cargo could not build that crate either) |
 
 The `lint scope` rows run without `--check-all` too, so a `CRATE_DIR` with no `Cargo.toml`
 or no `src/lib.rs` is a finding, not a silently short scan.
@@ -461,21 +522,27 @@ abbreviated to `<tmp>`:
 
 ```
 $ cargo run -p determinism-lint --quiet -- --check-all <tmp>/blindside-sim
-<tmp>/blindside-sim\Cargo.toml:14:1: warning: `fixed` is `workspace = true` but no ancestor Cargo.toml has a [workspace] table, so the package it names cannot be checked here
-<tmp>/blindside-sim\Cargo.toml:15:1: warning: `blake3` is `workspace = true` but no ancestor Cargo.toml has a [workspace] table, so the package it names cannot be checked here
-<tmp>/blindside-sim\src\lib.rs:216:17: `f64` -- rule 1: no f32/f64, fixed-point (Fx) only
-<tmp>/blindside-sim\src\lib.rs:216:23: `0.0` -- rule 1: no f32/f64, fixed-point (Fx) only
+<tmp>/blindside-sim\Cargo.toml:16:1: warning: `fixed` is `workspace = true` but no ancestor Cargo.toml has a [workspace] table, so the package it names cannot be checked here
+<tmp>/blindside-sim\Cargo.toml:17:1: warning: `blake3` is `workspace = true` but no ancestor Cargo.toml has a [workspace] table, so the package it names cannot be checked here
+<tmp>/blindside-sim\src\lib.rs:313:17: `f64` -- rule 1: no f32/f64, fixed-point (Fx) only
+<tmp>/blindside-sim\src\lib.rs:313:23: `0.0` -- rule 1: no f32/f64, fixed-point (Fx) only
 determinism-lint: FAIL -- 2 finding(s) in 1 file(s) across 1 of 1 crate(s) (sources + layout + Cargo.toml dependencies)
 determinism-lint: token-level check; not seen: macro expansion, dependency contents, most pointer casts, indirect `{:p}`, `use std as sys` / glob roots, a hostile manifest, rules 6-8 (`--help` has the list).
 ```
 
-Exit 1. Two findings — the type and the literal, on the appended line 216 — and two
+Exit 1. Two findings — the type and the literal, both on the appended line — and two
 warnings: the copy sits outside the workspace, so the `fixed = { workspace = true }` and
-`blake3 = { workspace = true }` entries on lines 14 and 15 of `blindside-sim/Cargo.toml`
+`blake3 = { workspace = true }` entries on lines 16 and 17 of `blindside-sim/Cargo.toml`
 cannot be resolved there. Warnings do not affect the exit code; the CI job asserts exit 1
 and the `f64` line only.
 
-Tests: `cargo test -p determinism-lint` runs 16 unit tests and 25 integration tests.
+The appended line is 313 because `crates/blindside-sim/src/lib.rs` is 311 lines and the
+`printf` prepends a blank one. That number moves every time the sim grows, which is why
+the CI job greps ``lib.rs:[0-9]*:[0-9]*: `f64` -- rule 1`` and never a fixed line number:
+the check cannot go stale, only this paste can. If it disagrees with
+`wc -l crates/blindside-sim/src/lib.rs` plus two, the paste is what is out of date.
+
+Tests: `cargo test -p determinism-lint` runs 16 unit tests and 28 integration tests.
 
 - The unit tests drive the scanner and the manifest reader in-process: comments and
   strings ignored, float positions, tuple indexes against range ends, std paths only when
@@ -490,11 +557,18 @@ Tests: `cargo test -p determinism-lint` runs 16 unit tests and 25 integration te
   Temp crates carrying one violation each — an `f64` field, a `HashMap`,
   `std::time::Instant`, `rand`, a disallowed dependency — fail naming the line. One test
   per closed evasion asserts exit 1 and the exact finding line: braced use tree, std
-  hashers, pointer ingredients, `{:p}` and `fmt::Pointer`, process/env reads, `r#f64`, a
+  hashers, pointer ingredients, `{:p}` and `fmt::Pointer`, process/env reads, file, socket
+  and stream I/O (with a `Display` impl in the same file proving `std::fmt` passes), `r#f64`, a
   float as a range bound, `#[path]` and `include!` leaving `src/`, `#[path]` inside
   `cfg_attr`, `#[path]` to a non-`.rs` file, `[lib]`/`[[bin]] path`, `build.rs` and
   `package.build`, `package = ".."` renames in four spellings, `workspace = true`
-  resolution (declared, undeclared, and no workspace at all). A crate of near-miss idioms
+  resolution (declared, undeclared, and no workspace at all). The `inject-desync`
+  exemption: a crate with a gated fn (exempt), an ungated fn, a gated `mod`, another
+  feature's cfg, a float inside a gated fn, a gated `use` and the item after it (all
+  caught, 7 findings), plus a file-level `#![cfg(feature = "inject-desync")]` that exempts
+  nothing. Rule 8: a crate whose every `unsafe` has a SAFETY line passes; the same crate
+  with the lines removed and a blanket `#![allow(unsafe_code)]` fails with 4 findings
+  naming each. A crate of near-miss idioms
   — `BTreeMap`, `blake3::Hasher`, `Hash`/`Hasher` bounds, a struct named `Pointer`,
   `t.0 .1`, `0..10`, `..=5`, a parameter named `env`, an in-`src/` `#[path]`, banned words
   and `{{:p}}` in strings, `build = false`, every allowed-dependency spelling — passes with
@@ -503,18 +577,49 @@ Tests: `cargo test -p determinism-lint` runs 16 unit tests and 25 integration te
 
 ## CI
 
-`.github/workflows/determinism.yml`, on every push and pull request:
+`.github/workflows/determinism.yml`. Six jobs on every push and pull request, two more on a
+schedule.
 
 | Job | Runs on | What |
 |---|---|---|
-| `build-test-lint` | ubuntu, macos, windows | `cargo build --workspace --locked`, `cargo test --workspace --locked`, `cargo run -p determinism-lint --locked -- --check-all`, `cargo run -p blindside-harness --release --locked -- canary --ticks 10000`, `cargo run -p blindside-harness --release --locked -- record --seed 7 --ticks 5000 --out replay.json --hashes hashes.json`; uploads `hashes.json` + `replay.json` as artifact `hashes-<os>` |
-| `cross-platform` | ubuntu | downloads the three `hashes-*` artifacts and fails unless the three `hashes.json` are byte-identical (`cmp`), printing the first differing lines |
-| `lint-rejects-f64` | ubuntu | `cargo build -p determinism-lint --locked`; copies `crates/blindside-sim` to a temp dir, appends `pub fn bad() -> f64 { 0.0 }`, runs `cargo run -p determinism-lint --locked -- --check-all <copy>` and fails unless it exits 1 naming the `f64` line (the copy's two `workspace = true` warnings, shown above, are expected); then `cargo run -p determinism-lint --locked -- --check-all` on the unmodified crates as a sanity check |
+| `build-test-lint` | ubuntu, macos, windows | `cargo build --workspace --locked`, `cargo test --workspace --locked`, `cargo run -p determinism-lint --locked -- --check-all`, `bash tools/assert-empty-sim.sh`, then six `cargo run -p blindside-harness --release --locked` steps: `canary --record fixtures/phase0-empty-10k.record`, `verify fixtures/phase0-empty-10k.record`, `record --seed 7 --ticks 5000 --out replay.json --hash-log hashes.hashlog`, `run fixtures/phase0-empty-10k.record --dump-state-at 5000`, `batch --seeds 0..100 --ticks 9600 --jobs 8 --out batch.csv` (whose throughput line goes to the job summary), and `golden` twice with `cmp` on the two outputs; uploads `hashes.hashlog` + `batch.csv` + the tick-5000 dump + `replay.json` as artifact `hashes-<os>` |
+| `cross-platform` | ubuntu | downloads the three `hashes-*` artifacts and fails unless the three `hashes.hashlog`, the three `batch.csv` **and** the three `phase0-empty-10k.tick5000.dump` are each byte-identical (`cmp`), printing the first differing lines; if it is the dumps that differ it then builds the harness and prints `diff-dumps`' field-level report, so the failure names fields rather than a byte offset |
+| `feature-gates` | ubuntu | for every crate in `ci/no-tooling-features.txt`, `cargo tree -e features --locked -p <crate>` must mention neither `diagnostics` nor `inject-desync`; then the same grep must still find both on `blindside-harness`, so a blind check cannot pass silently (BLD-29) |
+| `canary-injection` | ubuntu | first: the fixture must still be in `world.rs` and the lint must still pass with it there (BLD-35's exemption is scoped to the item, so it costs the lint nothing). Then with `--features inject-desync`: `canary --record <fixture> --injected` must exit 1 reporting `DESYNC at tick 5000` with `inject_fold` in the diff, and `bisect --record <fixture> --injected` must locate the same tick; then, on the plain build, `canary --record <fixture>` must exit 0 and `--injected` must exit 2 saying the fixture is absent. The job is red if the armed canary passes |
+| `unsafe-policy` | ubuntu | BLD-34: `#![deny(unsafe_code)]` must be at the root of sim, vm, gen and content; `ci/fixtures/unsafe-justified` must lint clean; `ci/fixtures/unsafe-unjustified` must fail with exactly four rule-8 findings, one of them the crate-wide `#![allow(unsafe_code)]` |
+| `lint-rejects-f64` | ubuntu | `cargo build -p determinism-lint --locked`; copies `crates/blindside-sim` to a temp dir, appends `pub fn bad() -> f64 { 0.0 }`, runs `cargo run -p determinism-lint --locked -- --check-all <copy>` and fails unless it exits 1 naming the `f64` line (the copy's two `workspace = true` warnings, shown above, are expected); then `--check-all` on the unmodified crates as a sanity check |
+| `nightly-long-run` | ubuntu, macos, windows | **schedule (07:17 UTC) and `workflow_dispatch` only.** Records 10,000,000 ticks, runs the canary over them (`--hash-every 10000`, which thins the log and not the comparison), `verify`s the same record and `cmp`s the two logs, then runs a 1,000-seed batch; uploads `nightly-<os>` |
+| `nightly-cross-platform` | ubuntu | same trigger: the three `long.record`, `long.hashlog` and `batch1000.csv` must be byte-identical |
 
-`cross-platform` is acceptance criterion 3, `lint-rejects-f64` is criterion 5, and the
-canary step is criterion 1. Every `cargo` step passes `--locked` (the committed
-`Cargo.lock` is authoritative); the two harness steps also use `--release`. The CI record
-step is the same command as the worked example above with `--hashes hashes.json` added,
-which is why the artifact is named `hashes.json` and not `replay.hashes.json`; run here it
-prints `hashes: hashes.json  (5001 entries, ticks 0..=5000)` and the same content and
-final hashes as the worked example.
+`cross-platform` is acceptance criterion 3, `canary-injection` is criteria 2 and 4,
+`lint-rejects-f64` is criterion 5, and the canary step is criterion 1. Every `cargo` step
+passes `--locked` (the committed `Cargo.lock` is authoritative); the harness steps also use
+`--release`. `canary-injection` is the only job that enables `inject-desync`, so no
+hash-producing step can compile the fixture in.
+
+Every step that PRODUCES a hash — canary, verify, record, batch, golden — runs `cargo run
+-p blindside-harness`, never `--workspace`, because Cargo unifies features per package
+across one invocation (BLD-29; `docs/HARNESS.md` §7). `cargo build/test --workspace` stay
+as they are: they produce no hash that leaves the job.
+
+**The per-commit budget is 10 minutes (BLD-37) and the estimate is about 3.** Run
+34066438383, on HEAD `25b3ac8`, took 2 min 10 s end to end: ubuntu 58 s, macOS 46 s,
+Windows 2 min 01 s, `lint-rejects-f64` 16 s, `cross-platform` 4 s. That file declared three
+jobs, which the OS matrix expanded to those five job runs; the file now declares eight, of
+which two are nightly-only. The five steps added to `build-test-lint` since are each well
+under a second on the empty sim (parallel window 0.78 s, `verify` 0.07 s, state dump
+0.05 s, 100-seed batch 0.05 s, `golden` twice 0.09 s on the dev laptop), and the three
+added per-commit jobs run in parallel with the matrix rather than after it, so the chain is
+still Windows `build-test-lint` then `cross-platform`. The nightly jobs are outside the
+budget by construction: they never run on push. **3 minutes is an estimate against that
+measured baseline, not a measurement — the current file has never run.** Re-measure with
+`gh run view <id> --json jobs` on the first run after the next push, and after adding a
+step; the number to watch is the Windows job, which is half the total on its own.
+
+Not yet in CI: **required status checks on `main`** — a repository setting, not a file, so
+it cannot be landed from a branch; the list to require is `build, test, lint, canary` ×3,
+`cross-platform`, `feature-gates`, `canary-injection`, `unsafe-policy` and
+`lint-rejects-f64`. Also outstanding: the two consecutive green commits BLD-37 asks for
+(this branch has not been pushed), and per-OS dumps of the *injected* case, which cannot be
+compared across machines at all — the fold value is per-process by construction, so the
+cross-OS dump comparison covers the clean case instead (`docs/HARNESS.md` §6).

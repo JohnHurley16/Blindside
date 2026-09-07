@@ -15,11 +15,28 @@ edition = "2021"
 license = "UNLICENSED"
 publish = false
 
+# Dependencies of the constrained crates (blindside-sim, blindside-vm, blindside-content,
+# blindside-gen) are pinned to an exact version (BLD-19). A `cargo update` must never move
+# the arithmetic or the hasher under a recorded replay; bumping either is a deliberate change
+# that re-runs the golden tables (crates/blindside-sim/src/golden_tables.rs) and bumps the
+# hash layout version. `blindside-harness` and `tools/` are unconstrained and use ranges.
 [workspace.dependencies]
 # Fixed-point numerics for the sim. Fx = fixed::types::I32F32 (see DETERMINISM.md).
-fixed = "1"
-# Platform-independent state hash. Never std's DefaultHasher.
-blake3 = "1"
+# No features: `f16`, `nightly-float`, `num-traits` and `serde` would all route values
+# through floating point somewhere, and none is needed.
+fixed = "=1.31.0"
+# Platform-independent state hash and content pack hash. Never std's DefaultHasher.
+blake3 = "=1.8.7"
 
 [profile.release]
 debug = 1
+# DEFAULT (awaiting designer): overflow-checks = true in the hash-producing profile -- the
+# BLD-24 recommendation. Integer overflow then panics in every profile instead of panicking in
+# debug and wrapping in release, which is a profile-dependent desync the hard rules do not
+# name. Wrapping arithmetic that is meant to wrap says so (`wrapping_add`) and is unaffected.
+overflow-checks = true
+# `fixed` does not consult overflow-checks: its `+ - * /` guard overflow with
+# `debug_assert!(!overflow)`, which this switch controls. Without it an overflowing Fx
+# multiply panics under `cargo test` and silently wraps under `--release`. The test
+# `fx_multiply_overflow_panics_in_every_profile` (blindside-sim) holds under both.
+debug-assertions = true

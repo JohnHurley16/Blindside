@@ -296,6 +296,34 @@ fn process_and_environment_reads_are_rejected() {
     assert!(text.contains(":10:5: `env` -- rule 3"), "{text}");
 }
 
+/// BLD-22, last bullet: `std::fs`, `std::io`, `std::net` and `std::env` in blindside-sim
+/// must fail the check. `env` is rule 3 above; the other three are ARCHITECTURE.md's "no
+/// I/O", which is not one of DETERMINISM.md's numbered rules but is the same failure -- a
+/// sim that reads a file or a socket has an input its replay does not carry, so a replay
+/// reproduces only on a machine where that file says the same thing. Loading is
+/// blindside-content's job, and it hands the sim a pack that is already in memory.
+///
+/// `std::fmt` is deliberately NOT banned: a `Display` impl writes into a formatter, not to
+/// a device, and every error type in the crate needs one.
+#[test]
+fn file_socket_and_stream_io_are_rejected() {
+    let dir = temp_crate(
+        "evade-io",
+        "use std::io::Read;\n\npub fn slurp() -> Vec<u8> {\n    std::fs::read(\"content.toml\").unwrap()\n}\n\npub fn listen() -> std::net::SocketAddr {\n    \"127.0.0.1:0\".parse().unwrap()\n}\n\npub fn take<R: Read>(mut r: R) -> usize {\n    let mut buf = Vec::new();\n    r.read_to_end(&mut buf).unwrap()\n}\n\nimpl std::fmt::Display for Ok2 {\n    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {\n        f.write_str(\"fine\")\n    }\n}\n\npub struct Ok2;\n",
+        "",
+    );
+    let out = bin().arg(&dir).output().expect("run lint");
+    let text = stdout(&out);
+    std::fs::remove_dir_all(&dir).ok();
+    assert_eq!(out.status.code(), Some(1), "{text}");
+    assert!(text.contains(":1:10: `io` -- no I/O"), "{text}");
+    assert!(text.contains(":4:10: `fs` -- no I/O"), "{text}");
+    assert!(text.contains(":7:25: `net` -- no I/O"), "{text}");
+    // Three findings, not four or five: the `std::fmt` impl and the `Read` bound are not
+    // I/O, and a lint that cried wolf on `Display` would be turned off within a week.
+    assert!(text.contains("FAIL -- 3 finding(s)"), "{text}");
+}
+
 /// EVASION: raw identifiers. `r#f64` is the same type as `f64`; the escape exists only so
 /// keywords can be used as names, and it renamed every banned token for free.
 #[test]
@@ -711,7 +739,9 @@ fn check_all_rejects_unexpected_dependency() {
     // Without --check-all the manifest's dependencies are not inspected.
     let out = bin().arg(&dir).output().expect("run lint");
     assert!(out.status.success(), "{}", stdout(&out));
-    // With it, `rand` is a finding and `proptest` only a warning.
+    // With it, `rand` is a finding -- and so is the `proptest` dev-dependency: the
+    // dependency check covers [dev-dependencies] too (BLD-25), so the rand ban is one
+    // rule and tests take their randomness from blindside_sim::testing.
     let out = bin()
         .arg("--check-all")
         .arg(&dir)
@@ -725,10 +755,166 @@ fn check_all_rejects_unexpected_dependency() {
         "{text}"
     );
     assert!(
-        text.contains("warning: dev-dependency `proptest`"),
+        text.contains("Cargo.toml:11:1: `proptest (dev-dependencies)` -- dependency tree"),
         "{text}"
     );
-    assert!(!text.contains("`proptest (dev-dependencies)` --"), "{text}");
+    assert!(!text.contains("warning:"), "{text}");
+    assert!(text.contains("FAIL -- 2 finding(s)"), "{text}");
+}
+
+/// BLD-35 / BLD-21: the injection fixture's `HashMap` is exempt only inside an item that
+/// carries `#[cfg(feature = "inject-desync")]`. Everything around it is still caught.
+#[test]
+fn inject_desync_cfg_exempts_hashmap_only_inside_the_gated_item() {
+    let dir = temp_crate(
+        "inject-exemption",
+        concat!(
+            "use std::collections::BTreeMap;\n",
+            "\n",
+            "/// The fixture: exempt.\n",
+            "#[cfg(feature = \"inject-desync\")]\n",
+            "pub fn inject() -> u64 {\n",
+            "    let mut m: std::collections::HashMap<u64, u64> = std::collections::HashMap::new();\n",
+            "    m.insert(1, 2);\n",
+            "    m.keys().sum()\n",
+            "}\n",
+            "\n",
+            "// Outside any gated item: caught (line 12).\n",
+            "pub fn outside() -> usize {\n",
+            "    let m: std::collections::HashMap<u64, u64> = std::collections::HashMap::new();\n",
+            "    m.len()\n",
+            "}\n",
+            "\n",
+            "// A gated MODULE is a path, not an item body: caught (line 20).\n",
+            "#[cfg(feature = \"inject-desync\")]\n",
+            "pub mod gated {\n",
+            "    pub fn f() -> usize { std::collections::HashMap::<u64, u64>::new().len() }\n",
+            "}\n",
+            "\n",
+            "// Another feature: caught (line 25).\n",
+            "#[cfg(feature = \"other\")]\n",
+            "pub fn other() -> usize { std::collections::HashSet::<u64>::new().len() }\n",
+            "\n",
+            "// The exemption is rule 2 only: a float in the fixture is caught (line 29).\n",
+            "#[cfg(feature = \"inject-desync\")]\n",
+            "pub fn floaty() -> f64 { 0.0 }\n",
+            "\n",
+            "// Two attributes, the cfg first: still the same item, still exempt.\n",
+            "#[cfg(feature = \"inject-desync\")]\n",
+            "#[allow(dead_code)]\n",
+            "fn two_attrs(m: &std::collections::HashMap<u64, u64>) -> usize { m.len() }\n",
+            "\n",
+            "// A gated `use` ends at its `;`: exempt, and the next item is not (line 39).\n",
+            "#[cfg(feature = \"inject-desync\")]\n",
+            "use std::collections::HashMap as Fixture;\n",
+            "pub fn after_use() -> usize { std::collections::HashMap::<u64, u64>::new().len() }\n",
+            "\n",
+            "pub fn fine(m: &BTreeMap<u64, u64>) -> usize { m.len() }\n",
+        ),
+        "",
+    );
+    let out = bin().arg(&dir).output().expect("run lint");
+    let text = stdout(&out);
+    std::fs::remove_dir_all(&dir).ok();
+    assert_eq!(out.status.code(), Some(1), "{text}");
+    assert!(text.contains(":13:30: `HashMap` -- rule 2"), "{text}");
+    assert!(text.contains(":13:68: `HashMap` -- rule 2"), "{text}");
+    assert!(text.contains(":20:45: `HashMap` -- rule 2"), "{text}");
+    assert!(text.contains(":25:45: `HashSet` -- rule 2"), "{text}");
+    assert!(text.contains(":29:20: `f64` -- rule 1"), "{text}");
+    assert!(text.contains(":29:26: `0.0` -- rule 1"), "{text}");
+    assert!(text.contains(":39:49: `HashMap` -- rule 2"), "{text}");
+    // Lines 6 (twice), 34 and 38 are the exempt ones.
+    for exempt in [":6:", ":34:", ":38:"] {
+        assert!(!text.contains(exempt), "exempt line reported:\n{text}");
+    }
+    assert!(text.contains("FAIL -- 7 finding(s)"), "{text}");
+
+    // A file-level `#![cfg(feature = "inject-desync")]` is a module path in disguise and
+    // exempts nothing.
+    let dir = temp_crate(
+        "inject-inner-cfg",
+        "#![cfg(feature = \"inject-desync\")]\n\npub fn f() -> usize {\n    std::collections::HashMap::<u64, u64>::new().len()\n}\n",
+        "",
+    );
+    let out = bin().arg(&dir).output().expect("run lint");
+    let text = stdout(&out);
+    std::fs::remove_dir_all(&dir).ok();
+    assert_eq!(out.status.code(), Some(1), "{text}");
+    assert!(text.contains(":4:23: `HashMap` -- rule 2"), "{text}");
+}
+
+/// BLD-34: `unsafe` and `#[allow(unsafe_code)]` need a `// SAFETY:` line directly above;
+/// a crate-wide allow is never a justification. The pass case and the fail case.
+#[test]
+fn unsafe_without_a_safety_line_fails_and_with_one_passes() {
+    // Pass: every unsafe is justified. The SAFETY line sits above the attribute and is
+    // shared by the `unsafe fn` under it; a multi-line comment block counts as long as one
+    // of its lines is the SAFETY line.
+    let dir = temp_crate(
+        "unsafe-justified",
+        concat!(
+            "#![deny(unsafe_code)]\n",
+            "\n",
+            "// SAFETY: the pointer is derived from a live reference two lines up.\n",
+            "#[allow(unsafe_code)]\n",
+            "pub unsafe fn read(p: &u8) -> u8 {\n",
+            "    *p\n",
+            "}\n",
+            "\n",
+            "pub fn call() -> u8 {\n",
+            "    let x = 7;\n",
+            "    // Justification spans lines.\n",
+            "    // SAFETY: `read` only dereferences the reference it is given.\n",
+            "    #[allow(unsafe_code)]\n",
+            "    let v = unsafe { read(&x) };\n",
+            "    v\n",
+            "}\n",
+        ),
+        "",
+    );
+    let out = bin().arg(&dir).output().expect("run lint");
+    let text = stdout(&out);
+    std::fs::remove_dir_all(&dir).ok();
+    assert!(out.status.success(), "{text}");
+
+    // Fail: the same code with the SAFETY lines removed, and a blanket allow.
+    let dir = temp_crate(
+        "unsafe-unjustified",
+        concat!(
+            "#![allow(unsafe_code)]\n",
+            "\n",
+            "// Not a SAFETY line.\n",
+            "#[allow(unsafe_code)]\n",
+            "pub unsafe fn read(p: &u8) -> u8 {\n",
+            "    *p\n",
+            "}\n",
+            "\n",
+            "pub fn call() -> u8 {\n",
+            "    let x = 7;\n",
+            "    // SAFETY: this line is not directly above; code intervenes.\n",
+            "    let y = x;\n",
+            "    let v = unsafe { read(&y) };\n",
+            "    v\n",
+            "}\n",
+        ),
+        "",
+    );
+    let out = bin().arg(&dir).output().expect("run lint");
+    let text = stdout(&out);
+    std::fs::remove_dir_all(&dir).ok();
+    assert_eq!(out.status.code(), Some(1), "{text}");
+    assert!(
+        text.contains(":1:3: `#![allow(unsafe_code)]` -- rule 8"),
+        "{text}"
+    );
+    assert!(
+        text.contains(":4:2: `#[allow(unsafe_code)]` -- rule 8"),
+        "{text}"
+    );
+    assert!(text.contains(":5:5: `unsafe` -- rule 8"), "{text}");
+    assert!(text.contains(":13:13: `unsafe` -- rule 8"), "{text}");
+    assert!(text.contains("FAIL -- 4 finding(s)"), "{text}");
 }
 
 #[test]

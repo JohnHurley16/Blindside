@@ -27,7 +27,7 @@ OPTIONS:
                      has a [workspace] table, else the root this binary was built in.
     --check-all      also verify each crate's Cargo.toml lists only allow-listed
                      dependencies (blindside-vm, blindside-content, fixed, blake3) under
-                     [dependencies] / [build-dependencies]; [dev-dependencies] are warned.
+                     [dependencies], [build-dependencies] and [dev-dependencies] alike.
                      A `package = \"..\"` rename is checked by the package, not the key, in
                      the inline-table, [dependencies.<key>] and dotted-key spellings. A
                      `workspace = true` entry is resolved through the nearest ancestor
@@ -44,8 +44,18 @@ opaque except for a pointer format spec):
     *const *mut std::ptr as_ptr as_mut_ptr addr_of addr_of_mut into_raw transmute NonNull
     fmt::Pointer, and `{:p}` / `{:#p}` in any string literal that is not a doc comment
     std::process std::env env! option_env!
+    std::fs std::io std::net (ARCHITECTURE.md: blindside-sim is \"no I/O\")
     include!, and #[path = \"..\"] -- bare or inside cfg_attr -- that leaves src/ or does
     not name a .rs file (the src/ walk reads only *.rs)
+    `unsafe`, #[allow(unsafe_code)] or #[expect(unsafe_code)] without a `// SAFETY:` line
+    in the comment block directly above (attribute lines between are skipped);
+    #![allow(unsafe_code)] anywhere (rule 8, the spelling half)
+
+The one exemption: inside an item under the outer attribute
+#[cfg(feature = \"inject-desync\")] -- that exact spelling -- HashMap, HashSet and the std
+hashers are not findings (the canary's injection fixture, BLD-35). It ends with the item
+(`{..}` body or `;`), never covers a `mod` or a file-level #![cfg(..)], and exempts
+nothing else: a float inside the fixture is still a finding.
 
 Rejected in the crate layout, with or without --check-all:
     a `path` under [lib] or [[bin]] in Cargo.toml: the crate root is src/lib.rs, and a

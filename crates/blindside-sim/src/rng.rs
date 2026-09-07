@@ -3,8 +3,34 @@
 //! `draw(tick, entity, purpose)` is a pure function of the seed and its three arguments.
 //! There is no internal state, so the order in which callers draw cannot affect any
 //! result. That removes the most common desync source in a sim with many actors.
+//!
+//! DEFAULT (awaiting designer): the mix function is the SplitMix64 finaliser, applied one
+//! full round per input -- the BLD-20 recommendation. It is explicit integer arithmetic
+//! (shifts, xors, wrapping multiplies) with no `std::hash::Hasher`, no `RandomState` and
+//! no interior mutability, so the bits are identical on every platform. The golden table
+//! in `golden_tables.rs` pins it: change `mix` or `draw_u64` and every recorded replay
+//! stops verifying, so that change has to be deliberate.
 
 use crate::{Fx, Tick};
+
+/// What a draw is for. The fourth RNG input, so that two different uses at the same
+/// (tick, entity) never share a value.
+///
+/// Explicit, stable discriminants (DETERMINISM.md rule 7 applied to RNG purposes): a
+/// variant is never renumbered and a retired variant's number is never reused, because
+/// every replay ever recorded depends on them. Phase 3 appends variants; it does not
+/// reorder them. 0 is never assigned, so a zeroed purpose is never a valid one.
+#[repr(u16)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Purpose {
+    /// Phase 0 placeholder world: an agent's x-axis step in its random walk.
+    MoveX = 1,
+    /// Phase 0 placeholder world: an agent's y-axis step in its random walk.
+    MoveY = 2,
+    /// Reserved for the `testing` helpers (shuffles, bounded indices). Sim logic never
+    /// draws with it; a high number keeps it clear of the purposes Phase 3 will add.
+    TestShuffle = 0xFF00,
+}
 
 /// Stateless RNG. Cheap to copy; hold one per `Sim`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -35,10 +61,14 @@ impl DeterministicRng {
     /// Draw a value uniformly distributed in `[0, 1)` for the given
     /// (tick, entity, purpose) triple.
     ///
+    /// Range: `[0, 1)` in `Fx`. The integer part is always zero and the 32 fractional
+    /// bits are the raw hash, so every representable value in `[0, 1)` is reachable and
+    /// equally likely (`mean_of_draws_is_one_half` checks the distribution is not skewed).
+    ///
     /// Counter-based and stateless: calling this twice with the same arguments, in any
     /// order relative to other calls, returns the same value.
-    pub fn draw(&self, tick: Tick, entity: u32, purpose: u16) -> Fx {
-        Fx::from_bits(self.draw_u64(tick, entity, purpose) as i64)
+    pub fn draw(&self, tick: Tick, entity: u32, purpose: Purpose) -> Fx {
+        Fx::from_bits(self.draw_u64(tick, entity, purpose as u16) as i64)
     }
 
     /// Raw hash of the four inputs, reduced to 32 bits. These become the fractional
@@ -58,76 +88,112 @@ impl DeterministicRng {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::testing;
 
     #[test]
     fn draw_is_repeatable() {
         let r = DeterministicRng::new(42);
-        let a = r.draw(Tick(10), 3, 1);
-        let b = r.draw(Tick(10), 3, 1);
+        let a = r.draw(Tick(10), 3, Purpose::MoveX);
+        let b = r.draw(Tick(10), 3, Purpose::MoveX);
         assert_eq!(a, b);
     }
 
     #[test]
-    fn draw_is_order_independent() {
+    fn draw_is_order_independent_for_1000_draws_in_a_shuffled_order() {
+        // BLD-24 property test: 1,000 draws made in an order shuffled by the BLD-25
+        // helper equal the same draws made in sorted order. The shuffle itself comes from
+        // `draw`, so no rand-family crate is involved even as a dev-dependency.
         let r = DeterministicRng::new(42);
-        let triples = [
-            (Tick(1), 1, 0),
-            (Tick(1), 2, 0),
-            (Tick(2), 1, 0),
-            (Tick(2), 1, 7),
-        ];
-
-        let forward: Vec<Fx> = triples.iter().map(|&(t, e, p)| r.draw(t, e, p)).collect();
-        let reverse: Vec<Fx> = triples
-            .iter()
-            .rev()
-            .map(|&(t, e, p)| r.draw(t, e, p))
+        let inputs: Vec<(Tick, u32, Purpose)> = (0..1000u64)
+            .map(|i| {
+                let purpose = if i % 2 == 0 {
+                    Purpose::MoveX
+                } else {
+                    Purpose::MoveY
+                };
+                (Tick(i / 10), (i % 10) as u32 + (i / 100) as u32, purpose)
+            })
             .collect();
-        let reverse: Vec<Fx> = reverse.into_iter().rev().collect();
-        assert_eq!(forward, reverse);
+        let sorted: Vec<Fx> = inputs.iter().map(|&(t, e, p)| r.draw(t, e, p)).collect();
 
-        // Interleaving other draws between them changes nothing either.
-        let mut interleaved = Vec::new();
-        for &(t, e, p) in &triples {
-            let _ = r.draw(Tick(999), 999, 999);
-            interleaved.push(r.draw(t, e, p));
-            let _ = r.draw(Tick(0), 0, 0);
+        let order = testing::permutation(&DeterministicRng::new(7), Tick(1), inputs.len());
+        assert!(
+            order.iter().enumerate().any(|(i, &j)| i != j),
+            "not shuffled"
+        );
+        let mut shuffled: Vec<(usize, Fx)> = Vec::with_capacity(inputs.len());
+        for &j in &order {
+            let (t, e, p) = inputs[j];
+            // Interleave unrelated draws too; they must not disturb anything either.
+            let _ = r.draw(Tick(999_999), 999, Purpose::MoveY);
+            shuffled.push((j, r.draw(t, e, p)));
         }
-        assert_eq!(forward, interleaved);
+        shuffled.sort_by_key(|&(j, _)| j);
+        let shuffled: Vec<Fx> = shuffled.into_iter().map(|(_, v)| v).collect();
+        assert_eq!(sorted, shuffled);
     }
 
     #[test]
     fn draw_is_in_unit_interval() {
         let r = DeterministicRng::new(0);
         for t in 0..2000u64 {
-            let v = r.draw(Tick(t), t as u32 % 5, (t % 3) as u16);
+            let purpose = if t % 3 == 0 {
+                Purpose::MoveX
+            } else {
+                Purpose::MoveY
+            };
+            let v = r.draw(Tick(t), t as u32 % 5, purpose);
             assert!(v >= Fx::ZERO, "{v} < 0");
             assert!(v < Fx::ONE, "{v} >= 1");
         }
     }
 
     #[test]
-    fn inputs_matter() {
-        let r = DeterministicRng::new(5);
-        let base = r.draw(Tick(1), 1, 1);
-        assert_ne!(base, r.draw(Tick(2), 1, 1));
-        assert_ne!(base, r.draw(Tick(1), 2, 1));
-        assert_ne!(base, r.draw(Tick(1), 1, 2));
-        assert_ne!(base, DeterministicRng::new(6).draw(Tick(1), 1, 1));
+    fn mean_of_draws_is_one_half() {
+        // BLD-24 sanity check, accumulated in Fx (no float anywhere in this crate, tests
+        // included). 10,000 values in [0, 1) sum to under 10,000, well inside I32F32.
+        let r = DeterministicRng::new(0xDEAD_BEEF);
+        let mut sum = Fx::ZERO;
+        for i in 0..10_000u64 {
+            let purpose = if i % 2 == 0 {
+                Purpose::MoveX
+            } else {
+                Purpose::MoveY
+            };
+            sum += r.draw(Tick(i / 4), (i % 4) as u32, purpose);
+        }
+        let mean = sum / 10_000;
+        let half = Fx::from_num(1) / 2;
+        let tolerance = Fx::from_num(2) / 100; // 0.02, without writing a float literal
+        let error = if mean > half {
+            mean - half
+        } else {
+            half - mean
+        };
+        assert!(
+            error < tolerance,
+            "mean {mean} is more than {tolerance} from {half}"
+        );
     }
 
     #[test]
-    fn known_answers() {
-        // Pin the mixing function so that an accidental change to it shows up here
-        // before it shows up as a cross-version replay mismatch.
-        let r = DeterministicRng::new(0);
-        assert_eq!(r.draw_u64(Tick(0), 0, 0), KNOWN_SEED0_T0_E0_P0);
-        let r = DeterministicRng::new(0xDEAD_BEEF);
-        assert_eq!(r.draw_u64(Tick(1000), 2, 2), KNOWN_SEEDDB_T1000_E2_P2);
+    fn inputs_matter() {
+        let r = DeterministicRng::new(5);
+        let base = r.draw(Tick(1), 1, Purpose::MoveX);
+        assert_ne!(base, r.draw(Tick(2), 1, Purpose::MoveX));
+        assert_ne!(base, r.draw(Tick(1), 2, Purpose::MoveX));
+        assert_ne!(base, r.draw(Tick(1), 1, Purpose::MoveY));
+        assert_ne!(
+            base,
+            DeterministicRng::new(6).draw(Tick(1), 1, Purpose::MoveX)
+        );
     }
 
-    // Recorded from the first run of this test; any change to `mix`/`draw_u64` breaks
-    // every existing replay and must be deliberate.
-    const KNOWN_SEED0_T0_E0_P0: u64 = 425_174_880;
-    const KNOWN_SEEDDB_T1000_E2_P2: u64 = 2_040_947_845;
+    #[test]
+    fn purpose_discriminants_are_the_documented_numbers() {
+        // Renumbering a variant changes every draw made with it. Pin the numbers.
+        assert_eq!(Purpose::MoveX as u16, 1);
+        assert_eq!(Purpose::MoveY as u16, 2);
+        assert_eq!(Purpose::TestShuffle as u16, 0xFF00);
+    }
 }

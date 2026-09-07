@@ -21,6 +21,8 @@
 //!     `as_ptr`, `into_raw`, `transmute`, `NonNull`; and the ways of printing one:
 //!     `fmt::Pointer`, a `{:p}` spec in a string literal
 //!   - `std::process`, `std::env`, `env!`, `option_env!`: the machine is not a sim input
+//!   - `std::fs`, `std::io`, `std::net`: ARCHITECTURE.md gives blindside-sim "no I/O". A
+//!     sim that reads a file or a socket has an input its replay does not carry
 //!   - `include!`, and `#[path = "..."]` -- bare or inside `cfg_attr` -- that leaves
 //!     `src/` or does not name a `.rs` file: both link code the `src/` walk never reads
 //!
@@ -36,12 +38,28 @@
 //! root sits outside the group (`use std::{thread, time};`), and raw identifiers, where
 //! `r#f64` is the same type as `f64` to the compiler.
 //!
+//! Rule 8, the part of it that is spelling (BLD-34): every `unsafe` keyword and every
+//! `#[allow(unsafe_code)]` / `#[expect(unsafe_code)]` must have a `// SAFETY:` line in the
+//! comment block directly above it (attributes in between are skipped); a crate- or
+//! module-wide `#![allow(unsafe_code)]` is rejected outright. Whether the justification
+//! is *true* is review, not lint.
+//!
+//! One exemption, and only one (BLD-35, BLD-21): inside an item that carries the outer
+//! attribute `#[cfg(feature = "inject-desync")]` -- exactly that spelling -- `HashMap`,
+//! `HashSet` and the std hashers are not findings. That is the canary's injection fixture,
+//! the one sanctioned HashMap in a constrained crate. The exemption ends where the item
+//! ends (its `{...}` body or its `;`), it never applies to a `mod` item or to a file-level
+//! `#![cfg(..)]`, and every other rule still applies inside it: a float in the fixture is
+//! still a float.
+//!
 //! `--check-all` additionally verifies each constrained crate's `Cargo.toml` pulls in
-//! nothing but the allow-listed dependencies. A `package = "..."` rename is checked by
-//! the package name, not the key, in every spelling Cargo accepts (inline table,
-//! `[dependencies.<key>]` table, dotted key). A `workspace = true` entry is resolved
-//! through the nearest ancestor `Cargo.toml` with a `[workspace]` table, the way Cargo
-//! resolves it; when there is no such ancestor the entry is warned about rather than
+//! nothing but the allow-listed dependencies -- `[dev-dependencies]` included, so the
+//! rand ban stays one rule (DEFAULT, awaiting designer: the BLD-21/BLD-25 recommendation;
+//! tests get randomness from `blindside_sim::testing` instead). A `package = "..."` rename
+//! is checked by the package name, not the key, in every spelling Cargo accepts (inline
+//! table, `[dependencies.<key>]` table, dotted key). A `workspace = true` entry is
+//! resolved through the nearest ancestor `Cargo.toml` with a `[workspace]` table, the way
+//! Cargo resolves it; when there is no such ancestor the entry is warned about rather than
 //! failed, because Cargo could not build that crate either.
 //!
 //! # What this cannot see
@@ -75,9 +93,10 @@
 //!   Catching them means banning root renames and glob imports outright, which is a rule
 //!   DETERMINISM.md does not state -- a decision for a human, not a guess by this lint.
 //! - **Rules 6-8.** Iteration by stable ID, IDs that are not derived from name hashes, and
-//!   justified `unsafe` are properties of meaning, not of spelling. `BTreeMap<NameHash, _>`
-//!   reads perfectly and is still non-deterministic. The desync canary is what catches
-//!   those, which is why DETERMINISM.md lists both and not this lint alone.
+//!   whether an `unsafe` justification is *true* are properties of meaning, not of
+//!   spelling. `BTreeMap<NameHash, _>` reads perfectly and is still non-deterministic, and
+//!   `// SAFETY: trust me` is a SAFETY line. The desync canary and code review are what
+//!   catch those, which is why DETERMINISM.md lists both and not this lint alone.
 
 use proc_macro2::{Delimiter, Spacing, TokenStream, TokenTree};
 use std::fmt;
@@ -138,9 +157,10 @@ WHAT THIS CANNOT SEE (it lexes; it does not expand, resolve or type-check):
                              Catching these means banning root renames and glob imports,
                              a rule DETERMINISM.md does not state.
     rules 6-8                iteration by stable ID, IDs not derived from name hashes,
-                             justified `unsafe`. `BTreeMap<NameHash, _>` reads perfectly
-                             and is still non-deterministic. The desync canary catches
-                             those; this lint cannot.
+                             and whether a `// SAFETY:` line is true (its presence is
+                             checked; its argument is not). `BTreeMap<NameHash, _>` reads
+                             perfectly and is still non-deterministic. The desync canary
+                             and review catch those; this lint cannot.
 ";
 
 /// Which DETERMINISM.md rule a finding violates.
@@ -158,6 +178,10 @@ pub enum Rule {
     Address,
     /// Rule 3: no process or environment reads.
     Environment,
+    /// ARCHITECTURE.md: `blindside-sim` is "deterministic core. no I/O, no time, no
+    /// float, no rand". Not one of DETERMINISM.md's numbered rules, but the same failure:
+    /// an input the replay does not carry.
+    Io,
     /// Rule 4: no `rand`; RNG is counter-based and stateless.
     Rand,
     /// Rule 5: no threading inside a tick (`std::thread`, `rayon`).
@@ -166,6 +190,8 @@ pub enum Rule {
     Dependency,
     /// Code linked into the crate from where this lint does not look.
     HiddenSource,
+    /// Rule 8: `unsafe` without a `// SAFETY:` line above it, or a blanket allow.
+    Unsafe,
     /// The file could not be read or lexed; treated as a failure so nothing slips by.
     Unparseable,
 }
@@ -186,6 +212,10 @@ impl Rule {
             Rule::Environment => {
                 "rule 3: no process or environment reads; the machine is not a sim input"
             }
+            Rule::Io => {
+                "no I/O (ARCHITECTURE.md: blindside-sim is \"no I/O\"): a file or socket \
+                 is an input the replay does not carry"
+            }
             Rule::Rand => "rule 4: no rand; RNG is draw(seed, tick, entity_id, purpose_id)",
             Rule::Thread => "rule 5: no threading inside a tick",
             Rule::Dependency => {
@@ -194,6 +224,10 @@ impl Rule {
             Rule::HiddenSource => {
                 "lint scope: code this lint would not read (the root is src/lib.rs, \
                  modules are .rs files under src/, there is no build script)"
+            }
+            Rule::Unsafe => {
+                "rule 8: unsafe needs a `// SAFETY:` line in the comment directly above it; \
+                 a crate-wide #![allow(unsafe_code)] is never a justification"
             }
             Rule::Unparseable => "file could not be read or lexed",
         }
@@ -265,7 +299,7 @@ const BANNED_IDENTS: [(&str, Rule); 19] = [
 /// `<root>::<module>` path prefixes that are banned regardless of what follows. Matched
 /// both in a plain path (`std::time::Instant`) and across a braced use tree, where the
 /// root sits outside the group (`use std::{time}`).
-const BANNED_PATHS: [(&str, &str, Rule); 11] = [
+const BANNED_PATHS: [(&str, &str, Rule); 14] = [
     ("std", "time", Rule::WallClock),
     ("core", "time", Rule::WallClock),
     ("std", "thread", Rule::Thread),
@@ -274,6 +308,12 @@ const BANNED_PATHS: [(&str, &str, Rule); 11] = [
     ("core", "ptr", Rule::Address),
     ("std", "process", Rule::Environment),
     ("std", "env", Rule::Environment),
+    // ARCHITECTURE.md: blindside-sim does "no I/O". `blindside-content` is where files are
+    // read, and it hands the sim a loaded pack; a `Display` impl uses `std::fmt`, which is
+    // not I/O and is not listed here.
+    ("std", "fs", Rule::Io),
+    ("std", "io", Rule::Io),
+    ("std", "net", Rule::Io),
     ("collections", "hash_map", Rule::Hasher),
     ("collections", "hash_set", Rule::Hasher),
     // `fmt::Pointer::fmt(&x, f)` writes an address without a format string. The bare
@@ -305,7 +345,8 @@ pub fn scan_source(file: &Path, source: &str) -> Vec<Finding> {
         }
     };
     let mut out = Vec::new();
-    scan_stream(file, stream, None, &mut out);
+    scan_stream(file, stream.clone(), None, &mut out);
+    scan_unsafe(file, &stream, source, &mut out);
     out
 }
 
@@ -313,25 +354,52 @@ pub fn scan_source(file: &Path, source: &str) -> Vec<Finding> {
 /// is the `{...}` of `use std::{...}`, `None` everywhere else. It applies only at the start
 /// of a comma-separated segment, which is where a use tree resumes the path.
 fn scan_stream(file: &Path, stream: TokenStream, use_prefix: Option<&str>, out: &mut Vec<Finding>) {
+    scan_stream_in(file, stream, use_prefix, false, out);
+}
+
+/// `exempt` is true when this whole stream is the body of an item under
+/// `#[cfg(feature = "inject-desync")]` (see `INJECT_CFG`); rule 2 and the hasher rule are
+/// then suppressed, nothing else is.
+fn scan_stream_in(
+    file: &Path,
+    stream: TokenStream,
+    use_prefix: Option<&str>,
+    exempt: bool,
+    out: &mut Vec<Finding>,
+) {
     let tokens: Vec<TokenTree> = stream.into_iter().collect();
     // True at the first token and after every top-level `,`.
     let mut segment_start = true;
+    // Set by an outer `#[cfg(feature = "inject-desync")]`; cleared when the item it is
+    // attached to ends -- at its `{...}` body or its `;` -- or turns out to be a `mod`.
+    let mut pending_exempt = false;
     for (i, tt) in tokens.iter().enumerate() {
+        let item_exempt = exempt || pending_exempt;
         match tt {
             TokenTree::Group(g) => {
                 if g.delimiter() == Delimiter::Bracket && follows_hash(&tokens, i) {
+                    if is_outer_attribute(&tokens, i) && is_inject_cfg(g.stream()) {
+                        pending_exempt = true;
+                    }
                     scan_attribute(file, g.stream(), out);
                 } else {
                     let inner = match g.delimiter() {
                         Delimiter::Brace => brace_use_prefix(&tokens, i, use_prefix, segment_start),
                         _ => None,
                     };
-                    scan_stream(file, g.stream(), inner.as_deref(), out);
+                    scan_stream_in(file, g.stream(), inner.as_deref(), item_exempt, out);
+                    if g.delimiter() == Delimiter::Brace {
+                        pending_exempt = false;
+                    }
                 }
             }
             TokenTree::Ident(id) => {
                 let written = id.to_string();
                 let name = unraw(&written);
+                if pending_exempt && name == "mod" {
+                    // A module is a path, not an item body; the exemption never covers one.
+                    pending_exempt = false;
+                }
                 let rule = banned_ident(name)
                     .or_else(|| banned_macro(&tokens, i, name))
                     .or_else(|| banned_path_tail(&tokens, i, name))
@@ -340,7 +408,11 @@ fn scan_stream(file: &Path, stream: TokenStream, use_prefix: Option<&str>, out: 
                         _ => None,
                     });
                 if let Some(rule) = rule {
-                    out.push(finding(file, id.span(), &written, rule));
+                    let exempted = (exempt || pending_exempt)
+                        && matches!(rule, Rule::HashCollection | Rule::Hasher);
+                    if !exempted {
+                        out.push(finding(file, id.span(), &written, rule));
+                    }
                 }
             }
             TokenTree::Literal(lit) => {
@@ -365,10 +437,132 @@ fn scan_stream(file: &Path, stream: TokenStream, use_prefix: Option<&str>, out: 
                         }
                     }
                 }
+                if p.as_char() == ';' {
+                    pending_exempt = false;
+                }
             }
         }
         segment_start = matches!(tt, TokenTree::Punct(p) if p.as_char() == ',');
     }
+}
+
+/// The one attribute that exempts an item from rule 2: `cfg(feature = "inject-desync")`,
+/// this spelling and no other (`all(..)`, `any(..)` and `not(..)` around it do not count).
+fn is_inject_cfg(body: TokenStream) -> bool {
+    let tokens: Vec<TokenTree> = body.into_iter().collect();
+    let [TokenTree::Ident(cfg), TokenTree::Group(args)] = tokens.as_slice() else {
+        return false;
+    };
+    if cfg != "cfg" || args.delimiter() != Delimiter::Parenthesis {
+        return false;
+    }
+    let inner: Vec<TokenTree> = args.stream().into_iter().collect();
+    match inner.as_slice() {
+        [TokenTree::Ident(feature), TokenTree::Punct(eq), TokenTree::Literal(name)] => {
+            feature == "feature" && eq.as_char() == '=' && name.to_string() == INJECT_CFG_NAME
+        }
+        _ => false,
+    }
+}
+
+/// The feature name, as the string literal token spells it.
+const INJECT_CFG_NAME: &str = "\"inject-desync\"";
+
+/// True when `tokens[i]` is the `[...]` of an OUTER attribute (`#[..]`, not `#![..]`).
+fn is_outer_attribute(tokens: &[TokenTree], i: usize) -> bool {
+    i >= 1 && matches!(&tokens[i - 1], TokenTree::Punct(p) if p.as_char() == '#')
+}
+
+// ---------------------------------------------------------------------------------------
+// Rule 8: unsafe is justified in writing, on the line above
+// ---------------------------------------------------------------------------------------
+
+/// Every `unsafe` keyword and every attribute that permits `unsafe_code` must sit under a
+/// `// SAFETY:` line; a file-level `#![allow(unsafe_code)]` is a finding wherever it sits.
+/// Comments are gone from the token stream, so the check reads `source` by line number.
+fn scan_unsafe(file: &Path, stream: &TokenStream, source: &str, out: &mut Vec<Finding>) {
+    let lines: Vec<&str> = source.lines().collect();
+    scan_unsafe_in(file, stream.clone(), &lines, out);
+}
+
+fn scan_unsafe_in(file: &Path, stream: TokenStream, lines: &[&str], out: &mut Vec<Finding>) {
+    let tokens: Vec<TokenTree> = stream.into_iter().collect();
+    for (i, tt) in tokens.iter().enumerate() {
+        match tt {
+            TokenTree::Group(g)
+                if g.delimiter() == Delimiter::Bracket && follows_hash(&tokens, i) =>
+            {
+                if !permits_unsafe(g.stream()) {
+                    continue;
+                }
+                let line = g.span().start().line;
+                if !is_outer_attribute(&tokens, i) {
+                    out.push(finding(
+                        file,
+                        g.span(),
+                        "#![allow(unsafe_code)]",
+                        Rule::Unsafe,
+                    ));
+                } else if !has_safety_line(lines, line) {
+                    out.push(finding(
+                        file,
+                        g.span(),
+                        "#[allow(unsafe_code)]",
+                        Rule::Unsafe,
+                    ));
+                }
+            }
+            TokenTree::Group(g) => scan_unsafe_in(file, g.stream(), lines, out),
+            TokenTree::Ident(id)
+                if id == "unsafe" && !has_safety_line(lines, id.span().start().line) =>
+            {
+                out.push(finding(file, id.span(), "unsafe", Rule::Unsafe));
+            }
+            _ => {}
+        }
+    }
+}
+
+/// True when an attribute body names `unsafe_code` under `allow` or `expect`, at any depth
+/// (`allow(unsafe_code)`, `allow(dead_code, unsafe_code)`, `cfg_attr(x, allow(unsafe_code))`).
+/// `deny`/`forbid` name it too and are the opposite, so both words are required.
+fn permits_unsafe(body: TokenStream) -> bool {
+    fn flatten(stream: TokenStream, out: &mut Vec<String>) {
+        for tt in stream {
+            match tt {
+                TokenTree::Group(g) => flatten(g.stream(), out),
+                TokenTree::Ident(id) => out.push(id.to_string()),
+                _ => {}
+            }
+        }
+    }
+    let mut idents = Vec::new();
+    flatten(body, &mut idents);
+    idents.iter().any(|s| s == "unsafe_code")
+        && idents.iter().any(|s| s == "allow" || s == "expect")
+}
+
+/// The comment block directly above 1-based `line` -- skipping attribute lines, since a
+/// SAFETY comment sits above `#[allow(unsafe_code)]` and the `unsafe fn` under it shares
+/// it -- contains a line starting `// SAFETY:`.
+fn has_safety_line(lines: &[&str], line: usize) -> bool {
+    let mut i = line.saturating_sub(1); // index of the token's own line
+                                        // Skip the attribute lines between the comment and the token.
+    while i > 0 && lines[i - 1].trim_start().starts_with("#[") {
+        i -= 1;
+    }
+    let mut found = false;
+    while i > 0 {
+        let above = lines[i - 1].trim_start();
+        if !above.starts_with("//") {
+            break;
+        }
+        if above.starts_with("// SAFETY:") {
+            found = true;
+        }
+        i -= 1;
+    }
+    found
 }
 
 /// The body of a `#[...]` / `#![...]` attribute. Three attributes get special treatment;
@@ -1128,8 +1322,10 @@ pub struct ManifestReport {
     pub warnings: Vec<ManifestWarning>,
 }
 
-/// Check `<crate_dir>/Cargo.toml` against [`ALLOWED_DEPENDENCIES`], by package name.
-/// `[dev-dependencies]` are warnings (they never reach shipped sim code), as is a
+/// Check `<crate_dir>/Cargo.toml` against [`ALLOWED_DEPENDENCIES`], by package name, for
+/// `[dependencies]`, `[build-dependencies]` and `[dev-dependencies]` alike: a test that
+/// pulls `rand` in is still a rand-family crate in the constrained tree, and the RNG-based
+/// helpers in `blindside_sim::testing` are what tests use instead. The one warning is a
 /// `workspace = true` entry when no ancestor manifest declares a workspace to resolve it
 /// against -- Cargo could not build that crate either, so nothing is being hidden, but the
 /// name could not be checked and the output says so.
@@ -1201,17 +1397,6 @@ pub fn check_manifest(crate_dir: &Path) -> ManifestReport {
             dep.crate_name().to_string()
         };
         if ALLOWED_DEPENDENCIES.contains(&name.as_str()) {
-            continue;
-        }
-        if dep.kind == "dev-dependencies" {
-            report.warnings.push(ManifestWarning {
-                line: dep.line,
-                message: format!(
-                    "dev-dependency `{name}` is not on the allow-list ({}); allowed for \
-                     tests only",
-                    ALLOWED_DEPENDENCIES.join(", ")
-                ),
-            });
             continue;
         }
         let token = if name == dep.key {

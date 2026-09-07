@@ -147,8 +147,28 @@ pub struct MatchRecord {
     pub loadouts: Vec<Loadout>,
     pub policies: Vec<PolicyRef>,
     pub commands: Vec<(Tick, TeamId, Command)>,   // the only live input
+    pub ticks: u64,                   // length: "run to completion" needs one
+    pub final_hash: [u8; 32],         // what `verify` compares against
 }
 ```
+
+**DEFAULT (awaiting designer): `ticks` and `final_hash` were added to `MatchRecord` --
+the acceptance criteria cannot be expressed without them.** The last two fields were not
+in this struct originally. Phase 0 added them because running a replay "to completion"
+needs a length, and verifying that "the final state hash matches the recorded one" needs a
+recorded hash; putting both in the record keeps a replay one self-describing file. The
+designer has not confirmed this. It is question 6 of `HARNESS.md` §1, which is written as
+a yes/no so it can be answered in one pass, and the marker in
+`crates/blindside-sim/src/record.rs` comes out when it is.
+
+Commands are stored sorted by `(tick, team, sequence)`; a record in any other order is a
+typed error, not a silent re-sort.
+
+`blindside_sim::diagnostics` is the one sanctioned exception to "make it awkward to pass
+ground truth": a `String`-only window onto `World` for the desync canary and bisect,
+compiled only under a cargo feature that no client, policy, VM or renderer crate may
+enable. `HARNESS.md` §7 covers why the feature alone is not a boundary and what enforces
+it.
 
 ---
 

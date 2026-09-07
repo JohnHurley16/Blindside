@@ -17,6 +17,9 @@ macro_rules! stable_id {
 
 stable_id!(
     /// Simulation tick counter. Tick 0 is the initial state.
+    ///
+    /// DEFAULT (awaiting designer): `u64` -- the BLD-20 recommendation. Wide enough that no
+    /// match, replay or batch can wrap it, and the hash layout writes it as 8 LE bytes.
     Tick(u64)
 );
 stable_id!(
@@ -43,4 +46,12 @@ stable_id!(
     /// One agent instance within a match. Assigned by the match setup, never reused
     /// within a match.
     AgentId(u32)
+);
+stable_id!(
+    /// A team within a match: the unit that issues commands. Assigned by the match setup.
+    ///
+    /// DEFAULT (awaiting designer): `u16` -- no document states a width; a match has a
+    /// handful of teams and the record sorts commands by (tick, team, sequence), so a
+    /// small, totally ordered integer is all that is needed.
+    TeamId(u16)
 );

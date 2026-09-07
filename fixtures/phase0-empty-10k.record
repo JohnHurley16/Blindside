@@ -1,0 +1,10 @@
+{
+  "schema": 0,
+  "seed": 3735928559,
+  "content_hash": "3dbd5a09e7a3cb05765522ff5d618722f3ab7784973a3e7c3b8a43c095404ba1",
+  "loadouts": [],
+  "policies": [],
+  "commands": [],
+  "ticks": 10000,
+  "final_hash": "653b9057c4dd809407213920a217794adafd41c7ea92976e6bf344b76a5639bc"
+}
