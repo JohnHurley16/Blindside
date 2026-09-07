@@ -725,6 +725,20 @@ That answers both halves of the note and nothing else.
 
 ## 11. The riskiest assumption
 
+> **Measured 2026-09-07, and it retires the first of these.** The worry below — that a pointing
+> hazard silently deletes a death on a seed nobody swept — was answerable from the sim as it
+> stands, with no implementation and no fitting, by recording every agent's closest approach
+> during every lethal window across seeds 1–8 and asking what a cos² lobe would do at *every* aim
+> origin. Result: there are **three deaths in eight seeds, all of them the rival**. Two (seed 1 at
+> 3.38 cells, seed 5 at 3.80) are so deep inside that they die *at any angle* — the lobe cannot
+> save them. Only seed 7's, at 8.12 cells, is angle-sensitive, and it dies anywhere within 32° of
+> the axis. Over all 72 aim origins the lobe keeps a minimum of **2 of 3** deaths and never fewer;
+> 26 of the 72 keep all three. So direction risks exactly one marginal kill at the rim, and the
+> case it removes is the one where "it was on the flank" is the right answer rather than a loss.
+> `ANCIENT_AIM_0` is chosen from the 26, not fitted to a beat. Script:
+> `scratchpad/lobe_sweep2.py`, reproducible.
+
+
 **The one I most want overruled, because it is the one that costs money: that direction should
 be load-bearing in Phase 1 at all.** The lobe is what stops the object being a circle, it is
 what makes *safe* a place rather than a distance, and it is the whole basis of the exploit and
