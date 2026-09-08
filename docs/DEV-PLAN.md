@@ -47,8 +47,9 @@ This file is the board. Edit it directly. It was generated once from `docs/dev-p
 
 Tick a story when it is done and move its `Status:` line. `Ready` means every dependency is done or there were none; the first epics in the order of work can start today.
 
-### Ready now (7)
+### Ready now (8)
 
+- [ ] **P2X-7** Run the P2X gate: she teaches the cave bot, then watches it *(P2X, P0, 0.5d)* — **designer**, after P2X-6
 - [ ] **P2X-6** Run Phase 2's gate on the corridor with a non-engineer — twenty minutes, no build *(P2X, P0, 0.5d)* — **designer**
 - [ ] **P1X-18** Designer self-test on the live window before the next session *(P1X, P0, 0.25d)*
 
@@ -238,7 +239,6 @@ Tick a story when it is done and move its `Status:` line. `Ready` means every de
 
 ### In progress
 
-- [ ] **P2X-1..4** The cave bot becomes teachable: blocks, tree policy, demonstration mode, induction and run *(P2X, P0, 3.5d)*
 - [ ] **P1X-22** Cold read: three viewers with no context watch the finished video *(P1X, P0, 0.5d)*
 - [ ] **P1X-23** Art direction, building on the parametric walker *(P1X, P1, 1d)*
 - [ ] **BLD-16** Run the Phase 1 gate playtest with a non-engineer and write the readiness report *(BLD-1, P0, 0.5d)*
@@ -260,6 +260,7 @@ Tick a story when it is done and move its `Status:` line. `Ready` means every de
 
 ### Done
 
+- [x] **P2X-1..5** The cave bot is teachable: blocks, tree policy, demonstration mode, induction, the taught bot runs; verified *(P2X, P0, 4d)*
 - [x] **P1X-1** Record the failed gate with the tester's words and the diagnosis *(P1X, P0, 0.25d)*
 - [x] **P1X-2** Measure the dead air tick by tick *(P1X, P0, 0.5d)*
 - [x] **P1X-3** Redesign the spectator display *(P1X, P0, 1d)*
@@ -299,11 +300,11 @@ designer has been describing since the Tarkov conversation and it is the game's 
 
 | Key | Type | Summary | Pri | Days | Depends on | Status |
 |---|---|---|---|---|---|---|
-| P2X-1 | Design | The cave's day-one blocks: predicates over Belief, actions onto the motor layer, and the decision points at which the bot stops and asks. The designer's to change. | P0 | 0.5 | — | In progress |
-| P2X-2 | Story | The cave policy is a decision tree over those blocks; the two temperaments become two reference trees; the hand-written logic goes | P0 | 1 | P2X-1 | In progress |
-| P2X-3 | Story | Demonstration mode in the cave: stop at decision points, show belief, wait for a key, write the trace; staged blocks | P0 | 1 | P2X-2 | In progress |
-| P2X-4 | Story | Induce from cave traces through blindside-induct; run the match on the induced tree with the full display; ghost and correction if they port | P0 | 1 | P2X-3 | In progress |
-| P2X-5 | Task | Adversarial verification: the invariant under the new code, blocks-are-a-list with a sixth block added, equivalence to the hand-written policies, the loop end to end | P0 | 0.5 | P2X-4 | Queued |
+| P2X-1 | Design | The cave's day-one blocks: predicates over Belief, actions onto the motor layer, and the decision points at which the bot stops and asks. The designer's to change. | P0 | 0.5 | — | Done (`273c48f`, `docs/CAVE-BLOCKS.md`, `phase1/blocks.json`) — **designer to review** |
+| P2X-2 | Story | The cave policy is a decision tree over those blocks; the two temperaments become two reference trees; the hand-written logic goes | P0 | 1 | P2X-1 | Done (`273c48f`) |
+| P2X-3 | Story | Demonstration mode in the cave: stop at decision points, show belief, wait for a key, write the trace; staged blocks | P0 | 1 | P2X-2 | Done (`273c48f`) — `python -m phase1 --teach` |
+| P2X-4 | Story | Induce from cave traces through blindside-induct; run the match on the induced tree with the full display; ghost and correction if they port | P0 | 1 | P2X-3 | Done (`273c48f`) — `--induce`, `--tree`, `--ghost`, `--correct` |
+| P2X-5 | Task | Adversarial verification: the invariant under the new code, blocks-are-a-list with a sixth block added, equivalence to the hand-written policies, the loop end to end | P0 | 0.5 | P2X-4 | Done — 32 probes, 10 walked through, all closed in the same commit; a sixth block needed one registry line and one file; the loop ran end to end on unseen seeds |
 | P2X-6 | Task | Run Phase 2's gate on the corridor with a non-engineer (BLD-59) — twenty minutes, no build needed, and it answers whether authorship is the hook | P0 | 0.5 | — | **Designer** |
 | P2X-7 | Task | Run the P2X gate: she teaches the cave bot, then watches it | P0 | 0.5 | P2X-5, P2X-6 | Backlog |
 | P2X-8 | Task | Re-run Phase 1's spectator gate on the taught machine, truth on then off (was P1X-19) | P0 | 0.5 | P2X-7 | Backlog |
