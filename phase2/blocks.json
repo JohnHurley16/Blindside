@@ -1,7 +1,7 @@
 {
   "predicates": [
     {"id": "unexplored_branch_exists", "label": "a branch here that leads to unexplored ground", "stage": 1},
-    {"id": "uncertainty_exceeds", "label": "lost", "param": "theta", "stage": 2},
+    {"id": "uncertainty_exceeds", "label": "lost", "param": "theta", "provisional": 64.0, "stage": 2},
     {"id": "carrying_cargo", "label": "carrying", "stage": 2}
   ],
   "actions": [

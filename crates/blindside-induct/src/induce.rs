@@ -2,6 +2,7 @@
 //! exists. `FORMAT.md` states the guarantees this module implements.
 
 use std::cmp::Ordering;
+use std::collections::BTreeSet;
 
 use serde::Serialize;
 
@@ -374,15 +375,22 @@ fn report(blocks: &BlockSet, traces: &[NamedTrace], fit: Fit) -> Induction {
         })
         .collect();
     match fit.tree {
-        Some((_, tree)) => Induction {
-            consistent: true,
-            tree: Some(DecisionTree {
-                params: fit.params,
-                root: to_node(&tree, blocks),
-            }),
-            conflicts,
-            query: None,
-        },
+        Some((_, tree)) => {
+            // Every parametric predicate with readings was fitted so that the search could
+            // choose between trees; only the ones the chosen tree tests were fitted *to*
+            // anything, and a value for a predicate the tree never asks about is not a fit.
+            let root = to_node(&tree, blocks);
+            let mut used = BTreeSet::new();
+            root.collect_predicates(&mut used);
+            let mut params = fit.params;
+            params.retain_only(&used);
+            Induction {
+                consistent: true,
+                tree: Some(DecisionTree { params, root }),
+                conflicts,
+                query: None,
+            }
+        }
         None => {
             let query = query::build(blocks, traces, &fit.dataset, &fit.conflicts);
             Induction {

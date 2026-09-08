@@ -1,5 +1,8 @@
 """Every number in Phase 1, in one place. Edit here, nowhere else.
 
+The one exception is the provisional threshold beside each parametric block in
+blocks.json, which travels with its block (see the teaching-loop section below).
+
 Units: cells (1 cell ~ 1 m), seconds, degrees. The sim runs at TICK_HZ and a match
 is MATCH_SECONDS of sim time.
 
@@ -505,18 +508,14 @@ PASSAGE_JOIN_CELLS: Final[float] = 10.0     # the route planner treats the agent
 # the tick the machine stops asking to load; that is the honest cost of a freeze at a deposit.
 
 # ---- the teaching loop: demonstrations, the seam, the taught match ---------------------------------
-DEMONSTRATION_PARAMS: Final[dict[str, float]] = {
-    "level": 0.25, "theta": 10.0, "seconds": 270.0, "cells": 8.0}
-# The value each parametric predicate's boolean is read with in a demonstration, by the
-# name of its parameter -- this file names no block, and the induct crate refuses a block
-# list carrying a field it does not know, so the numbers cannot ride on blocks.json. They
-# are CAVE-BLOCKS.md guess 4, and they sit LOW on purpose: a decision point fires when a
-# predicate crosses its provisional threshold, so a player cannot teach a threshold lower
-# than the one the bot stops at. The bot asks early, the player says *carry on* until they
-# mean it, and the induction fits the boundary between the carry-ons and the reactions.
-# `level` 0.25 is under both temperaments (0.30, 0.45); `theta` 10 under the cautious 16;
-# `seconds` 270 is a minute and a half before the extraction window; `cells` 8 is the
-# feed's own "big jump". Two predicates that shared a parameter name would share a value.
+# The threshold a demonstration reads each parametric block with is `provisional` on that
+# block in blocks.json, not here: a block is a data change plus its evaluator, and a number
+# for it in this file -- keyed by the parameter's name, since this file names no block --
+# was the third edit every demonstration mode refused to start without.
+# crates/blindside-induct/FORMAT.md says why the value sits low. The four on the list are
+# CAVE-BLOCKS.md guess 4: `level` 0.25 is under both temperaments (0.30, 0.45); `theta` 10
+# under the cautious 16; `seconds` 270 is a minute and a half before the extraction window;
+# `cells` 8 is the feed's own "big jump".
 INDUCT_BIN: Final[Path] = (Path(__file__).resolve().parent.parent / "crates"
                            / "blindside-induct" / "target" / "release"
                            / ("induct.exe" if os.name == "nt" else "induct"))

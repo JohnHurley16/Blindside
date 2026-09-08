@@ -1,7 +1,7 @@
 //! Parameter values for parametric predicates: predicate id -> parameter name -> value.
 //! A `BTreeMap` at both levels so the JSON is always written in one order.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 
@@ -27,5 +27,11 @@ impl Params {
 
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
+    }
+
+    /// Drops every predicate not in `used`. A tree carries values only for the predicates it
+    /// tests: a value for one it never asks about was not fitted by anything.
+    pub fn retain_only(&mut self, used: &BTreeSet<String>) {
+        self.0.retain(|id, _| used.contains(id));
     }
 }

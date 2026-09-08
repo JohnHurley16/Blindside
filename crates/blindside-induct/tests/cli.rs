@@ -256,6 +256,22 @@ fn a_block_list_and_a_choice_list_are_read_as_strictly() {
         None,
     );
 
+    // A block list that is complete for the example tree, except that the provisional
+    // value sits on a predicate with no parameter for it to be a value of.
+    let stray = scratch(
+        "provisional-without-param.json",
+        r#"{"predicates": [{"id": "unexplored_branch_exists", "label": "an unexplored branch here"},
+                           {"id": "uncertainty_exceeds", "label": "lost", "param": "theta"},
+                           {"id": "carrying_cargo", "label": "carrying", "provisional": 1.0}],
+            "actions": [{"id": "take_branch", "label": "take a branch"},
+                        {"id": "return_to_beacon", "label": "go back"}]}"#,
+    );
+    refuses(
+        "a provisional value on a predicate with no param",
+        &["render", &example("tree.json"), "--blocks", &stray],
+        None,
+    );
+
     let blocks = example("blocks.json");
     let choices = scratch(
         "extra-choices.json",
@@ -269,12 +285,16 @@ fn a_block_list_and_a_choice_list_are_read_as_strictly() {
     );
 }
 
-/// The one Python-side field the contract does allow, since `deny_unknown_fields` would
-/// otherwise reject the block list Phase 2 actually writes.
+/// The two Python-side fields the contract does allow, since `deny_unknown_fields` would
+/// otherwise reject the block lists the Python side actually writes.
 #[test]
-fn the_block_lists_stage_field_is_still_accepted() {
+fn the_block_lists_stage_and_provisional_fields_are_still_accepted() {
     let blocks = std::fs::read_to_string(examples().join("blocks.json")).unwrap();
     assert!(blocks.contains("\"stage\""), "the example must exercise it");
+    assert!(
+        blocks.contains("\"provisional\""),
+        "the example must exercise it"
+    );
     let out = Path::new(env!("CARGO_TARGET_TMPDIR"))
         .join("staged.json")
         .to_string_lossy()
@@ -292,4 +312,31 @@ fn the_block_lists_stage_field_is_still_accepted() {
     );
     assert_eq!(code, 0, "{stderr}");
     assert_eq!(json["consistent"], Value::Bool(true));
+}
+
+/// A tree carries values only for the predicates it tests, so `render` and `decide` must
+/// take one with no entry for a parametric predicate it never asks about -- and `decide`
+/// on a stop that carries a reading for that predicate must not need a threshold for it.
+#[test]
+fn a_tree_with_no_value_for_a_predicate_it_does_not_test_renders_and_decides() {
+    let blocks = example("blocks.json");
+    let tree = scratch(
+        "untested-param.json",
+        r#"{"params": {}, "root": {"predicate": "carrying_cargo",
+             "yes": {"action": "return_to_beacon"}, "no": {"action": "take_branch"}}}"#,
+    );
+    let (code, json, stderr) = induct(&["render", &tree, "--blocks", &blocks], None);
+    assert_eq!(code, 0, "{stderr}");
+    assert_eq!(
+        json["sentence"],
+        "If carrying, go back. Otherwise take a branch."
+    );
+    assert!(!json["lines"].to_string().contains("theta"));
+
+    // The example stop carries a raw reading for the parametric predicate.
+    let stop = std::fs::read_to_string(examples().join("stop.json")).unwrap();
+    assert!(stop.contains("\"raw\": {\"uncertainty_exceeds\""));
+    let (code, json, stderr) = induct(&["decide", &tree, "--blocks", &blocks], Some(&stop));
+    assert_eq!(code, 0, "{stderr}");
+    assert_eq!(json["action"], "take_branch");
 }

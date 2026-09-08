@@ -13,20 +13,37 @@ The second half states what the induction guarantees, as implemented.
 blocks.json  (the block list; the only place the day-one items are enumerated on either side)
 { "predicates": [ {"id": "unexplored_branch_exists", "label": "a branch here that leads to
                                                                 unexplored ground", "stage": 1},
-                  {"id": "uncertainty_exceeds",      "label": "lost", "param": "theta", "stage": 2},
+                  {"id": "uncertainty_exceeds",      "label": "lost", "param": "theta",
+                                                     "provisional": 3.0, "stage": 2},
                   {"id": "carrying_cargo",           "label": "carrying", "stage": 2} ],
   "actions":    [ {"id": "take_branch",       "label": "take a branch", "stage": 1},
                   {"id": "return_to_beacon",  "label": "go back", "stage": 2} ] }
 A predicate with "param" is parametric: its boolean is a function of a raw number and a parameter.
+A parametric predicate may carry "provisional": the value of its parameter a demonstration reads
+its boolean with before the induction has fitted the real one. It is a number, it is optional,
+and it is refused on a predicate that has no "param".
+
+WHY "provisional" IS ON THE BLOCK AND NOT IN A TUNING FILE. A block is a data change plus its
+evaluator (docs/DESIGN-PRINCIPLES.md 1). A parametric block used to be that plus a value in the
+Python side's tuning file, keyed by the parameter's name -- the tuning file names no block, so
+that was the only key it had -- and that third edit was the one every demonstration mode refused
+to start without. The value belongs beside the block it is for, so that it travels with it. The
+number should sit LOW: a demonstration stops when a predicate crosses its provisional threshold,
+so a player can never teach a threshold below the one the bot stops at. The bot asks early, the
+player says carry on until they mean it, and the induction fits the boundary between the
+carry-ons and the reactions. Two predicates never share a value now, whatever their parameters
+are called. (On the Python side a tree that runs a demonstration sets its own values for the
+predicates it reads, and the provisional ones stand for any other enabled predicate.)
 
 WHAT IS CONTRACT AND WHAT IS NOT. The ids, the shape and the presence of "param" are the
 contract: both sides must agree on them or nothing works. A "label" is content -- the words a
 player reads -- and either side may change one without telling the other, because nothing is
 keyed on it; the induction prints whatever label it is handed and never a bare id, which is the
-whole reason labels travel in this file. "stage" is optional and Python-side: the staged
-tutorial (docs/PHASE-2-OPEN-QUESTIONS.md (a)) uses it to decide which blocks exist in which
-run. The induction ignores it and reads each trace's own "enabled_predicates" instead, which
-is the field that must agree.
+whole reason labels travel in this file. "stage" and "provisional" are optional and
+Python-side: the staged tutorial (docs/PHASE-2-OPEN-QUESTIONS.md (a)) uses "stage" to decide
+which blocks exist in which run, and a demonstration reads a parametric predicate's boolean at
+its "provisional" value. The induction ignores both. It reads each trace's own
+"enabled_predicates" and "params" instead, which are the fields that must agree.
 
 trace.json  (one demonstration)
 { "seed": 7,
@@ -50,7 +67,8 @@ tree.json  (a decision tree = a policy)
                    "no":  {"predicate": "unexplored_branch_exists",
                            "yes": {"action": "take_branch"},
                            "no":  {"action": "return_to_beacon"}}}} }
-A node is either {"action": id} or {"predicate": id, "yes": node, "no": node}.
+A node is either {"action": id} or {"predicate": id, "yes": node, "no": node}. "params" holds a
+value only for the parametric predicates the tree tests; a reader must not expect one for any other.
 
 induct CLI (Rust) -- all output on stdout as JSON, exit 0 unless usage/IO error (2):
   induct induce --blocks blocks.json --out tree.json TRACE.json [TRACE.json ...]
@@ -64,7 +82,8 @@ induct CLI (Rust) -- all output on stdout as JSON, exit 0 unless usage/IO error 
      {"first_difference": n | null, "a": id | null, "b": id | null}
 ```
 
-No optional fields have been added by this side.
+"provisional" on a predicate is the one optional field added since the contract was first
+written; the Python side needed it and this side accepts and ignores it. This side has added none.
 
 ## What the induction guarantees
 
@@ -110,6 +129,15 @@ nothing was ever recorded past the ends -- and are taken to reach half the small
 past the end reading (one unit when only one value was ever recorded), so they never win
 on width unless every gap is that tight. A parametric predicate with no raw value anywhere
 keeps the first value any trace's `params` gives it, or has no entry.
+
+**The tree's `params` carries values only for the predicates the tree tests.** Every
+parametric predicate with readings is fitted during the search, because the search has to
+know what tree each threshold admits; but a value for a predicate the chosen tree never asks
+about was not fitted *to* anything, and a value nobody fitted is not a fit, so it is not
+written. `render`, `decide` and `diff` take a tree that has no entry for a predicate it does
+not test (`diff` never reads a tree at all), and `decide` on a stop that carries a reading
+for such a predicate never consults it, so needs no threshold for it.
+`tests/untested_params.rs` is that property.
 
 **The threshold reported is the roundest number in the chosen band.** Not the band's
 midpoint: the shortest decimal strictly inside the band, and of two equally short the one
@@ -197,9 +225,11 @@ document read by any subcommand -- block list, trace, tree, choice list, and the
 `decide` reads on stdin -- must be a JSON **object**, never a positional array, and so must
 everything the contract nests inside one (a predicate, an action, a stop, an outcome, a
 node); no object anywhere in the document may **repeat a key**; and no object may carry a
-**field this file does not name**. The one exception is `"stage"` on a predicate or an
-action, which is in the contract above, is Python-side, and is read and ignored; it must be
-an integer. A node carrying both `"action"` and `"predicate"` is a typed error rather than
+**field this file does not name**. The exceptions are the two Python-side fields the
+contract above names, both read and ignored: `"stage"` on a predicate or an action, which
+must be an integer, and `"provisional"` on a parametric predicate, which must be a number
+and is refused on a predicate with no `"param"`. A node carrying both `"action"` and
+`"predicate"` is a typed error rather than
 an action with its branch silently dropped, and a node carrying `"predicate"` must carry
 both `"yes"` and `"no"`. `decide` checks the stop it is handed exactly as `induce` checks a
 trace's stops: every predicate id it reads must be in the block list.

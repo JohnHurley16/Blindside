@@ -276,7 +276,7 @@ Three candidates were considered and are **not** decision points:
   `time_elapsed_exceeds` and `machinery_audible` rising — and neither needs a second name.
 
 **A consequence to know about.** DP2 fires on the *provisional* threshold a demonstration
-runs with (Phase 2's `DEMONSTRATION_THETA` arrangement), so a player cannot teach a threshold
+runs with (the `provisional` value beside the block in `blocks.json`), so a player cannot teach a threshold
 lower than the provisional one: the bot never stops there to ask. The provisional values
 should therefore sit low — the bot asks early, the player says *carry on* until they mean
 it, and the induction fits the boundary between the carry-ons and the reactions. Proposed
@@ -497,10 +497,11 @@ Where the build settled something, or found something, it is here.
   three programs that could end *before acting* (`hold`, `go_to_deposit`,
   `interface_machinery`) say so through `Program.ending(t)`, so that stop is found before
   the tick too rather than after an idle one.
-- **Guess 4, moved.** The provisional thresholds are `tuning.DEMONSTRATION_PARAMS`, keyed
-  by *parameter name* (level, theta, seconds, cells), not on `blocks.json`: the induct
-  crate refuses a block list with a field it does not know. Two predicates sharing a
-  parameter name would share a value.
+- **Guess 4, settled 2026-09-08.** The provisional thresholds travel on `blocks.json` as an
+  optional `provisional` field beside each parametric predicate, on both sides of the seam,
+  so a new parametric block is one list entry and one evaluator file. They were briefly in
+  `tuning.DEMONSTRATION_PARAMS` keyed by parameter name, because the induct crate refused
+  unknown fields; the crate now declares the field.
 - **Guess 8, the `reason` field, and a crate finding.** The trace on disk carries `reason`
   per step as designed. The crate as built refuses it too (`strict.rs`: every type denies
   unknown fields; §5 above believed serde would ignore it -- it does not), so the client

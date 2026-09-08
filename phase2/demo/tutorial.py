@@ -21,21 +21,16 @@ from .stage import Stage
 class Tutorial:
     """The stage list, and the enabled block ids for any one of them."""
 
-    def __init__(self, registry: BlockRegistry, theta: float = T.DEMONSTRATION_THETA) -> None:
+    def __init__(self, registry: BlockRegistry) -> None:
         self.registry: BlockRegistry = registry
-        self.theta: float = theta
         self.stages: list[Stage] = self._build()
 
     def _params(self, block_stage: int) -> dict[str, dict[str, float]]:
         """Every parametric predicate that exists by this run needs a value of its
-        parameter for its boolean to exist at all. The value is provisional: the
-        induction refits it from the raw numbers the trace carries."""
-        out: dict[str, dict[str, float]] = {}
-        for pid in self.registry.predicate_ids_by_stage(block_stage):
-            param = self.registry.predicate(pid).param
-            if param is not None:
-                out[pid] = {param: self.theta}
-        return out
+        parameter for its boolean to exist at all. The value is the provisional one
+        beside the block on the list: the induction refits it from the raw numbers
+        the trace carries."""
+        return self.registry.provisional_params(self.registry.predicate_ids_by_stage(block_stage))
 
     def _build(self) -> list[Stage]:
         full = self.registry.last_stage()

@@ -3,6 +3,7 @@
 **This is the one place in Python where block ids appear.** Everything else --
 the tree interpreter, the session, the demonstration, the evaluator -- works over
 the list this exposes, so that adding a block is a data change plus one entry here.
+A parametric block's provisional threshold is data on the list too, beside the block.
 """
 from __future__ import annotations
 
@@ -37,6 +38,19 @@ class BlockRegistry:
             Action(id=a["id"], label=a["label"], stage=int(a.get("stage", 1)))
             for a in data["actions"]
         ]
+        # The provisional threshold beside each parametric predicate on the list: what a
+        # demonstration reads its boolean with until the induction fits the real one.
+        # crates/blindside-induct/FORMAT.md says why it lives on the list and why it sits low.
+        self._provisional: dict[str, float] = {
+            p["id"]: float(p["provisional"]) for p in data["predicates"] if "provisional" in p}
+        stray = [p.id for p in self.predicates if p.param is None and p.id in self._provisional]
+        if stray:
+            raise ValueError(f"blocks in {path.name} with a provisional value but no param: {stray}")
+        unset = [p for p in self.predicates if p.param is not None and p.id not in self._provisional]
+        if unset:
+            raise ValueError("; ".join(
+                f"{p.id} takes a parameter named {p.param!r} and {path.name} gives it no "
+                f"provisional value" for p in unset))
         self._evaluators: dict[str, Evaluator] = {
             "unexplored_branch_exists": unexplored_branch_exists.evaluate,
             "uncertainty_exceeds": uncertainty_exceeds.evaluate,
@@ -78,6 +92,21 @@ class BlockRegistry:
 
     def parametric_ids(self) -> list[str]:
         return [p.id for p in self.predicates if p.param is not None]
+
+    def provisional_params(self, predicate_ids: list[str] | None = None) -> dict[str, dict[str, float]]:
+        """The value each parametric predicate's boolean is read with in a demonstration:
+        the `provisional` beside it on the block list, by the parameter's name. Every
+        parametric predicate on the list has one (checked at load), or a run that enables
+        it would have no boolean to show. The value is provisional and the panel says so:
+        the induction refits it."""
+        out: dict[str, dict[str, float]] = {}
+        for p in self.predicates:
+            if predicate_ids is not None and p.id not in predicate_ids:
+                continue
+            if p.param is None:
+                continue
+            out[p.id] = {p.param: self._provisional[p.id]}
+        return out
 
     # ---- the implementations -------------------------------------------------------------
     def evaluators(self) -> dict[str, Evaluator]:

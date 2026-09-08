@@ -118,13 +118,11 @@ THETA_AWARE_THETA: Final[float] = 64.0             # cells of position sigma; se
 # evaluation seeds and the demonstration seeds do not overlap.
 TUTORIAL_SEEDS: Final[tuple[int, int, int]] = (101, 102, 103)
 DEMONSTRATION_SEEDS: Final[tuple[int, int, int]] = (104, 105, 106)
-# A parametric block has to have a value of its parameter for its boolean to exist at
-# all, and a demonstration has to show the player some boolean. This is the value the
-# demonstration runs use; it is provisional and the panel says so, because the induction
-# refits the threshold from the raw numbers the trace carries and ignores the boolean.
-# Set to the reference tree's value so that a player who mimics the reference tree is
-# reading the same booleans it is.
-DEMONSTRATION_THETA: Final[float] = THETA_AWARE_THETA
+# The theta a demonstration reads `lost` with is `provisional` on that block in
+# blocks.json, not here: a block is a data change plus its evaluator, and a value for it
+# in this file was a third edit (crates/blindside-induct/FORMAT.md says why it lives on the
+# list). It is set to THETA_AWARE_THETA's value, by hand, so that a player who mimics the
+# reference tree is reading the same booleans it is; change one, change the other.
 
 # ---- the window -------------------------------------------------------------------------------
 ELLIPSE_SIGMAS: Final[float] = 2.0                 # the drawn ellipse is 2 sigma: the

@@ -11,9 +11,10 @@ use blindside_induct::step_input::StepInput;
 use blindside_induct::trace::{Outcome, Step, Trace};
 use blindside_induct::tree::DecisionTree;
 
-/// The contract's blocks.json, verbatim.
+/// The contract's blocks.json (one label shortened), carrying the Python-side `provisional`
+/// field so that every test reads a list that has it.
 pub const BLOCKS_JSON: &str = r#"{ "predicates": [ {"id": "unexplored_branch_exists", "label": "an unexplored branch here"},
-                  {"id": "uncertainty_exceeds",      "label": "lost", "param": "theta"},
+                  {"id": "uncertainty_exceeds",      "label": "lost", "param": "theta", "provisional": 3.0},
                   {"id": "carrying_cargo",           "label": "carrying"} ],
   "actions":    [ {"id": "take_branch",       "label": "take a branch"},
                   {"id": "return_to_beacon",  "label": "go back"} ] }"#;
