@@ -74,22 +74,43 @@ class SensorRig:
 
         Bias dominates noise on purpose: a bias makes the map lean consistently and
         ghost, a random walk only makes it fuzzy.
+
+        **Damage does not appear in this method, and its absence is the deliberate
+        part.** Both biases used to scale by 1 + 1.5*damage, so a shaken machine
+        drifted faster while its own ellipse stayed the same width. THE-MACHINERY 11
+        named that the assumption it could not buy its way out of and pre-committed to
+        an instrumented A/B; the A/B was run on seed 7 and the effect failed it -- the
+        damaged machine ended up LESS wrong than the healthy one. The numbers and the
+        reasoning are in `tuning.py` above DAMAGE_RANGE_FROM. Damage now costs sensor
+        range (`_sonar`, `_lidar`) and speed (`AgentTruth.move`), and dead reckoning
+        is exactly what it is for an unhurt machine, always.
         """
         forward, turn = me.last_true_delta
         scale = 1.0 + T.DR_SCALE_BIAS * me.drift_sign_scale
         root = math.sqrt(max(forward, 1e-9))
         measured = forward * scale + self.rng.normal(0.0, T.DR_POS_NOISE_PER_CELL * root)
-        heading_bias = math.radians(T.DR_HEADING_BIAS_DEG_PER_CELL) * me.drift_sign_heading * forward
+        heading_bias = (math.radians(T.DR_HEADING_BIAS_DEG_PER_CELL)
+                        * me.drift_sign_heading * forward)
         heading_noise = self.rng.normal(0.0, math.radians(T.DR_HEADING_NOISE_DEG_PER_CELL) * root)
         return OdometryReturn(measured, turn + heading_bias + heading_noise)
 
     # ---- active sonar -----------------------------------------------------------------
     def _sonar(self, me: AgentTruth) -> list[Return]:
+        """A shaken transducer reaches less far, and nothing says so.
+
+        `reach` is the nominal range times `me.sensor_range_multiplier` -- 30.0 cells
+        unhurt, 22.6 at the 0.493 dose the 5:41 near miss delivers. The far returns
+        stop arriving; the ones that still arrive are scored for quality against the
+        NOMINAL range, because a wall four cells away comes back exactly as strongly
+        as it always did. So the map stops growing ahead of the machine and no number
+        anywhere on the belief side changes to explain why.
+        """
         out: list[Return] = []
         half = math.radians(T.SONAR_ARC_DEG) / 2.0
+        reach = T.SONAR_RANGE * me.sensor_range_multiplier
         for i in range(T.SONAR_RAYS):
             b = -half + 2.0 * half * i / (T.SONAR_RAYS - 1)
-            r = march(me.x, me.y, me.heading + b, T.SONAR_RANGE, ~cave.FREE)
+            r = march(me.x, me.y, me.heading + b, reach, ~cave.FREE)
             if r is None:
                 continue
             quality = 1.0 - 0.7 * r / T.SONAR_RANGE
@@ -98,7 +119,7 @@ class SensorRig:
             out.append(RangeBearingReturn(max(0.2, noisy_r), noisy_b, quality, PointSource.SONAR))
         for _ in range(T.SONAR_FALSE_RETURNS):
             out.append(RangeBearingReturn(
-                float(self.rng.uniform(3.0, T.SONAR_RANGE)),
+                float(self.rng.uniform(3.0, max(3.1, reach))),
                 float(self.rng.uniform(-half, half)),
                 float(self.rng.uniform(*T.SONAR_FALSE_QUALITY)),
                 PointSource.FALSE))
@@ -116,14 +137,20 @@ class SensorRig:
         the quiet sensor, and the other side is where the machinery is. (Designer's
         call over the alternative, where water returned nothing and read as open
         space -- which would have sent it in.)
+
+        Damage shortens it the same way it shortens the sonar: 18.0 cells unhurt, 13.6
+        at half a machine, with quality still scored against the nominal range. It
+        starts short and gets shorter, which is why the lidar chassis is the one that
+        feels a dose.
         """
         out: list[Return] = []
         if not cave.is_walkable(me.x, me.y):
             return out                    # standing in water: it sees nothing at all
         half = math.radians(T.LIDAR_ARC_DEG) / 2.0
+        reach = T.LIDAR_RANGE * me.sensor_range_multiplier
         for i in range(T.LIDAR_RAYS):
             b = -half + 2.0 * half * i / T.LIDAR_RAYS
-            r = march(me.x, me.y, me.heading + b, T.LIDAR_RANGE, ~cave.WALKABLE, step=0.25)
+            r = march(me.x, me.y, me.heading + b, reach, ~cave.WALKABLE, step=0.25)
             if r is None:
                 continue
             quality = 1.0 - 0.3 * r / T.LIDAR_RANGE
@@ -132,7 +159,8 @@ class SensorRig:
             out.append(RangeBearingReturn(max(0.2, noisy_r), noisy_b, quality, PointSource.LIDAR))
         for _ in range(T.LIDAR_FALSE_RETURNS):
             out.append(RangeBearingReturn(
-                float(self.rng.uniform(2.0, T.LIDAR_RANGE)), float(self.rng.uniform(-half, half)),
+                float(self.rng.uniform(2.0, max(2.1, reach))),
+                float(self.rng.uniform(-half, half)),
                 float(self.rng.uniform(0.1, 0.3)), PointSource.FALSE))
         return out
 

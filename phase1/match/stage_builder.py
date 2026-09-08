@@ -19,6 +19,7 @@ import numpy as np
 from .. import tuning as T
 from ..truth import cave
 from ..truth.agent_truth import AgentTruth
+from ..truth.ancient import Ancient
 from ..truth.world import World
 from .stage_frame import (
     StageAncient,
@@ -53,6 +54,7 @@ class StageBuilder:
 
     _grid: np.ndarray | None = None
     _home_cells: np.ndarray | None = None
+    _coupling: tuple[float, np.ndarray] | None = None
 
     # ---- cached, constant ------------------------------------------------------------
     @classmethod
@@ -96,6 +98,18 @@ class StageBuilder:
         cls._home_cells = _frozen(dist)
         return cls._home_cells
 
+    @classmethod
+    def _coupling_field(cls, ancient: Ancient, t: float) -> np.ndarray:
+        """The Assayer's field, rebuilt only when the array has actually moved.
+
+        It is constant for seventy-two of every seventy-five seconds, so this is one
+        24,000-cell multiply per slew frame rather than one per frame.
+        """
+        bearing = float(ancient.bearing_deg(t))
+        if cls._coupling is None or cls._coupling[0] != bearing:
+            cls._coupling = (bearing, _frozen(ancient.coupling_field(t)))
+        return cls._coupling[1]
+
     # ---- per frame -------------------------------------------------------------------
     @classmethod
     def of(cls, world: World, trail: Trail, t: float, spoof_arming: float,
@@ -134,7 +148,12 @@ class StageBuilder:
             ancient=StageAncient(float(ancient.x), float(ancient.y), float(T.ANCIENT_RADIUS),
                                  float(ancient.signature_strength(t)),
                                  float(ancient.seconds_until_lethal(t)),
-                                 bool(ancient.is_lethal(t))),
+                                 bool(ancient.is_lethal(t)),
+                                 float(ancient.bearing_deg(t)),
+                                 str(ancient.state(t).value),
+                                 float(ancient.state_progress(t)),
+                                 bool(ancient.is_slewing(t)),
+                                 cls._coupling_field(ancient, t)),
             deposits=tuple(StageDeposit(float(dx), float(dy), float(T.DEPOSIT_RADIUS))
                            for dx, dy in world.deposits.values()),
             born=cls._born(world, t),
@@ -167,6 +186,7 @@ class StageBuilder:
             load_progress=float(world.load_progress.get(agent.name, 0.0)),
             stalled_for=cls._stalled_for(trail.get(agent.name, [])),
             in_ancient=bool(agent.in_ancient),
+            damage=float(agent.damage),
         )
 
     @staticmethod

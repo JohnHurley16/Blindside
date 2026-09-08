@@ -10,6 +10,12 @@ machines to scale, both comets, the ghost, the tether, the machinery and its cou
 and the deposits at their true radius. Beacons, sound rings, the spoof's dashed line
 and the believed-machinery disc are later slices.
 
+The machinery is no longer a red disc with a label on it. It is the Assayer -- a body in
+`assayer.py` and a pointed field on the floor in `shock_lobe.py` -- and this file owns
+only the two things that are neither: the countdown, and the damage a machine is
+carrying, which arrives on the glyph as colour, thinning and a sensor head that stops
+turning (THE-MACHINERY.md 4.7). Nothing about the cycle's timing moved; the drawing did.
+
 Every overlay is `translucent, depth_test=False` and ordered after the mesh, so the
 subject is never lost behind rock; the tether and the chamber names are additionally
 lifted above the wall height, which is the same result and is stable under orbit.
@@ -22,12 +28,14 @@ import numpy as np
 from vispy.scene import visuals
 
 from .. import tuning as T
-from ..match.stage_frame import StageFrame
+from ..match.stage_frame import StageFrame, StageMachine
 from . import palette
+from .assayer import Assayer
 from .cave_mesh import CaveMesh
 from .chamber_names import CHAMBER_LABELS
 from .glyph import machine
 from .shapes import ring, to_segments
+from .shock_lobe import ShockLobe
 
 # The camera, as the six numbers the off-frame stub needs: centre, the ortho half
 # extents in scene units, and the elevation's sine and cosine. Slice 1 has no manual
@@ -45,6 +53,12 @@ class TruthPanel:
     def __init__(self, parent: object, frame: StageFrame) -> None:
         self.cave: CaveMesh = CaveMesh(parent, frame.grid,
                                        (frame.player.x, frame.player.y))
+        # Order matters and is stated in `tuning.py`: the scour under the lobe, the lobe
+        # under the machine, the machine under everything that is a subject. Built in
+        # this order as well as ordered, because two visuals with the same `order` draw
+        # in the order they were added.
+        self.lobe: ShockLobe = ShockLobe(parent, frame.ancient, frame.grid)
+        self.assayer: Assayer = Assayer(parent, frame.ancient)
 
         self.names = visuals.Text(
             [name for name, _, _ in CHAMBER_LABELS],
@@ -56,7 +70,6 @@ class TruthPanel:
                                      color=(*palette.CARGO, 0.35))
         self.comet_player = visuals.Line(parent=parent, width=2.5)
         self.comet_rival = visuals.Line(parent=parent, width=2.0)
-        self.hazard = visuals.Line(parent=parent, connect="segments", width=2.0)
         self.machines = visuals.Line(parent=parent, connect="segments", width=2.0)
         self.tether = visuals.Line(parent=parent, connect="segments", width=2.0)
         self.tether_label = visuals.Text("", parent=parent, pos=(0.0, 0.0, T.TETHER_Z_CELLS),
@@ -67,11 +80,10 @@ class TruthPanel:
                                          bold=True, anchor_x="center", anchor_y="center")
 
         overlays = (self.names, self.deposits, self.comet_player, self.comet_rival,
-                    self.hazard, self.machines, self.tether, self.tether_label,
-                    self.hazard_label)
+                    self.machines, self.tether, self.tether_label, self.hazard_label)
         for index, visual in enumerate(overlays):
             visual.set_gl_state("translucent", depth_test=False)
-            visual.order = index + 1
+            visual.order = T.TRUTH_OVERLAY_ORDER + index
 
         self._deposit_rings(frame)
         self._tether_rgb: tuple[float, float, float] = palette.LIE
@@ -127,19 +139,34 @@ class TruthPanel:
 
     # ---- marks 4, 6, 8, 13: the machines, the ghost, the wreck ---------------------------------
     def _machines(self, frame: StageFrame, believed: tuple[float, float, float]) -> None:
-        head = math.radians(frame.t * HEAD_TURN_DEG_S) % (2.0 * math.pi)
+        """Both machines, the ghost, and how hurt each of them is.
+
+        THE-MACHINERY.md 4.7's first mark, and the reason it is on the glyph rather than
+        beside it: at CAMERA_WIDE_CELLS a machine is nine pixels and no text anywhere on
+        this screen can be read, so the meter has to be the shape and colour of the thing
+        itself. A shaken machine is thinner (a hatch stroke at a time), redder (walking
+        toward KILL), and has stopped looking (the sensor head slows and then stops). A
+        stranger reads *that machine is in trouble* with no legend and no glance away, and
+        a machine limping home at 40% with cargo aboard reads as exactly that.
+
+        Nothing here is a belief: it is what is true of the machine. What the machine
+        itself would be told arrives through a sensor in Phase 3 and can be wrong.
+        """
         bx, by, btheta = believed
         drawn: list[tuple[list[tuple[float, float, float, float]], tuple[float, float, float], float]] = [
             (machine(frame.player.x, frame.player.y, frame.player.heading,
                      T.GLYPH_LENGTH_CELLS, filled=True, alive=frame.player.alive,
-                     cargo=frame.player.cargo, head=head),
-             palette.KILL if not frame.player.alive else palette.BONE, 1.0),
+                     cargo=frame.player.cargo, head=_head(frame.t, frame.player.damage),
+                     damage=frame.player.damage),
+             _hurt(palette.BONE, frame.player), 1.0),
             (machine(frame.rival.x, frame.rival.y, frame.rival.heading,
                      T.GLYPH_LENGTH_CELLS, filled=True, alive=frame.rival.alive,
-                     cargo=frame.rival.cargo, head=-head),
-             palette.KILL if not frame.rival.alive else palette.EMBER, 1.0),
+                     cargo=frame.rival.cargo, head=-_head(frame.t, frame.rival.damage),
+                     damage=frame.rival.damage),
+             _hurt(palette.EMBER, frame.rival), 1.0),
             # Hollow, identical geometry, at the pose it believes it holds. Solid is the
-            # thing; hollow is a belief about the thing.
+            # thing; hollow is a belief about the thing. It is never damaged, because a
+            # belief about where you are does not have a hull.
             (machine(bx, by, btheta, T.GLYPH_LENGTH_CELLS, filled=False),
              palette.GHOST, 0.65),
         ]
@@ -154,64 +181,28 @@ class TruthPanel:
 
     # ---- mark 9: the machinery -----------------------------------------------------------------
     def _machinery(self, frame: StageFrame, in_main_slot: bool) -> None:
-        """Quiet, then a nine-second warning that fills the ring clockwise, then four
-        lethal seconds. The seventy-five-second cycle is already in the sim, it is
-        perfectly regular, and it has never been drawn."""
+        """The Assayer's body, its field, and the one label.
+
+        The drawing is two objects and this method owns neither: `Assayer` moves a boom,
+        a hammer and a mast band, and `ShockLobe` paints the floor. What is left here is
+        `LETHAL IN 0:07`, kept and treated as an instrument rather than as furniture --
+        HAZARD_COUNTDOWN_FROM_S is 15, so the number appears two seconds *after* the boom
+        has swung and pointed. That gap is the gate question: ask a tester at -16 s what
+        the machine is about to do, before the number exists. If they can say it, the
+        label is redundant and goes in Phase 3.
+        """
         a = frame.ancient
+        self.assayer.update(a, frame.t)
+        self.lobe.update(a)
+
         until = a.seconds_until_lethal
-        warning = a.signature_strength > 0.0 and not a.is_lethal
-        points: list[list[float]] = []
-        colours: list[tuple[float, float, float, float]] = []
-
-        if a.is_lethal:
-            # three flashes at 6 Hz, and the disc floods
-            flash = 0.55 + 0.45 * math.sin(frame.t * 6.0 * 2.0 * math.pi)
-            rgb, alpha, width = palette.KILL, 0.35 + 0.5 * flash, 4.0
-            for k in range(28):
-                angle = 2.0 * math.pi * k / 28.0
-                points += [[a.x, a.y, FLOOR_Z], [a.x + math.cos(angle) * a.radius,
-                                                 a.y + math.sin(angle) * a.radius, FLOOR_Z]]
-                colours += [(*rgb, alpha * 0.55)] * 2
-        elif warning:
-            rgb, alpha, width = palette.HAZARD, 0.95, 3.0
-        else:
-            breathe = 0.5 + 0.5 * math.sin(frame.t * 0.1 * 2.0 * math.pi)
-            rgb, alpha, width = palette.HAZARD, 0.08 + 0.06 * breathe, 1.5
-
-        # The floor ring, filling clockwise from twelve o'clock across the nine-second
-        # warning. A clock is the one countdown a stranger reads without being taught.
-        steps = 72
-        filled = 0.0 if not warning else 1.0 - min(max(until / T.ANCIENT_WARNING_S, 0.0), 1.0)
-        circle = ring(a.x, a.y, a.radius, n=steps + 1,
-                      a0=math.pi / 2.0, a1=math.pi / 2.0 - 2.0 * math.pi, z=FLOOR_Z)
-        for k in range(steps):
-            fraction = k / steps
-            lit = warning and fraction <= filled
-            edge = alpha if (a.is_lethal or not warning) else (0.95 if lit else 0.20)
-            points += [list(circle[k]), list(circle[k + 1])]
-            colours += [(*rgb, edge)] * 2
-
-        # a faint cylinder to the cave's wall height, so the hazard reads as a volume
-        # and is visible over a rock rim from any azimuth
-        top = T.CAVE_WALL_HEIGHT_CELLS
-        wall = 0.09 + 0.10 * a.signature_strength      # faint: a volume, not a barrel
-        for k in range(0, steps, 9):
-            points += [list(circle[k]), [circle[k][0], circle[k][1], top]]
-            colours += [(*rgb, wall)] * 2
-        for k in range(steps):
-            points += [[circle[k][0], circle[k][1], top], [circle[k + 1][0], circle[k + 1][1], top]]
-            colours += [(*rgb, wall)] * 2
-
-        self.hazard.set_data(np.array(points, dtype=np.float32),
-                             color=np.array(colours, dtype=np.float32), width=width)
-
         show = in_main_slot and until <= T.HAZARD_COUNTDOWN_FROM_S and not a.is_lethal
         text = f"LETHAL IN 0:{int(math.ceil(until)):02d}" if show else (
             "LETHAL NOW" if (in_main_slot and a.is_lethal) else "")
         if text != self._hazard_text:                    # gated on the integer second
             self._hazard_text = text
             self.hazard_label.text = text
-        # Above the ring rather than beside it -- a machine can stand anywhere on the
+        # Above the machine rather than beside it -- a machine can stand anywhere on the
         # rim and the one frame this label matters in has two of them on it -- and low,
         # because a label lifted to the wall height is lifted out of a CLOSE frame.
         self.hazard_label.pos = (a.x, a.y + a.radius + 1.2, COUNTDOWN_Z)
@@ -283,6 +274,34 @@ class TruthPanel:
             self._tether_rgb = rgb
             self.tether_label.color = (*rgb, 0.95)
         _show(self.tether_label, bool(text))
+
+
+def _head(t: float, damage: float) -> float:
+    """The sensor head's angle. It slows at 0.45 damage and stops at 0.80.
+
+    The head is the one mark in `glyph.py` that says *alive and still looking*, so its
+    rate is the cheapest possible statement that the instruments went before the frame
+    did -- which is the whole claim THE-MACHINERY makes about what a shock breaks.
+    Closed form rather than integrated, because `--snap` advances the match by minutes
+    between draws; the step when damage crosses a threshold is a few degrees of a
+    decorative rotation and is not observable.
+    """
+    rate = HEAD_TURN_DEG_S
+    if damage >= T.DAMAGE_HEAD_STOP_FROM:
+        rate = 0.0
+    elif damage >= T.DAMAGE_HEAD_SLOW_FROM:
+        rate *= 0.5
+    return math.radians(t * rate) % (2.0 * math.pi)
+
+
+def _hurt(rgb: tuple[float, float, float], subject: StageMachine) -> tuple[float, float, float]:
+    """A machine's colour, walking toward KILL as it takes shock. A wreck is KILL."""
+    if not subject.alive:
+        return palette.KILL
+    if subject.damage <= T.DAMAGE_TINT_FROM:
+        return rgb
+    return palette.lerp(rgb, palette.KILL,
+                        (subject.damage - T.DAMAGE_TINT_FROM) / (1.0 - T.DAMAGE_TINT_FROM))
 
 
 def _show(visual: object, wanted: bool) -> None:

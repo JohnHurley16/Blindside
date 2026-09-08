@@ -100,19 +100,56 @@ class World:
 
     # ---- hazards -------------------------------------------------------------------
     def step_hazards(self) -> None:
+        """The Assayer fires, and what a machine takes depends on where it is standing.
+
+        THE-MACHINERY sections 4.4 and 4.7. Three things happen here and they are
+        deliberately separate:
+
+          * the zone flag stays a plain nine-cell disc, because the director and the
+            truth log read it and the camera must behave exactly as it did before;
+          * the KILL test runs on every lethal tick, as it always has, but the shape
+            it tests is the lobe rather than a circle -- 9.00 cells on the axis and
+            5.32 at the flank;
+          * the DOSE lands on the firing tick only. The blow is an instant, so the
+            unit of risk is the cycle: loitering for three minutes is three firings,
+            countable and legible, and an 80-second interface dwell costs exactly one.
+
+        An agent inside the lethal contour is destroyed and takes no dose -- one
+        event, no meter. Everything outside it and above the floor is graded, with no
+        threshold and no special case.
+        """
+        ancient = self.ancient
         for agent in self.agents.values():
-            inside = agent.alive and self.ancient.covers(agent.x, agent.y)
+            inside = agent.alive and ancient.in_zone(agent.x, agent.y)
             if inside != agent.in_ancient:
                 agent.in_ancient = inside
                 self.log("ancient_zone", agent=agent.name, inside=inside)
-        if not self.ancient.is_lethal(self.t):
+        if not ancient.is_lethal(self.t):
             return
+        firing = ancient.is_firing_tick(self.t)
         for agent in self.agents.values():
-            if agent.alive and self.ancient.covers(agent.x, agent.y):
-                agent.alive = False
-                self.pending_sounds.append(
-                    PendingSound(self.t + T.DT, agent.x, agent.y, SoundCharacter.CRASH))
-                self.log("death", agent=agent.name, x=agent.x, y=agent.y, cause="ancient")
+            if not agent.alive:
+                continue
+            coupling = ancient.coupling_at(agent.x, agent.y, self.t)
+            if coupling >= 1.0:
+                self._destroy(agent, "ancient")
+            elif firing and coupling >= T.ANCIENT_DOSE_FLOOR:
+                dose = T.ANCIENT_DOSE_K * coupling ** T.ANCIENT_DOSE_CURVE
+                agent.take_shock(dose)
+                # Logged per dosed firing so a machine limping home at 40% can say
+                # WHICH firing did it. THE-MACHINERY 10.3 is honest that one pip is
+                # the minimum answer to attribution and probably not a sufficient one.
+                self.log("shock", agent=agent.name, x=agent.x, y=agent.y,
+                         coupling=round(coupling, 3), dose=round(dose, 3),
+                         damage=round(agent.damage, 3))
+                if not agent.alive:
+                    self._destroy(agent, "damage")
+
+    def _destroy(self, agent: AgentTruth, cause: str) -> None:
+        agent.alive = False
+        self.pending_sounds.append(
+            PendingSound(self.t + T.DT, agent.x, agent.y, SoundCharacter.CRASH))
+        self.log("death", agent=agent.name, x=agent.x, y=agent.y, cause=cause)
 
     def expire_sounds(self) -> None:
         self.pending_sounds = [s for s in self.pending_sounds if s.t > self.t - T.DT]

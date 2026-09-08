@@ -230,6 +230,168 @@ INTERFACE_SPEED: Final[float] = 0.4                # creeping the last few cells
 # path luck, not a beat. This makes it a decision the rival takes, and one the
 # spectator can watch it take.
 
+# ---- the Assayer: the cycle, the lobe, the dose -------------------------------------------------
+# THE-MACHINERY.md sections 3 and 4. The five constants above keep their values and one
+# of them changes its meaning: ANCIENT_RADIUS is now the lethal contour ON THE AXIS,
+# which is 9.0 in every direction only when the lobe floor is 1.0. Change what 9 means;
+# do not change 9.
+ANCIENT_AIM_0_DEG: Final[float] = 40.0
+# The survey azimuth of the first firing (0:41). Chosen from the 26 of 72 five-degree
+# origins that keep all three of the deaths seeds 1-8 produce today (THE-MACHINERY 11,
+# scratchpad/lobe_sweep2.py, re-run 2026-09-07). Two of those deaths are so deep inside
+# the contour that they die at any angle; only seed 7's rival, at 8.121 cells, is
+# angle-sensitive, and it dies within 32.3 degrees of the axis -- which makes the
+# surviving interval [9.2, 73.8] degrees. 40 is the grid origin furthest from either
+# edge of it (30.8 degrees of margin), so this is the most robust of the 26 rather than
+# the one that lands a beat.
+ANCIENT_AIM_STEP_DEG: Final[float] = -36.0
+# A survey covers ground: the aim indexes the same way every firing, so ten firings is a
+# revolution and the safe side of a chamber is safe for a while and then is not. Two
+# slews are enough for a player to predict the third.
+ANCIENT_SLEW_S: Final[float] = 3.0    # the boom swings; movement is the loudest thing on a screen
+ANCIENT_LOCK_S: Final[float] = 5.0    # stillness after movement: the beat that reads as a decision
+ANCIENT_FIRE_S: Final[float] = 0.15   # the hammer falls: 3 frames at the recorder's 20 fps
+# 54 listening / 3 slew / 5 locked / 9 wind / 4 lethal, inside the established 75. The
+# warning and lethal windows are untouched, so every measured spectator beat survives.
+ANCIENT_LOBE_FLOOR: Final[float] = 0.35
+# gain(theta) = 0.35 + 0.65*cos^2(theta - aim). The array is directional, so the lethal
+# contour is 9.00 cells on the axis and 5.32 at the flank: safe becomes a PLACE (behind
+# it) rather than a distance a machine has to estimate. cos^2 is symmetric, so the back
+# lobe is as strong as the front -- a ribbed array driving a shock into the rock has no
+# reason to be one-sided.
+ANCIENT_WATER_COST: Final[float] = 0.35
+# A flooded working is a continuous column coupled to the rock on every side, so the
+# shock runs along it with much less loss. Cost per flooded cell against 1.00 for
+# everything else, on a Dijkstra from the machine, taken as a RATIO against the same
+# Dijkstra over uniform cost. Measured: exactly 1.000 on all 529 walkable cells within
+# 20 cells, so the reference beats survive to the third decimal; the felt contour runs
+# 33.6 cells up the flooded ANC->SUMP bearing against 17.9 on dry ones. Rock is not
+# cover -- both Dijkstras cross it -- which is the rule this object exists to teach.
+ANCIENT_DOSE_K: Final[float] = 0.5
+ANCIENT_DOSE_CURVE: Final[float] = 1.5
+# damage += 0.5 * coupling^1.5, per FIRING and not per second, because the blow is an
+# instant: the unit of risk is the cycle, so an 80-second interface dwell costs exactly
+# one firing. At the rim (coupling 0.99) that is half a machine.
+ANCIENT_DOSE_FLOOR: Final[float] = 0.04
+# Below this coupling nothing is recorded: 0.04 is 45 cells on the axis, and the ratio
+# to defend is audible at 80, felt at 45, killed at 9.
+# ---- what damage COSTS -----------------------------------------------------------------------
+# THE-MACHINERY 4.3 wanted the HEADING REFERENCE to go first: the truth-side drift
+# coefficients scaled by 1 + 1.5*damage, so a shaken machine became confidently wrong at an
+# accelerating rate with nothing on the belief side announcing it. Section 11 pre-committed
+# to an A/B on it -- "if they are not obviously different by 7:00, the odometry effect
+# should be cut and damage should cost speed and sensor range instead" -- and the A/B was
+# run on seed 7 and FAILED it. Player position error at 7:00: 91.13 cells with the effect
+# off against 88.38 with it on, and 91.13 against 84.93 at 8:00. The damaged machine ended
+# up LESS wrong than the healthy one, and at eight times the gain it fell to 41.5, so the
+# effect was not even monotone in its own gain: both runs jam against walls for the last
+# 79 s and the paths diverge for reasons that have nothing to do with drift. So the
+# coupling is cut, honouring the pre-commitment, and what is left is two constants that
+# are legible, much less interesting, and honest.
+DAMAGE_RANGE_FROM: Final[float] = 0.20
+DAMAGE_RANGE_LOSS: Final[float] = 0.5
+# The transducer goes first, because frames survive shock and precision does not: active
+# range * (1 - 0.5*damage) above 0.20, so a half-wrecked machine's sonar reaches 22.6 cells
+# instead of 30 and its lidar 13.6 instead of 18. Nothing tells it the range shrank -- the
+# far returns simply stop arriving, and quality is still scored against the nominal range,
+# so a near return looks exactly as good as it always did.
+DAMAGE_SPEED_FROM: Final[float] = 0.30
+DAMAGE_SPEED_LOSS: Final[float] = 0.5
+# The drive second, and one rung later, because a chassis is the sturdiest thing on it:
+# speed * (1 - 0.5*damage) above 0.30. At the 0.493 dose the 5:41 near miss delivers that
+# is 75% speed -- a quarter less ground per minute, which is visible beside an unhurt rival
+# and nowhere near unable to get home.
+#
+# Both are TRUTH-side. The policy asks for a speed and gets less and sweeps a range and
+# gets shorter; it finds that out through its own returns, if it finds out at all. And both
+# keep a THRESHOLD rather than being continuous from zero, which is measured rather than
+# tidy: the dose floor is 45 cells, so almost every match delivers two or three 0.005
+# scratches to agents that are nowhere near the machine, and applied continuously a 0.15%
+# speed change compounds through waypoint thresholds and stuck timers into completely
+# different paths -- it moved every death across seeds 1-8 and put the seed 7 player 4.7
+# cells from the machinery instead of 9.038. With the thresholds the match is bit-identical
+# to the one that was swept until something is actually hurt.
+ANCIENT_MAST_CELLS: Final[float] = 11.0   # 3 cells above CAVE_WALL_HEIGHT_CELLS: the only
+                                          # thing in the cave that breaks the skyline
+ANCIENT_BOOM_CELLS: Final[float] = 7.0    # a 7-cell arm swinging 36 degrees moves its tip
+                                          # 4.4 cells, which is above the 6-8 px/s threshold
+                                          # this project already built comets to defeat
+
+# ---- drawing the Assayer -----------------------------------------------------------------------
+# THE-MACHINERY.md sections 2 and 3, view side. The numbers that move a beat live here;
+# the proportions of one object -- leg spans, rib widths, hammer collar -- live beside the
+# code that draws them in view/assayer.py, the way director.py keeps its own hold times.
+ANCIENT_CLICKS: Final[int] = 9
+# The wind is nine ratchet clicks at 1 Hz. At the recorder's 20 fps that is twenty frames a
+# click, which is countable on a captured video rather than a strobe -- and it is the same
+# count as ANCIENT_WARNING_S seconds, so the hammer IS the countdown.
+ANCIENT_RATCHET_FRACTION: Final[float] = 0.20
+# Each click snaps up over the first fifth of its second and then holds. A step reads as a
+# mechanism taking load; a smooth rise reads as a slider and nobody counts a slider.
+ANCIENT_HAMMER_RISE_CELLS: Final[float] = 8.4
+# From the leg hub to just under the mast head. Deliberately the REDUNDANT mark: a world-z
+# displacement projects up-screen at cos(elevation), which is 0.31x at the 72-degree default
+# and exactly zero at the top of the 60-90 clamp, so height can never carry the warning.
+ANCIENT_RECOIL_CELLS: Final[float] = 0.4
+ANCIENT_RECOIL_S: Final[float] = 0.5
+# The rig jolts down on the blow and recovers over half a second. It is the only mark that
+# says the hammer HIT something rather than merely arrived, and it costs one transform.
+ANCIENT_FELT_COUPLING: Final[float] = 0.25
+# The faint contour: 18.0 cells on a dry axis and 32.5 up the flooded ANC->SUMP bearing.
+# THE-MACHINERY 4.2 draws the felt boundary here, and section 4.4's dose table is indexed
+# on it. It is the outer of the two curves and the one that says "you are in the work".
+ANCIENT_LOBE_ALPHA: Final[float] = 0.34
+ANCIENT_LOBE_HALO: Final[float] = 0.35
+ANCIENT_LOBE_FALLOFF: Final[float] = 1.6
+# The floor field is a CORE and a HALO, not one ramp. Measured: one ramp from the felt
+# contour to the lethal one, at any peak alpha that made the lethal ground read, filled
+# the whole chamber at a third of that -- which is a red disc, which is the thing the
+# gate rejected. So the halo carries ANCIENT_LOBE_HALO of the peak and falls off as
+# band^1.6, and the remaining 65% arrives as a step just inside coupling 1.0. The eye
+# gets a hard edge where the boundary actually is and a wash where the shape is. 0.34 is
+# the peak that still lets the machine's own boom read over its own lit ground at CLOSE.
+ANCIENT_SCOUR_ALPHA: Final[float] = 0.10
+# The permanent ruined ground: alpha = 0.10 * min(1, 9/d), on ground only, with no boundary
+# drawn anywhere. It replaces the dormant floor ring, which was on screen for 72% of the
+# match and was most of the reason the object read as a circle.
+ANCIENT_HEAVE_SPEED: Final[float] = 24.0
+ANCIENT_HEAVE_ARCS: Final[int] = 3
+ANCIENT_HEAVE_GAP_S: Final[float] = 0.35
+# Three arcs of heave crossing the floor during the four lethal seconds, clipped to the
+# lobe. This REPLACES the three flashes at 6 Hz: one hammer falling and a wave leaving it is
+# legible, and a strobe is part of why the object read as a generic damage zone.
+SCOUR_DRAW_ORDER: Final[int] = 1
+LOBE_DRAW_ORDER: Final[int] = 2            # image, then the two contours, then the heave
+ASSAYER_DRAW_ORDER: Final[int] = 5         # the body, over its own floor marks
+TRUTH_OVERLAY_ORDER: Final[int] = 12       # comets, glyphs, tether: never behind anything
+# Draw order in the truth scene, stated once. The machine is depth-tested against the cave
+# and its floor marks are not, so the order is what keeps a mast in front of its own lobe.
+
+# ---- what damage looks like ----------------------------------------------------------------------
+# THE-MACHINERY 4.7. Three marks and no new widget: the glyph degrades into the wreck it is
+# becoming, one rail row carries the number, and the tether -- which already lengthens --
+# lengthens faster. Prefer this to a world-space bar: a 1.6-cell bar is 50 px at CLOSE and
+# 9 px at WIDE, and WIDE is where the director sits for most of the match.
+DAMAGE_TINT_FROM: Final[float] = 0.30
+# Above this the machine's own colour walks toward KILL. It is the only damage display of
+# the four proposed that reads at CAMERA_WIDE_CELLS, where a glyph is nine pixels and no
+# text anywhere on screen is legible: thinner, redder, and it has stopped looking.
+DAMAGE_HATCH_1: Final[float] = 0.34
+DAMAGE_HATCH_2: Final[float] = 0.67
+# The three hull hatch strokes drop front-to-back at these two thresholds, so a damaged
+# machine is visibly THINNER -- the hatching is what makes a line drawing read as a solid,
+# and losing it is the glyph walking toward the wreck cross it becomes at 1.0.
+DAMAGE_HEAD_SLOW_FROM: Final[float] = 0.45
+DAMAGE_HEAD_STOP_FROM: Final[float] = 0.80
+# The sensor head is the one mark that says alive and still LOOKING, so halving its turn
+# and then stopping it reads instantly as a machine that has stopped watching.
+DAMAGE_HURT_FROM: Final[float] = 0.20      # = DAMAGE_RANGE_FROM: the first rung of the ladder
+DAMAGE_LIMPING_FROM: Final[float] = 0.30   # = DAMAGE_SPEED_FROM: the second one
+# What the CONDITION row calls it. Tied to the two rungs above rather than chosen: "hurt" is
+# the word from the moment the transducer has actually gone short, "limping" from the moment
+# the drive has slowed. The row shows hull REMAINING, so the 0.493 dose the 5:41 near miss
+# delivers reads "limping, 51%".
+
 # ---- policies ---------------------------------------------------------------------------------
 CAUTIOUS_PING_COOLDOWN_S: Final[float] = 24.0
 AGGRESSIVE_PING_COOLDOWN_S: Final[float] = 8.0

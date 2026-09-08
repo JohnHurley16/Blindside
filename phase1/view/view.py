@@ -29,7 +29,7 @@ from vispy.scene import visuals
 from .. import tuning as T
 from ..belief.belief import Belief
 from ..match.match_view import MatchView
-from ..match.stage_frame import StageFrame
+from ..match.stage_frame import StageFrame, StageMachine
 from ..sound_character import SoundCharacter
 from . import palette
 from .director import Director
@@ -44,9 +44,15 @@ FIX_ANIM_SECONDS: float = 0.7
 
 FRIENDLY: dict[str, str] = {"DA": "deposit A", "DB": "deposit B",
                             "S": "the shaft", "HOME": "the shaft"}
-STATUS_LABELS: tuple[str, ...] = ("CARGO", "IT THINKS IT KNOWS WHERE IT IS TO",
+STATUS_LABELS: tuple[str, ...] = ("CARGO", "CONDITION",
+                                  "IT THINKS IT KNOWS WHERE IT IS TO",
                                   "LAST POSITION FIX", "MAP IT HAS BUILT",
                                   "YOUR ONE COMMAND")
+CONDITION_ROW: int = 1
+# THE-MACHINERY.md 4.7's second mark: the machine's own damage as a number and a bar.
+# Second in the rail rather than last, because it is the answer to the note the gate
+# failed on and a row below the fold is not an answer. It is what it is CARRYING and
+# then what STATE it is in, which is the order a person asks those two questions in.
 MAIN_TITLE: str = "THE CAVE     what is actually there"
 INSET_TITLE: str = "ITS MAP     what it thinks is there"
 
@@ -176,7 +182,7 @@ class View:
                                         anchor_y="bottom", color=palette.DIM,
                                         font_size=9, pos=(0, 0))
         self.status = StatusPanel(overlay, 0.0, 0.0, T.RAIL_W - 2 * T.MARGIN,
-                                  STATUS_LABELS)
+                                  STATUS_LABELS, bar_rows=(CONDITION_ROW,))
         self.timeline = TimelineView(overlay, T.MARGIN, h - T.TIMELINE_H + 6,
                                      w - 2 * T.MARGIN, T.TIMELINE_H - 12)
 
@@ -281,7 +287,7 @@ class View:
         self._draw_fronts(b, t)
         self._draw_fix(b, t)
         self._draw_truth(frame, b)
-        self._draw_panels(b, t)
+        self._draw_panels(frame, b, t)
         self.timeline.update(self.feed, t)
         if self.audio is not None:
             self.audio.update(b, t, self.view.camera.azimuth)   # type: ignore[attr-defined]
@@ -530,7 +536,9 @@ class View:
             self.fix_flash.visible = False
 
     # ---- the rail ---------------------------------------------------------------------------
-    def _draw_panels(self, b: Belief, t: float) -> None:
+    def _draw_panels(self, frame: StageFrame, b: Belief, t: float) -> None:
+        """The frame is passed in rather than fetched: `stage()` is not cached, and one
+        CONDITION row is not worth building a second 24,000-cell field for."""
         since = b.ticks_since_fix * T.DT
         fix = b.last_fix
         surprised = fix is not None and fix.surprise >= 2.5 and fix.jump >= 8.0
@@ -539,8 +547,10 @@ class View:
         else:
             ago = f"{int(since) // 60}:{int(since) % 60:02d} ago"
             fix_text = f"{ago}, moved it {fix.jump:.0f} cells"
+        condition, condition_rgb = _condition(frame.player)
         self.status.set((
             f"{b.cargo} of {T.CARGO_CAPACITY}",
+            condition,
             f"within {b.sigma_pos():.0f} cell" + ("" if round(b.sigma_pos()) == 1 else "s"),
             fix_text,
             (f"{(b.cloud.n // 50) * 50} points, {len(b.own_scans)} sweeps" if b.sensor == "lidar"
@@ -548,11 +558,13 @@ class View:
             "spent" if self.match.recall_used else "ready - press R",
         ), (
             None,
+            condition_rgb,
             palette.BANNER if b.sigma_pos() > 12 else palette.TITLE,
             palette.BANNER if surprised else palette.TITLE,
             None,
             palette.DIM if self.match.recall_used else palette.TREE_LIVE,
         ))
+        self.status.set_bars((max(0.0, 1.0 - frame.player.damage),), (condition_rgb,))
 
         result = self.match.result
         if self.match.over and result is not None:
@@ -634,6 +646,34 @@ class View:
     def snapshot(self, path: str) -> None:
         self.draw()
         io.write_png(path, self.canvas.render())
+
+
+# ---- the rail -------------------------------------------------------------------------------------
+def _condition(subject: StageMachine) -> tuple[str, tuple[float, float, float]]:
+    """The CONDITION row: hull remaining, named after the rung that has actually broken
+    rather than in words chosen for how they sound.
+
+    "hurt" starts where the transducer goes short (DAMAGE_RANGE_FROM, 0.20) and names the
+    consequence rather than the part -- "seeing less far" fits the 300 px rail, where
+    4.7's "odometry unreliable" was clipped at "unrel", and it is now also the only true
+    sentence: the odometry effect was cut when it failed THE-MACHINERY 11's own A/B, and
+    a row that still said "drifting faster" would be describing a mechanic that no longer
+    exists. "limping" starts where the drive goes (DAMAGE_SPEED_FROM, 0.30). Between the
+    two the number is the only thing that moves, and it is hull remaining, so the 0.493
+    dose the 5:41 near miss delivers reads as "limping, 51%".
+
+    In Phase 1 this is truth: no self-report exists yet and no predicate reads it. Phase
+    3's `Return::SelfReport` is where the agent learns the number, through a sensor, so
+    it can be wrong -- and this row is where that will show.
+    """
+    if not subject.alive:
+        return "wrecked", palette.KILL
+    hull = int(round((1.0 - subject.damage) * 100.0))
+    if subject.damage < T.DAMAGE_HURT_FROM:
+        return "unhurt", palette.TITLE
+    if subject.damage < T.DAMAGE_LIMPING_FROM:
+        return f"hurt {hull}% - seeing less far", palette.BANNER
+    return f"limping, {hull}%", palette.KILL
 
 
 # ---- framing ------------------------------------------------------------------------------------

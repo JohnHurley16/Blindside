@@ -32,6 +32,11 @@ class StageMachine:
     load_progress: float
     stalled_for: float
     in_ancient: bool
+    damage: float                          # 0..1 of ground shock taken, monotone. Truth:
+                                           # the machine itself is not told this number in
+                                           # Phase 1, and no predicate reads it. Phase 3's
+                                           # Return::SelfReport is where the agent learns
+                                           # it, through a sensor, so it can be wrong.
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,7 +53,13 @@ class StageBeacon:
 
 @dataclass(frozen=True, slots=True)
 class StageAncient:
-    """The machinery. `seconds_until_lethal` has never been drawn in this project."""
+    """The Assayer, as much of it as a screen is allowed to know.
+
+    `radius` is the nine-cell disc the camera and the zone flag still use; the shape
+    that actually hurts is in `coupling`, which is not a circle. `phase` is an
+    `AncientPhase` member's plain string value, for the same reason `StageSound`
+    carries one: a StageFrame may not carry a type from anywhere else.
+    """
 
     x: float
     y: float
@@ -56,6 +67,16 @@ class StageAncient:
     signature_strength: float
     seconds_until_lethal: float
     is_lethal: bool
+    bearing_deg: float                     # where the array points now, swinging through
+                                           # the slew: the tell, seventeen seconds early
+    phase: str                             # listening | slew | locked | wind | firing | lethal
+    phase_progress: float                  # 0..1 through that phase; across the wind it is
+                                           # the nine clicks of the winch taking load
+    is_slewing: bool
+    coupling: np.ndarray                   # (120, 200) float64. gain(theta) * (9/d)^2 at
+                                           # every cell: 1.0 is the lethal contour, 0.25 the
+                                           # felt one. Lopsided toward the water, because a
+                                           # flooded working carries the shock much further
 
 
 @dataclass(frozen=True, slots=True)

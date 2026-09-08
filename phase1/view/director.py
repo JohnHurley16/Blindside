@@ -8,8 +8,10 @@ inflate the glyph -- and a `center` lerp costs 0.3 ms.
 
 Four of the eleven rules are load-bearing:
 
-  1  produces the target beat at 5:32 with nothing scripted -- the warning arms while
-     the player is at 11.5 cells and the camera stays on the machinery to 5:58.6.
+  1  produces the target beat at 5:24 with nothing scripted -- the boom starts to swing
+     while the player is near the machinery and the camera stays on it to 5:58.6. It
+     opens on the SLEW and not on the signature: the slew is the tell, and gating on the
+     signature put it eight seconds off camera every cycle.
   4  is the echo, and the only rule that points the camera at nothing: the scripted
      ping is born in a labelled dead end fifty cells from anything, and its entire
      meaning is that there is nothing there. No second rule may promote a sound; a
@@ -28,6 +30,7 @@ import dataclasses
 import math
 
 from .. import tuning as T
+from ..ancient_phase import AncientPhase
 from ..match.stage_frame import StageFrame, StageMachine
 from .shot import Shot
 
@@ -61,6 +64,9 @@ class Director:
         self._sound_at: float | None = None
         self._sound_where: tuple[float, float] = (0.0, 0.0)
         self._seeded: bool = False
+        # True while the machinery is doing something. The transition is what makes the
+        # hazard shot MAJOR, so it can pre-empt a dwell another rule has just started.
+        self._was_working: bool = False
 
     # ---- one frame -------------------------------------------------------------------
     def update(self, frame: StageFrame, dt: float, fix_easing: bool) -> None:
@@ -132,15 +138,33 @@ class Director:
     def _choose(self, frame: StageFrame, fix_easing: bool) -> Shot:
         a = frame.ancient
         player, rival = frame.player, frame.rival
-        counting = a.signature_strength > 0.0 or a.is_lethal
+        # Anything but the fifty-four listening seconds. It was `signature_strength > 0
+        # or is_lethal`, which starts at -9 s -- and the slew is at -17 s, so the design's
+        # primary tell, the machine visibly CHOOSING a bearing, happened off camera every
+        # cycle: verified by snapshotting -16 s, where the boom was clipped by the top of
+        # frame. Widened to slew, lock, wind, fire and lethal, the shot opens at -17 s and
+        # the eye follows the arm and looks where it points before it knows why. That is
+        # 21 s of a 75-second cycle rather than 13, and inside CAMERA_MAX_HOLD_S either
+        # way; the five locked seconds are in it on purpose, because the stillness after
+        # the movement is the beat that reads as a decision and cutting away through it
+        # would throw the tell out with the pause that makes it mean something.
+        working = a.phase != AncientPhase.LISTENING.value
+        # Widening the window was not enough on its own. Rule 5 (two machines close)
+        # fires 0.2 s before the slew on the reference beat, which resets the dwell and
+        # locks rule 1 out for six seconds -- so the shot arrived at -11 s, after the arm
+        # had stopped moving, and the frames at -16 s still had the machine clipped off
+        # the top. The first tick of work is therefore MAJOR: a machine deciding who to
+        # point at outranks whatever the camera was doing.
+        began = working and not self._was_working
+        self._was_working = working
 
-        # 1 -- a machine is at the machinery while it counts. The target beat.
-        if counting:
+        # 1 -- a machine is at the machinery while it works. The target beat.
+        if working:
             watch = [m for m in (player, rival) if m.alive and
                      math.hypot(m.x - a.x, m.y - a.y) <= a.radius + T.CAMERA_HAZARD_WATCH_CELLS]
             if watch:
                 return self._hold((a.x, a.y), [(m.x, m.y, GLYPH_HALF) for m in watch]
-                                  + [(a.x, a.y, a.radius)], "hazard-machine")
+                                  + [(a.x, a.y, a.radius)], "hazard-machine", major=began)
 
         # 2 -- a wreck, for eight seconds. It is a MAJOR event, so it takes the camera.
         for name, when in self._died_at.items():
@@ -198,7 +222,7 @@ class Director:
             return Shot(player.x, player.y, T.CAMERA_CLOSE_CELLS, "player-jammed")
 
         # 10 -- the heartbeat, when the match has nothing else
-        if counting:
+        if working:
             return self._hold((a.x, a.y), [(a.x, a.y, a.radius)], "hazard-empty")
 
         # 11 -- the whole cave

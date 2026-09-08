@@ -120,3 +120,32 @@ LIE: Rgb = (1.000, 0.824, 0.247)           # #FFD23F  a fix that moved the world
 CARGO: Rgb = (0.310, 0.878, 0.541)         # #4FE08A  the objective: deposits, hold, shaft
 KILL: Rgb = (1.000, 0.231, 0.188)          # #FF3B30  a machine dying; error past the alarm
 VOID: Rgb = (0.024, 0.031, 0.043)          # #06080B  outside everything
+
+# ---- the Assayer ---------------------------------------------------------------------------
+# THE-MACHINERY.md section 2.1. The machine is dead iron bolted into stone and it is part
+# of the world, so it is drawn in the rock's own colours and never in HAZARD -- only the
+# FIELD is magenta. That is what stops the object being a magenta blob, and it is why the
+# dormant state can read as finished rather than as menacing: a quiet state that already
+# looks like a warning leaves the warning nowhere to go.
+# Section 2.1's table is written as multiples of ROCK_LIT, and the multiples there are
+# relative to each other rather than to the wall. Measured against a lit lobe: at 1.0x
+# the whole machine disappeared into its own floor field, because the cave's world light
+# darkens three faces in four and the lobe under it is brighter than any of them. Lifted
+# until the boom reads over the lobe at CLOSE, which is 2.6x -- so the darkest face of the
+# machine, at the cave light's 0.46, still sits above the brightest wall in the cave. It is still the rock's
+# colour and it is still not HAZARD, which is the part of 2.1 that is load-bearing:
+# worked iron is brighter than the stone it is bolted to, and only the FIELD is magenta.
+ASSAYER_IRON: Rgb = (0.590, 0.468, 0.346)  # #96775B  footing, legs, boom, ribs
+ASSAYER_MAST: Rgb = (0.522, 0.414, 0.306)  # #85694E  the mast, one step back from the arm
+ASSAYER_HAMMER: Rgb = (0.726, 0.576, 0.426)  # #B9936C  the hammer
+# The hammer is the one part that has to be found while it is moving up a mast, so it is
+# the brightest thing on the machine and nothing else on it is.
+
+
+def lerp(a: Rgb, b: Rgb, amount: float) -> Rgb:
+    """Straight-line blend, clamped. Used for exactly one thing: a machine's own colour
+    walking toward KILL as it takes shock, which is the only damage display of the four
+    proposed that survives CAMERA_WIDE_CELLS, where the glyph is nine pixels and no text
+    on screen is legible."""
+    k = min(max(amount, 0.0), 1.0)
+    return (a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k)

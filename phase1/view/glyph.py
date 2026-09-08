@@ -17,17 +17,25 @@ from __future__ import annotations
 
 import math
 
+from .. import tuning as T
+
 Segment = tuple[float, float, float, float]
 
 
 def machine(x: float, y: float, heading: float, length: float, *,
             filled: bool = True, alive: bool = True, cargo: int = 0,
-            head: float = 0.0) -> list[Segment]:
+            head: float = 0.0, damage: float = 0.0) -> list[Segment]:
     """Segments as (x0, y0, x1, y1) pairs in world cells.
 
     `head` is the sensor head's angle relative to the hull; it turns slowly whether or
     not the machine is doing anything, because a still machine that is still *looking*
     reads differently from a dead one.
+
+    `damage` is ground shock taken, 0 to 1, and it drops the hull hatching front to back
+    (THE-MACHINERY.md 4.7). The hatching is what makes a line drawing read as a solid, so
+    losing it is the glyph walking toward the wreck cross it becomes at 1.0 -- and it is
+    the only damage display in the design that survives CAMERA_WIDE_CELLS, where a glyph
+    is nine pixels and nothing written anywhere on screen can be read.
     """
     half = length * 0.5
     beam = length * 0.23
@@ -57,7 +65,8 @@ def machine(x: float, y: float, heading: float, length: float, *,
             local += [(aft, inner, fore, inner), (fore, inner, fore, outer),
                       (fore, outer, aft, outer), (aft, outer, aft, inner)]
         # hatching, which is what makes a line drawing read as a solid
-        for f in (-0.55, -0.15, 0.25):
+        strokes = 3 if damage < T.DAMAGE_HATCH_1 else (2 if damage < T.DAMAGE_HATCH_2 else 1)
+        for f in (-0.55, -0.15, 0.25)[:strokes]:
             local.append((half * f, -beam * 0.82, half * f, beam * 0.82))
         for pip in range(cargo):
             px = -half * 0.72 + pip * length * 0.16

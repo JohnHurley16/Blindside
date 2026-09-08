@@ -122,7 +122,10 @@ Three marks, in order of how much they carry:
    above the 6–8 px/s threshold this project already measured and built comets to defeat.
 2. **The lobe on the floor** — an `Image` plus two contour polylines (§4.2), filling in nine
    countable steps across the nine-second warning. Area and brightness on the floor plane
-   read at every elevation in the clamp.
+   read at every elevation in the clamp. **The build reverses the direction §3's table asks
+   for — the axis lights first and the wedge widens outward — because axis-last leaves the
+   lit ground the survivable ground for eight of the nine seconds. `view/shock_lobe.py`'s
+   `_paint` states the disagreement and why.**
 3. **The hammer climbs the mast.** 8.4 cells of z is 2.6 cells up-screen at the default and
    nothing at 90°. It is the redundant mark, deliberately. The proposals that made a rising
    mass the primary warning were betting on the axis this camera is worst at.
@@ -142,7 +145,7 @@ seconds, so firings land at `t ≡ 41 (mod 75)` — **0:41, 1:56, 3:11, 4:26, 5:
 | 0 – 54 | −21 → −17 | **listening** | A still machine standing in a ruined patch of floor, one faint band breathing on the mast. Nothing else moves for fifty-four seconds | nothing |
 | 54 – 57 | −17 → −14 | **the slew** | **The boom swings 36° and stops, pointing somewhere.** Movement is the loudest thing on a screen; the eye follows the arm and looks where it points before it knows why | a low three-second grind (Phase 3: `Tone`; Phase 1: mixer only — §10.2) |
 | 57 – 62 | −14 → −9 | **locked** | Five seconds of stillness after a movement. This is the beat that turns "a machine" into "a machine that has decided something" | nothing |
-| 62 – 71 | −9 → 0 | **the wind** | The hammer ratchets up the mast in **nine clicks, one per second**. On each click the lobe fills one ninth, from the tail round to the nose, so **the last thing to light is the direction it is pointing**. The mast band goes 0.12 → 0.95 | a rising drone, `SoundCharacter.SIGNATURE`, strength 0.3 → 1.0 — exactly what `ancient.signature_strength()` already returns, and now it is the winch taking load |
+| 62 – 71 | −9 → 0 | **the wind** | The hammer ratchets up the mast in **nine clicks, one per second**. On each click the lobe fills one ninth. *(This asked for the fill to run from the tail round to the nose, so that the last thing to light was the direction it is pointing. Built and rejected: see §2.4. The build fills from the axis outward.)* The mast band goes 0.12 → 0.95 | a rising drone, `SoundCharacter.SIGNATURE`, strength 0.3 → 1.0 — exactly what `ancient.signature_strength()` already returns, and now it is the winch taking load |
 | 71.0 – 71.15 | 0 | **the fire** | The hammer falls the whole mast in three frames. The rig jolts down 0.4 cells and recoils over 0.5 s | one sub-40 Hz impulse and a noise burst |
 | 71 – 75 | 0 → +4 | **lethal** | Three arcs of heave cross the floor at ~24 cells/s, clipped to the lobe, fading. The lobe flashes `HAZARD → KILL`. Anything killed collapses to the existing wreck cross, displaced 0.6 cells outward along the radial — a thing hit by a shock should have moved | `CRASH` from whatever died |
 
@@ -773,11 +776,71 @@ off, the two error traces on one plot. If they are not obviously different by 7:
 effect should be cut and damage should cost speed and sensor range instead: legible, much less
 interesting, and honest.
 
+> **Measured 2026-09-07. The A/B failed and the effect is cut.** Seed 7, the two runs
+> identical but for the damage→drift coupling. Player position error at 7:00: **91.13 cells
+> with the effect OFF against 88.38 with it ON**, and 91.13 against 84.93 at 8:00 — the
+> damaged machine ends up *less* wrong than the healthy one, which is the opposite of the
+> claim. At eight times the gain it falls further, to 41.5, so the effect is not even
+> monotone in its own gain. The cause is that both runs jam against walls for the last
+> 79 s and the paths diverge for reasons that have nothing to do with drift: position
+> error is a whole-path quantity and a divergent path launders it completely. There is no
+> tuning of the gain that fixes that, because the gain is not what is being measured.
+>
+> So the pre-commitment above is honoured. `drift_multiplier` is gone from
+> `truth/agent_truth.py` and dead reckoning in `sensing/sensor_rig.py` is now exactly what
+> it is for an unhurt machine, always. Damage costs **sensor range** and **speed**:
+>
+> | rung | constant | effect |
+> |---|---|---|
+> | the transducer, at damage 0.20 | `DAMAGE_RANGE_FROM`, `DAMAGE_RANGE_LOSS = 0.5` | active range × (1 − 0.5·damage): sonar 30 → 22.6 cells at half a machine, lidar 18 → 13.6. Quality is still scored against the *nominal* range, so the far returns stop arriving and nothing on the belief side says why |
+> | the drive, at damage 0.30 | `DAMAGE_SPEED_FROM`, `DAMAGE_SPEED_LOSS = 0.5` | speed × (1 − 0.5·damage): 0.75× at the 0.493 dose the 5:41 near miss delivers |
+>
+> Both keep a **threshold** rather than being continuous from zero, for the reason already
+> recorded in `tuning.py`: the dose floor is 45 cells, so most matches deliver two or three
+> 0.005 scratches to agents nowhere near the machine, and applied continuously those move
+> every death across seeds 1–8.
+>
+> Re-measured, on the same instant in both runs (the tick the drive rung breaks), so that
+> nothing before the break is averaged in:
+>
+> | | seed 7 player, damage 0.506 | seed 1 rival, damage 0.318 |
+> |---|---|---|
+> | speed while moving, OFF → SHIPPED | 0.9927 → 0.7506 cells/s (**−24.4%**) | 0.4000 → 0.3365 cells/s (**−15.9%**) |
+> | furthest return per sweep, mean | 22.20 → 20.18 cells (−9.1%) | 24.10 → 22.62 cells (−6.2%) |
+> | furthest return per sweep, max | 28.27 → 22.95 cells (**−18.8%**) | 28.24 → 24.43 cells (−13.5%) |
+>
+> Both deltas are the multiplier itself to three figures, which is the point: these are
+> *direct* quantities, not downstream ones, so a divergent path cannot hide them the way it
+> hid the drift. Seed 1's rival is the ladder showing its work — at 0.318 damage the drive
+> has just broken and the transducer broke a rung earlier.
+>
+> All five deaths across seeds 1–8 survive the change — same seeds, same agents — but **one
+> moved**: seed 7's rival dies at 6:56.0 rather than 6:59.5. A verifier established the cause,
+> and it is not the one first offered: that rival never reaches `DAMAGE_RANGE_FROM` (its peak
+> damage is 0.083), so neither of the new costs can touch it, and disabling both leaves the death
+> at 6:56. The mover is the *removal* of the odometry coupling — the player's path after its 0.499
+> dose changes, and the rival then hears a different world for seventy-five seconds. Cutting a
+> mechanic moves a beat exactly as adding one does, which is worth remembering the next time a
+> beat is used as evidence.
+>
+> **What is lost is real and should be said.** Damage no longer touches the subject of the
+> game. A slower machine that sees less far is a machine with a health bar spent on two
+> stats; the drift version was the only one where the meter measured *lostness* rather than
+> health, and where the consequence of a physical event a viewer watched arrived as the
+> map itself going wrong. Section 4.3's ladder, the `FixRecord.surprise` counter-play in
+> 4.8, and the note in 4.7 about the estimator never learning are all written against a
+> mechanic that no longer exists in Phase 1. The idea is not disproved — Phase 3 has a
+> generator, authored policies and more than one agent a side, and the A/B is worth running
+> again there against an agent that is *navigating* rather than jammed. What is disproved is
+> that this build can show it.
+
 Everything else I guessed at, listed because `CLAUDE.md` requires it: the 54/3/5/9/4 split of
 the established seventy-five seconds; the 36° index step; the 0.35 lobe floor;
 `0.5 · coupling^1.5` and every constant in the damage ladder; the 0.35 water cost, and that the
 mechanism is shock through rock rather than anything radiated; that the heading reference goes
-first and that the estimator's sigma model does not learn about it; that interfacing is contact
+first and that the estimator's sigma model does not learn about it (**cut — see the measurement
+box above; the surviving rungs are the transducer at 0.20 and the drive at 0.30, and those two
+thresholds and their two 0.5 losses are guesses of the same kind**); that interfacing is contact
 with the floor and that its rate is the coupling; that `hazard()` should return a slice of
 graded volumes; that the day-one yield is `shock_imminent`; and that the report is finite, so
 one machine yields once per match.
