@@ -521,3 +521,317 @@ RAIL_W: Final[float] = 300.0                # words, never pictures
 PIP_INSET_FRACTION: Final[float] = 0.24     # of the main view in each axis, so the two rectangles are
                                             # similar and a swap would rescale rather than reframe
 MINIMAP_PX_PER_CELL: Final[float] = 1.0     # 200x120 into a 200x120 viewport: the image is never resampled
+
+# ---- sound: the cave ---------------------------------------------------------------------------------
+# The gate failed on "all that changes is things kinda beep". A tick-by-tick replay of
+# seed 7 found the cause: 587 audible events, 80% of them one of two recipes, every one
+# built from the same 6 ms attack and linear fade, none filtered -- so AMPLITUDE was the
+# only channel in use, and amplitude alone cannot say far, near, closing, mine, theirs,
+# winding up, or dead. Everything below exists to open a second, third and fourth channel.
+#
+# Quality is the distance proxy the sensor already produces (q = 1 - path/range), so every
+# one of these is a function of q.
+#
+# THE REGISTER RULE, and it is the one that cost a gate. Every sound here has to carry its
+# weight ABOVE 300 Hz, because the gate is a human watching a rendered video and a laptop
+# speaker is a 300 Hz / 12 dB-per-octave high-pass. The first rework put the two most
+# dramatic sounds in the match -- the crash and the hammer -- almost entirely below that:
+# 96.4% and 99.9% of their energy under 150 Hz, centroid 95 Hz. Measured through the
+# model, the crash went from 2.7 dB ABOVE the loudest routine ping to 4.9 dB BELOW it, and
+# the hammer lost 14.6 dB where a ping lost none. So the two things that were supposed to
+# be unmissable were the two that disappeared on the only machine anyone watched on.
+#
+# The rule that follows: low end is for weight on good playback, never for legibility. If
+# a sound has to be *identified*, something in it lives between 400 Hz and 3 kHz -- a
+# strike, a ring, a snap, a shriek. Rock and steel really do make those; the low end alone
+# was never honest either.
+HAZARD_GAIN_FLOOR: Final[float] = 0.78         # a lethal strike and a death do not fade with
+                                               # distance the way a ping does: their placement
+                                               # gain is floored here, so the far ones still
+                                               # arrive above every routine sound. Distance is
+                                               # still in them -- brightness, attack, the room,
+                                               # and the 1.7 dB of level this leaves -- but
+                                               # level alone no longer decides whether the
+                                               # loudest event in the match is audible. The
+                                               # cost is real and it is stated in Mixer.hammer.
+HAZARD_BRIGHT_FLOOR: Final[float] = 0.45       # and their strike keeps most of its partials at
+                                               # range for the same reason: a hammer two
+                                               # chambers away should be a duller hammer, not a
+                                               # sine. Distance still thins it, from 1.00 to
+                                               # 0.45 rather than to nothing.
+
+# Level. The old spread was 10.7 dB across the whole match, which is a volume knob nobody
+# notices moving over two minutes. 0.10..1.00 with a 1.7 power is 20 dB, and the power
+# puts most of the travel in the near half where the drama is.
+AUDIO_FAR_GAIN: Final[float] = 0.10
+AUDIO_NEAR_GAIN: Final[float] = 1.00
+AUDIO_GAIN_CURVE: Final[float] = 1.7
+
+# Brightness. Rock and water are low-pass filters: a sound that came 150 cells through
+# passages has no top left. Implemented as the height of the partial stack on a tonal
+# voice and as the low-pass width on a noise one, so a far sound is a fundamental and a
+# near one has edge. This is the cue the old mixer lacked entirely and it is the one the
+# ear actually uses for distance.
+AUDIO_BRIGHT_CURVE: Final[float] = 1.25
+AUDIO_PARTIAL_2: Final[float] = 0.35        # second harmonic at full brightness
+AUDIO_PARTIAL_3: Final[float] = 0.18        # third
+AUDIO_NOISE_LP_DULL: Final[int] = 74        # moving-average width; ~265 Hz at 44.1 kHz
+AUDIO_NOISE_LP_BRIGHT: Final[int] = 3       # ~6.5 kHz: a crack rather than a rumble
+
+# Attack. A transient that has crossed a cave arrives smeared; one from ten cells away is
+# a crack. 3 ms to 45 ms is the difference between "hit" and "swelled".
+AUDIO_ATTACK_NEAR_S: Final[float] = 0.003
+AUDIO_ATTACK_FAR_S: Final[float] = 0.045
+
+# The room. Discrete arrivals rather than a reverb: the cave really does deliver a sound
+# twice down two passages, and three delayed voices cost less than any convolution. The
+# ratio is the distance cue -- close to a source you hear the source, far from it you hear
+# mostly the room, because the reverberant field barely falls off with distance.
+AUDIO_REFLECT_NEAR_FRAC: Final[float] = 0.10   # reflection level as a fraction of direct
+AUDIO_REFLECT_FAR_FRAC: Final[float] = 0.55
+AUDIO_REFLECT_FLOOR: Final[float] = 0.07       # below this a reflection is not worth a voice,
+                                               # so near sounds get one and far sounds three
+AUDIO_REFLECT_DELAY_NEAR_S: Final[float] = 0.035
+AUDIO_REFLECT_DELAY_FAR_S: Final[float] = 0.085
+AUDIO_REFLECT_SPACING: Final[tuple[float, float, float]] = (1.0, 2.15, 3.6)
+AUDIO_REFLECT_LEVELS: Final[tuple[float, float, float]] = (1.0, 0.62, 0.38)
+AUDIO_REFLECT_DULLING: Final[tuple[float, float, float]] = (0.55, 0.38, 0.26)
+AUDIO_REFLECT_SPREAD: Final[float] = 0.75      # how far off the direct pan the room answers;
+                                               # a far sound becomes wide and a near one a point
+AUDIO_REFLECT_STRETCH: Final[float] = 0.9      # extra duration on a reflection, as a fraction
+AUDIO_REFLECT_MAX_TAIL_S: Final[float] = 0.45  # but capped, or a crash's reflections are
+                                               # five seconds of saw built inside one frame
+
+# Direction. Pan is the screen-x component of the bearing. Stereo has one axis and cos()
+# folds north onto south exactly, so two contacts on opposite sides pan identically, and
+# THERE IS NO FRONT/BACK CUE. There was one: a small brightness and level tilt off the
+# screen-y component. It was measured and deleted, because it was worse than nothing --
+# the tilt came to 1.74 dB on the same channel where distance moves 20 dB, so a north
+# contact at q=0.70 was matched within 0.1 dB by a south contact at q=0.60. It could not
+# be heard as direction and it could be heard as distance, which means the only thing it
+# ever did was corrupt the distance cue. Two channels and no HRTF cannot carry front/back;
+# saying so is cheaper than a parameter only a spectrogram can see.
+
+# Distance, in pitch. Base pitch comes from proximity -- a near contact speaks higher --
+# which is the fifth channel distance is expressed on, alongside level, brightness, attack
+# and the room. It is NOT an approach cue: measured over 62 gestures the median step
+# between consecutive transmissions was 0.20 semitones, which is a drift nobody hears.
+# Approach is an event now; see AUDIO_APPROACH_* below.
+AUDIO_DISTANCE_SEMITONES: Final[float] = 9.0   # across the whole quality range
+AUDIO_DISTANCE_REFERENCE_Q: Final[float] = 0.5 # the pitch a mid-range contact sits at
+
+# Approach, as an EVENT. A contact that has closed materially since the last time that
+# bearing spoke is answered by a SECOND note, a fifth above the first and slightly
+# louder, a fifth of a second behind it. One transmission, two notes, stepping up: that is
+# a different gesture from the same contact holding station, not the same gesture 0.2 of a
+# semitone higher. The rising pair is in the ping's own register, so it survives a laptop
+# speaker, and it replaces the closing chirp, which measured 13.1 dB under the ping's own
+# tail and could not be heard at all.
+AUDIO_APPROACH_STEP_Q: Final[float] = 0.055    # a jump this big since the last time this
+                                               # bearing sounded is an approach.
+                                               # Measured over seed 7: at 0.10 it fired twice in
+                                               # a match, because the rival closes over 143 s in
+                                               # steps of about 0.04 of quality per transmission.
+                                               # At 0.055 it fires through the approach and stops
+                                               # once the rival is simply near.
+AUDIO_APPROACH_INTERVAL: Final[float] = 7.0    # semitones between the two notes: a fifth
+AUDIO_APPROACH_GAP_S: Final[float] = 0.22      # and how far behind the first the second is
+AUDIO_APPROACH_SECOND_AMP: Final[float] = 1.15 # the second note is the louder one
+AUDIO_TRACK_MERGE_DEG: Final[float] = 40.0     # bearing noise reaches 22 deg sigma at range,
+                                               # so the gate has to be wide or one burst splits
+AUDIO_TRACK_MEMORY_S: Final[float] = 45.0
+AUDIO_PING_MERGE_S: Final[float] = 3.5         # SONAR_AUDIBLE_S plus a margin. One transmission
+                                               # produced SIX identical beeps 0.5 s apart, which
+                                               # is why the match sounded like a metronome and why
+                                               # a listener had no reason to think it was one
+                                               # event. One transmission is now one gesture.
+AUDIO_PING_SEPARATE_DEG: Final[float] = 45.0   # unless it arrives from a clearly different
+                                               # direction, which is a second arrival -- the
+                                               # scripted echo, and it must survive the merge
+
+# Whose sensor it was. The most important distinction on screen, and it was carried by a
+# fifth and a pan. It is now categorical on three axes at once: the own ping is the only
+# RISING sweep in the game, the only hard-centred world sound, and the only one followed by
+# the room answering it -- which is what a sonar transmission physically is.
+AUDIO_OWN_PING_F0: Final[float] = 620.0
+AUDIO_OWN_PING_F1: Final[float] = 2100.0       # above the heard band even at full approach
+AUDIO_OWN_PING_S: Final[float] = 0.30
+AUDIO_OWN_PING_AMP: Final[float] = 0.089
+AUDIO_OWN_WASH_DELAYS: Final[tuple[float, ...]] = (0.31, 0.40, 0.55, 0.75)
+# The wash starts after the chirp has finished, not under it. Measured: with the first
+# return at 0.10 s the wash's falling voices sat on top of the rising sweep and the
+# gesture's spectral centroid came out FALLING -- the one cue that says "this one is
+# mine" was cancelled by the cue that says "and the room answered". A room cannot
+# answer before the ping has got there anyway.
+AUDIO_OWN_WASH_LEVELS: Final[tuple[float, ...]] = (0.30, 0.22, 0.15, 0.10)
+AUDIO_OWN_WASH_PANS: Final[tuple[float, ...]] = (-0.7, 0.8, 0.5, -0.9)
+AUDIO_OWN_WASH_F0: Final[float] = 980.0        # the room answers lower and duller than it was asked
+AUDIO_OWN_WASH_S: Final[float] = 0.55
+
+# Somebody else's sonar: falling, panned, reverberant. Base pitch shifts with proximity.
+AUDIO_HEARD_PING_F0: Final[float] = 760.0
+AUDIO_HEARD_PING_FALL: Final[float] = 0.62     # sweeps down to this fraction of f0
+AUDIO_HEARD_PING_S: Final[float] = 0.34
+AUDIO_HEARD_PING_AMP: Final[float] = 0.122
+
+# Something moving. The only unpitched, non-catastrophic sound in the game: a scrape, in
+# grains, so it reads as rubbing rather than as a quieter beep.
+AUDIO_SCRAPE_S: Final[float] = 0.13
+AUDIO_SCRAPE_AMP: Final[float] = 0.089
+AUDIO_SCRAPE_GRAINS: Final[int] = 3
+AUDIO_SCRAPE_GAP_S: Final[float] = 0.085
+AUDIO_SCRAPE_LP: Final[int] = 42               # ~470 Hz: below the ping band, above the machinery
+
+# The machinery. THE-MACHINERY.md: a hammer ratcheted up a mast and dropped. So the warning
+# is a countable ratchet that accelerates and climbs, then a held breath, then the drop.
+# The old version pulsed 70-110 Hz sine at 1.7 dB of rise over thirteen seconds and stopped
+# accelerating at the instant it became lethal, which is the opposite of an alarm.
+#
+# Progress through the wind-up is read from Belief alone as the ratio of the signature's
+# current quality to its quality at the start of this cycle. Quality is (1 - d/range) x
+# strength, and strength ramps from a floor to 1.0, so that ratio recovers strength without
+# knowing the distance -- which is why a DISTANT machinery now winds up audibly too, where
+# before it moved 1.7 dB and nobody could hear it.
+# NOTE: SIGNATURE_RATIO_AT_LETHAL is one over the floor of Ancient.signature_strength. If
+# that ramp is ever rewritten this number moves with it; a wrong value degrades to a
+# shallower ratchet rather than to a broken one.
+SIGNATURE_RATIO_AT_LETHAL: Final[float] = 3.33
+RATCHET_SLOW_S: Final[float] = 1.05            # notch spacing at the start of the warning
+RATCHET_FAST_S: Final[float] = 0.115           # and at the top: ~24 countable notches over 9 s
+RATCHET_F0: Final[float] = 84.0                # the body of the pawl
+RATCHET_METAL_F0: Final[float] = 940.0         # and its ring, which is what carries on a laptop
+RATCHET_CLIMB_SEMITONES: Final[float] = 14.0   # the mast, being climbed
+RATCHET_PARTIALS: Final[tuple[float, ...]] = (1.0, 2.76, 5.4)   # struck-bar ratios: metal, not tone
+RATCHET_AMP: Final[float] = 0.25               # the wind-up sits about 10 dB under the loudest
+                                               # routine ping and 19 under the hammer it leads
+                                               # to. It was 18.5 under the PING before, which is
+                                               # a long way down for the one sound in the game
+                                               # that is a countdown to being killed.
+# The ring was 11 dB under the body, so what a listener actually heard climbing was the
+# BODY going 84 -> 188 Hz, which a laptop does not reproduce: the wind-up was audible on
+# the gate machine by accident, not for the reason the design claims. The two levels are
+# now the other way round. The body is the weight; the ring is the pawl, and the ring is
+# what climbs the mast in a register a small speaker has.
+RATCHET_BODY_LEVEL: Final[float] = 0.50        # fraction of RATCHET_AMP
+RATCHET_RING_LEVEL: Final[float] = 1.00
+RATCHET_RING_BRIGHT_FLOOR: Final[float] = 0.55 # the ring survives distance: a far pawl is
+                                               # duller but it is still a pawl
+RATCHET_CLICK_HP: Final[int] = 96              # ~200 Hz: the pawl's click is a click, and is
+                                               # kept out of the body's register
+RATCHET_BREATH_DUCK: Final[float] = 0.10       # what everything already sounding is pulled to
+RATCHET_BREATH_DUCK_S: Final[float] = 0.10     # when the ratchet tops out and the breath starts
+RATCHET_CYCLE_GAP_S: Final[float] = 4.0        # no signature for this long ends the cycle
+RATCHET_TOP_SLOPE_FRACTION: Final[float] = 0.35  # when the quality ramp falls to this fraction of
+                                               # its own peak the ratchet has topped out -- which
+                                               # is the moment strength stops rising, which is the
+                                               # moment the hazard becomes lethal
+RATCHET_MIN_CYCLE_S: Final[float] = 7.5        # never call the top before this much of a wind-up.
+# Measured over seed 7's four cycles: three of them top out at 9.5-10.0 s and the hammer
+# lands 1.2-1.8 s into the lethal window, which is right. The fourth is the cycle the
+# agent spends walking AWAY from the machinery at nearly full speed, and there the
+# distance loss very nearly cancels the strength gain -- quality rises by a factor of
+# 1.55 over thirteen seconds instead of 3.33 -- so the ramp genuinely flattens and the
+# detector called the top at 3.0 s and dropped the hammer 5.2 s early. At 7.5 it cannot,
+# and that cycle now reads as a short quiet wind-up receding, which is what it is. This
+# is the honest limit of the signal: an agent that hears one bearing cannot separate
+# 'it is winding up' from 'I am walking toward it', and neither can the mixer.
+RATCHET_BREATH_S: Final[float] = 0.75          # the held breath. The brief is explicit that the
+                                               # moments before it fires should get QUIETER, and
+                                               # silence is the only thing that makes a hit land.
+                                               # Nothing enforced that: _quiet_until was set by a
+                                               # crash and by nothing else, so in two of seed 7's
+                                               # four cycles the thing sitting in the silence was
+                                               # as loud as the hit. The mixer now ducks what is
+                                               # sounding and starts nothing routine while the
+                                               # ratchet is topped out.
+
+# The hammer. Steel, dropped down a mast, onto rock. Four things happen at once and only
+# two of them used to be above 300 Hz -- the old hammer was 99.9% under 150 Hz, centroid
+# 95 Hz, and lost 14.6 dB through the laptop model while a ping lost nothing. The strike
+# and the anvil ring are the fix: they are what a struck mast actually does, and they are
+# what a small speaker can reproduce. The body and the rock ring stay, because on real
+# playback they are the weight, and they are now the smaller half of the sound.
+HAMMER_AMP: Final[float] = 0.65
+HAMMER_CRACK_S: Final[float] = 0.14
+HAMMER_CRACK_DECAY_S: Final[float] = 0.055     # an 18 ms crack was all peak and no level
+HAMMER_CRACK_HP: Final[int] = 78               # ~250 Hz: a snap, not a thump
+HAMMER_STRIKE_F0: Final[float] = 780.0         # steel meeting steel, struck-bar partials
+HAMMER_STRIKE_F1: Final[float] = 690.0
+HAMMER_STRIKE_S: Final[float] = 0.28
+HAMMER_STRIKE_DECAY_S: Final[float] = 0.13
+HAMMER_STRIKE_LEVEL: Final[float] = 0.90       # fraction of HAMMER_AMP
+HAMMER_STRIKE_PARTIALS: Final[tuple[float, ...]] = (1.0, 2.76, 5.4)
+# The four voices do not all start at once, because a hammer does not: steel arrives, the
+# mast rings, the mass goes into the rock. A few milliseconds apart is honest and it is
+# also what stops five voices summing into one enormous sample -- with everything landing
+# on the same instant the hammer peaked at 2.4 of full scale, which the offline render
+# normalises away and the live callback clips.
+HAMMER_ANVIL_DELAY_S: Final[float] = 0.018
+HAMMER_BODY_DELAY_S: Final[float] = 0.012
+HAMMER_RING_DELAY_S: Final[float] = 0.038
+HAMMER_ANVIL_F0: Final[float] = 470.0          # and the mast ringing afterwards, which is the
+HAMMER_ANVIL_F1: Final[float] = 442.0          # part that is still there a second later
+HAMMER_ANVIL_S: Final[float] = 1.15            # every duration here is about two decay
+                                               # constants: past that the tail is inaudible and
+                                               # all it costs is transcendentals built on the
+                                               # game thread, inside a frame
+HAMMER_ANVIL_DECAY_S: Final[float] = 0.60
+HAMMER_ANVIL_LEVEL: Final[float] = 0.85
+HAMMER_ANVIL_PARTIALS: Final[tuple[float, ...]] = (1.0, 2.09, 3.42)
+HAMMER_BODY_F0: Final[float] = 135.0
+HAMMER_BODY_F1: Final[float] = 34.0
+HAMMER_BODY_S: Final[float] = 0.75
+HAMMER_BODY_LEVEL: Final[float] = 0.45         # was 1.0, and it was most of the peak and none
+                                               # of the audibility
+HAMMER_RING_F0: Final[float] = 52.0            # the shock going into the rock
+HAMMER_RING_S: Final[float] = 1.60
+HAMMER_RING_LEVEL: Final[float] = 0.22         # was 0.60: 25 dB of it is lost on a laptop, so
+                                               # it was buying headroom and nothing else
+HAMMER_RING_PARTIALS: Final[tuple[float, ...]] = (1.0, 1.48, 2.11)
+HAMMER_DUCK: Final[float] = 0.40               # what everything else drops to when it lands
+HAMMER_DUCK_S: Final[float] = 0.9
+
+# Death. It was 3.3 dB above a routine beep, in the same speaker as the drone running over
+# it, with the same envelope as everything else -- the most significant event in the match,
+# buried. It now takes the room: everything sounding is ducked to a tenth and no routine
+# gesture is allowed to start until it has spoken. That is honest -- a near hull failure
+# masks everything -- and it is the single largest legibility win available.
+#
+# And it was 96.4% below 150 Hz, which meant the version that took the room took it only
+# on speakers nobody watched the gate on. The tear is the answer: a hull coming apart
+# shrieks before it thuds, and the shriek is the half of it a laptop can reproduce.
+CRASH_AMP: Final[float] = 0.70
+CRASH_SNAP_S: Final[float] = 0.16
+CRASH_SNAP_DECAY_S: Final[float] = 0.055
+CRASH_SNAP_HP: Final[int] = 62                 # ~310 Hz: the first instant is a crack
+CRASH_TEAR_F0: Final[float] = 1250.0           # plating shearing: inharmonic, falling fast
+CRASH_TEAR_F1: Final[float] = 430.0
+CRASH_TEAR_S: Final[float] = 0.62
+CRASH_TEAR_DECAY_S: Final[float] = 0.38
+CRASH_TEAR_LEVEL: Final[float] = 0.85          # fraction of CRASH_AMP
+CRASH_TEAR_PARTIALS: Final[tuple[float, ...]] = (1.0, 1.73, 2.61)
+CRASH_TEAR_DELAY_S: Final[float] = 0.012       # the snap, the shriek, then the box going
+CRASH_HULL_DELAY_S: Final[float] = 0.030       # -- not all on the same sample
+CRASH_COLLAPSE_F0: Final[float] = 340.0        # the only downward SAW sweep in the game
+CRASH_COLLAPSE_F1: Final[float] = 38.0
+CRASH_COLLAPSE_S: Final[float] = 0.90
+CRASH_HULL_F0: Final[float] = 62.0
+CRASH_HULL_S: Final[float] = 2.00
+CRASH_HULL_LEVEL: Final[float] = 0.36          # was 0.75, and 19 dB of it never left the sub
+CRASH_HULL_PARTIALS: Final[tuple[float, ...]] = (1.0, 1.41, 2.07, 3.11)   # inharmonic: a box, torn
+CRASH_DEBRIS: Final[int] = 5
+CRASH_DEBRIS_S: Final[float] = 0.10
+CRASH_DEBRIS_DECAY_S: Final[float] = 0.032
+CRASH_DEBRIS_HP: Final[int] = 110              # ~176 Hz: rock hitting rock clatters
+CRASH_DEBRIS_DELAYS: Final[tuple[float, ...]] = (0.13, 0.24, 0.37, 0.49, 0.62)
+CRASH_DEBRIS_PANS: Final[tuple[float, ...]] = (-0.8, 0.6, -0.4, 0.9, -0.6)
+CRASH_DUCK: Final[float] = 0.10
+CRASH_DUCK_S: Final[float] = 0.05
+CRASH_SUPPRESS_S: Final[float] = 1.30          # nothing routine may start inside this
+
+# Instrument sounds -- fix, cargo, recall. These are the agent's own panel, not the world,
+# so they are dry, centred and small, and they stay out of the way of everything above.
+AUDIO_PANEL_AMP: Final[float] = 0.042
+AUDIO_MAX_VOICES: Final[int] = 48              # was 24. A crash is fourteen voices and a wind-up
+                                               # runs under it; measured concurrency peaked at 5
+                                               # before and there is no cost to the headroom.
