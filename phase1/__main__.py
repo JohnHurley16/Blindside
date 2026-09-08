@@ -232,6 +232,11 @@ def _registry() -> "BlockRegistry":
 
 
 def _client(workdir: Path) -> "InductClient":
+    # Both --correct and --resume come through here first, and this used to build the
+    # seam directory before anything asked whether the workdir existed -- so a
+    # mistyped DIR got a stray DIR/seam/ created and then a traceback. One line now.
+    if not workdir.is_dir():
+        _refuse(f"{workdir.as_posix()}: no such workdir")
     from .induct_client import InductClient
     client = InductClient(_registry().path, workdir=workdir / "seam")
     try:
