@@ -10,43 +10,56 @@ use std::path::Path;
 use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, Result};
+use crate::strict;
 
 /// A boolean test over belief. Parametric when `param` is set: its boolean is then a
 /// function of a raw number and that one parameter (`raw > value`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Predicate {
     pub id: String,
     pub label: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub param: Option<String>,
+    /// Which tutorial run this block appears in. The contract's one Python-side field: the
+    /// induction never reads it, and carries it only so that a block list holding it is not
+    /// rejected as malformed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stage: Option<i64>,
 }
 
 /// Something an agent can be told to do at a stop.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Action {
     pub id: String,
     pub label: String,
+    /// As `Predicate::stage`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stage: Option<i64>,
 }
 
 /// The whole list, in file order. A predicate's position in `predicates` is the column it
 /// occupies in every predicate vector.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct BlockSet {
+    #[serde(deserialize_with = "strict::objects")]
     pub predicates: Vec<Predicate>,
+    #[serde(deserialize_with = "strict::objects")]
     pub actions: Vec<Action>,
 }
 
 impl BlockSet {
     pub fn load(path: &Path) -> Result<Self> {
         let text = fs::read_to_string(path).map_err(|e| Error::io(path, e))?;
-        let blocks: BlockSet =
-            serde_json::from_str(&text).map_err(|e| Error::json(&path.display().to_string(), e))?;
+        let blocks: BlockSet = strict::from_str(&text, &path.display().to_string())?;
         blocks.validate()?;
         Ok(blocks)
     }
 
     pub fn from_json(text: &str) -> Result<Self> {
-        let blocks: BlockSet = serde_json::from_str(text).map_err(|e| Error::json("blocks", e))?;
+        let blocks: BlockSet = strict::from_str(text, "blocks")?;
         blocks.validate()?;
         Ok(blocks)
     }

@@ -9,6 +9,7 @@ use crate::blocks::BlockSet;
 use crate::error::{Error, Result};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Choices {
     pub choices: Vec<String>,
 }
@@ -16,7 +17,7 @@ pub struct Choices {
 impl Choices {
     pub fn load(path: &Path) -> Result<Self> {
         let text = fs::read_to_string(path).map_err(|e| Error::io(path, e))?;
-        serde_json::from_str(&text).map_err(|e| Error::json(&path.display().to_string(), e))
+        crate::strict::from_str(&text, &path.display().to_string())
     }
 
     /// Every choice must be an action in the block list. `name` is for the message only.

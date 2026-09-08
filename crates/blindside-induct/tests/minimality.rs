@@ -8,7 +8,7 @@ use blindside_induct::induce::induce;
 use blindside_induct::named_trace::NamedTrace;
 use blindside_induct::params::Params;
 use blindside_induct::step_input::StepInput;
-use blindside_induct::thresholds::candidates;
+use blindside_induct::thresholds::Grid;
 use blindside_induct::tree::{DecisionTree, Node};
 
 /// Every tree with exactly `size` internal nodes over the given predicates and actions.
@@ -39,10 +39,9 @@ fn param_grid(blocks: &BlockSet, traces: &[NamedTrace]) -> Vec<Params> {
             continue;
         };
         let raws = common::raws_for(traces, &predicate.id);
-        let values: Vec<f64> = candidates(&raws).iter().map(|c| c.value).collect();
-        if values.is_empty() {
+        let Some(values) = Grid::new(&raws).map(|grid| grid.candidates()) else {
             continue;
-        }
+        };
         grid = grid
             .iter()
             .flat_map(|base| {

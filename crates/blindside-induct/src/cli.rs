@@ -125,8 +125,8 @@ pub fn execute(command: Command, stdin: &mut dyn Read) -> Result<String> {
             stdin
                 .read_to_string(&mut text)
                 .map_err(|e| Error::io(Path::new("stdin"), e))?;
-            let input: StepInput =
-                serde_json::from_str(&text).map_err(|e| Error::json("stdin", e))?;
+            let input: StepInput = crate::strict::from_str(&text, "stdin")?;
+            input.validate(&blocks, "stdin")?;
             to_json(&Decision {
                 action: tree.decide(&input, &blocks).to_string(),
             })
