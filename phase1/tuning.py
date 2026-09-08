@@ -532,6 +532,22 @@ TEACH_TREE_LINE_H: Final[float] = 13.0    # px per rendered tree line on the spe
 TEACH_TREE_MAX_LINES: Final[int] = 15     # the rail's budget between the status rows and the
                                           # timeline; a tree with more lines shows its first
                                           # fifteen and says so, rather than printing on the strip
+CORRECTION_BACKUP_DIR: Final[str] = "before-correction"
+# Where a corrected demonstration's old trace goes: DIR/before-correction/<its name>, numbered
+# if the same run is corrected again. Not under traces/: --induce reads every .json in
+# traces/, and the backup --correct used to write beside the rewrite was read back as one
+# more demonstration on the next --induce -- carrying the exact contradiction that replacing
+# the suffix (PHASE-2-OPEN-QUESTIONS (f)) exists to remove.
+RESUME_OVER_FRAMES: Final[int] = 1
+# Live frames painted with OVER on screen before a resumed window blocks on the promotion
+# and the second induction (one to four seconds of seam calls): one, so the run's last
+# frame and "inducing the rule..." are what she looks at while she waits, not the frame
+# before the end.
+RESUME_REFUSED_EXIT: Final[int] = 2
+# --resume (and --correct) with nothing to resume -- no such demonstration, a stop past
+# its end, a replay that no longer reproduces the recorded stops -- exits with this after
+# one line, so a script can tell it from 1, which is the induction finding no consistent
+# rule over what was demonstrated.
 
 # ---- recall -- the one player input --------------------------------------------------------------
 RECALL_DELAY_S: Final[float] = 3.0

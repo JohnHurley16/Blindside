@@ -15,6 +15,12 @@ The header is the clock, which stops while the machine waits, and why it stopped
 Keys: a number chooses that action, when it is offered; Q or Escape closes the
 window. R does nothing here -- Recall is not a block, and a demonstration is the
 player's choices and nothing else.
+
+With a `Resume` the window is the same window opened on a match already wound to
+one stop of an earlier demonstration (`--teach --resume`). The header says which run
+and which stop; the footer says what was chosen here last time, or that the old run
+never stopped here once the new choices have parted the two; and when the run ends
+the window writes the rewrite, induces again, and says what the rule became.
 """
 from __future__ import annotations
 
@@ -32,6 +38,8 @@ from ..demo.trace_writer import TraceWriter
 from ..match.match_view import MatchView
 from ..policy.block_registry import BlockRegistry
 from ..policy.stop_view import StopView
+from ..replay.correction_result import CorrectionResult
+from ..replay.resume import Resume
 from . import palette
 from .belief_scene import BeliefScene
 from .block_panel import BlockPanel
@@ -43,6 +51,12 @@ BELIEF_ELEVATION_DEG: float = 58.0     # the inset's own camera, unchanged
 BELIEF_CELLS_ACROSS: float = 240.0     # the whole 200x120 cave across the main view, with margin
 TITLE: str = "BLINDSIDE"
 SUBTITLE: str = "teach it: when it stops, press a number"
+SUBTITLE_RESUME: str = ("run {run} of {runs} (seed {seed}) replayed to stop {stop} of {stops}"
+                        " - from here, you choose")
+NOTE_LAST_TIME: str = "last time, at this stop, you chose: {label}"
+NOTE_NEW_GROUND: str = "the old run never stopped here: from now on this is all new"
+NOTE_INDUCING: str = "the run is over; writing it down and inducing the rule..."
+NOTE_NOT_ENDED: str = "the run did not end; nothing was rewritten - run {run} keeps its old choices"
 MAIN_TITLE: str = "ITS MAP"
 MAIN_SUBTITLE: str = "what it thinks is there - and all you get to see"
 
@@ -51,10 +65,16 @@ class TeachView:
     """The window. Reads a `MatchView` and answers its stops with the keys."""
 
     def __init__(self, match: MatchView, registry: BlockRegistry, workdir: Path,
-                 show: bool = True, size: tuple[int, int] = (T.CANVAS_W, T.CANVAS_H)) -> None:
+                 show: bool = True, size: tuple[int, int] = (T.CANVAS_W, T.CANVAS_H),
+                 resume: Resume | None = None) -> None:
+        """With `resume`, `match` is its match -- already at the stop -- and the
+        window finishes the correction instead of writing a new trace."""
+        assert resume is None or resume.match is match, "a resumed window shows the resumed match"
         self.match: MatchView = match
         self.registry: BlockRegistry = registry
         self.workdir: Path = workdir
+        self.resume: Resume | None = resume
+        self.correction: CorrectionResult | None = None
         self.b: Belief = match.beliefs["player"]
         self.size: tuple[int, int] = size
         w, h = size
@@ -76,7 +96,10 @@ class TeachView:
         self.panel_footer = self._panel(overlay, w / 2, h - FOOTER_H / 2, w, FOOTER_H)
         self.text: TextGroup = TextGroup(overlay, order=CHROME_ORDER)
         self.title = self.text.slot(HEAD, TITLE, rgb=palette.PRIMARY)
-        self.subtitle = self.text.slot(BODY, SUBTITLE, rgb=palette.SECONDARY)
+        subtitle = SUBTITLE if resume is None else SUBTITLE_RESUME.format(
+            run=resume.which + 1, runs=resume.count, seed=resume.old.seed,
+            stop=resume.index + 1, stops=len(resume.old.steps))
+        self.subtitle = self.text.slot(BODY, subtitle, rgb=palette.SECONDARY)
         self.main_title = self.text.slot(HEAD, MAIN_TITLE, rgb=palette.PRIMARY)
         self.main_subtitle = self.text.slot(BODY, MAIN_SUBTITLE, rgb=palette.SECONDARY)
         self.clock = self.text.slot(DISPLAY, "0:00", rgb=palette.PRIMARY)
@@ -93,7 +116,12 @@ class TeachView:
         self._zero: float | None = None
         self._paused_at: float | None = None
         self._last_message: str = ""
-        self._n_log: int = 0
+        # A resumed match carries the whole replayed prefix in its log; the footer
+        # starts from here rather than replaying minutes of it in one frame.
+        self._n_log: int = len(self.b.log)
+        self._noted_tick: int | None = None
+        self._over_frames: int = 0
+        self._conclude_failed: bool = False
         self.live: bool = show
         self.quit: bool = False
         self.trace_path: Path | None = None
@@ -188,7 +216,9 @@ class TeachView:
         origin when the answer comes, so the sim does not sprint to catch up."""
         now = time.perf_counter()
         if self._zero is None:
-            self._zero = now
+            # A resumed match is already minutes in: the origin is set so that the
+            # wall clock reads the match's own time from the first frame.
+            self._zero = now - self.match.t
         if self.match.paused:
             if self._paused_at is None:
                 self._paused_at = now
@@ -200,12 +230,49 @@ class TeachView:
         self.draw()
         if self.live:
             self.canvas.update()
+        # The promotion and the second induction block for seconds; they run only
+        # after OVER has been painted, so what she looks at meanwhile is the end.
+        if self.match.over and self._wants_conclusion():
+            self._over_frames += 1
+            if self._over_frames > T.RESUME_OVER_FRAMES:
+                self.conclude()
 
     def run_to_stop(self) -> StopView | None:
-        """No wall clock: straight to the next stop, for a snapshot."""
+        """No wall clock: straight to the next stop, for a snapshot or a script. Does
+        not conclude a resumed run by itself -- a snapshot must never rewrite a trace
+        -- so a script that wants the conclusion asks for it."""
         stop = self.match.advance_to_stop()
         self.draw()
         return stop
+
+    @property
+    def recorded(self) -> int:
+        """Decisions that ran so far; the next stop is number `recorded + 1`."""
+        return sum(1 for d in self.match.policies["player"].decisions if d.ran)
+
+    def _wants_conclusion(self) -> bool:
+        return (self.resume is not None and self.correction is None
+                and not self._conclude_failed)
+
+    def conclude(self) -> None:
+        """The resumed run has ended: rewrite the demonstration and induce again.
+        Once only, however many times it is asked."""
+        if not self._wants_conclusion():
+            return
+        assert self.resume is not None
+        try:
+            self.correction = self.resume.finish()
+        except RuntimeError as err:
+            # Inside the frame clock an exception would print and the next frame
+            # would try again; say it once instead and leave the old trace as it was.
+            self._conclude_failed = True
+            text = f"the correction failed and nothing was rewritten: {err}"
+            print(text)
+            self._say(text)
+            return
+        self.draw()
+        if self.live:
+            self.canvas.update()
 
     def draw(self) -> None:
         match, b, t = self.match, self.b, self.match.t
@@ -214,8 +281,7 @@ class TeachView:
         self.clock.set(f"{int(t) // 60}:{int(t) % 60:02d}")
         self.clock.tint(palette.PRIMARY if stop is None else palette.SECONDARY)
         self.clock_note.set("stopped while it asks" if stop is not None else "the match clock")
-        decisions = match.policies["player"].decisions
-        recorded = sum(1 for d in decisions if d.ran)
+        recorded = self.recorded
         if stop is not None:
             self.stopped.set("IT HAS STOPPED")
             self.stopped_why.set(self._why(stop.reason))
@@ -228,8 +294,14 @@ class TeachView:
             result = match.result
             self.stopped.set("OVER")
             self.stopped_why.set(f"{result.player_outcome}, cargo {result.cargo}" if result else " ")
-            self.stops_count.set(f"{recorded} stops recorded")
-            self.hint.set("Q to close; the trace is written when you do")
+            if self.resume is not None:
+                kept = self.resume.index
+                self.stops_count.set(f"{recorded} stops: {kept} kept, {recorded - kept} new")
+                self.hint.set("Q to close" if self.correction is not None
+                              or self._conclude_failed else NOTE_INDUCING)
+            else:
+                self.stops_count.set(f"{recorded} stops recorded")
+                self.hint.set("Q to close; the trace is written when you do")
         else:
             self.stopped.set(" ")
             self.stopped_why.set(" ")
@@ -237,7 +309,24 @@ class TeachView:
             self.hint.set("it is driving itself; it will stop when it has something to ask")
         self.blocks.update(stop, b, t)
         self._read_log()
+        if self.resume is not None:
+            self._resume_note(stop, recorded)
         self.text.flush()
+
+    def _resume_note(self, stop: StopView | None, recorded: int) -> None:
+        """The footer, in a resumed window: at each stop, what the old run did here;
+        at the end, what the rule became. Said once per stop, after the log, and the
+        match is paused while it asks, so nothing overwrites it until she answers."""
+        assert self.resume is not None
+        if self.correction is not None:
+            self._say(self.correction.sentence())
+            return
+        if stop is None or stop.tick == self._noted_tick:
+            return
+        self._noted_tick = stop.tick
+        old = self.resume.old_choice(recorded, stop)
+        self._say(NOTE_NEW_GROUND if old is None
+                  else NOTE_LAST_TIME.format(label=self.registry.action(old).label))
 
     def _read_log(self) -> None:
         """The belief log's own lines, as the footer's message, so what the machine
@@ -267,8 +356,18 @@ class TeachView:
 
     # ---- the trace ----------------------------------------------------------------------
     def finish(self) -> Path | None:
-        """Write the demonstration. After the end, whole; after a quit, what there is."""
+        """Write the demonstration. After the end, whole; after a quit, what there is.
+
+        A resumed window has already rewritten its demonstration when the run ended
+        (`conclude`), so this only reports; and a resume quit before the end rewrites
+        nothing, because the old run is a whole demonstration and the new one is not.
+        """
         match = self.match
+        if self.resume is not None:
+            if self.correction is None:
+                print(NOTE_NOT_ENDED.format(run=self.resume.which + 1))
+                return None
+            return self.correction.path
         decisions = [d for d in match.policies["player"].decisions if d.ran]
         if not decisions:
             print("no decisions were made; nothing to write")

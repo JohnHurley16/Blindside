@@ -21,7 +21,16 @@ The teaching loop (docs/CAVE-BLOCKS.md 8, 9):
     python -m phase1 --ghost DIR          the induced tree beside each demonstration
     python -m phase1 --correct DIR --trace N --stop K --with TREE
         scrub demonstration N to stop K, take over with TREE, promote, re-induce
+    python -m phase1 --teach --resume DIR --trace N --stop K
+        the window's form of the same: demonstration N replayed to stop K, then you
+        choose from there to the end; the new choices replace the old ones from K,
+        the trace is rewritten and the rule induced again. --snap PICS for pictures
+        of stop K and the next with no window; --with TREE for a tree at the keys
     python -m phase1 --tree DIR/tree.json the match on the rule that was taught
+
+Stops and demonstrations are counted from 0 on the command line (--trace 0 --stop 3,
+as --ghost and the induction's query print them) and from 1 on the screen (run 1,
+stop 4); every line a resume prints gives both.
 
 The truth channel is off unless a display asks for it: --headless, --invariant and every
 teaching mode construct a `Sim` that never builds a stage frame at all.
@@ -30,15 +39,20 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NoReturn
 
 from . import tuning as T
 
 if TYPE_CHECKING:
+    from .demo.chooser import Chooser
     from .induct_client import InductClient
     from .policy.block_registry import BlockRegistry
+    from .replay.correction_result import CorrectionResult
+    from .replay.resume import Resume
     from .view.taught_rule import TaughtRule
+    from .view.teach_view import TeachView
 
 
 def main() -> None:
@@ -91,10 +105,17 @@ def main() -> None:
     parser.add_argument("--correct", type=Path, default=None, metavar="DIR",
                         help="scrub demonstration --trace to stop --stop, take over with "
                              "--with, promote, re-induce")
-    parser.add_argument("--trace", type=int, default=0, help="which demonstration, for --correct")
-    parser.add_argument("--stop", type=int, default=0, help="which stop, for --correct")
+    parser.add_argument("--resume", type=Path, default=None, metavar="DIR",
+                        help="with --teach: demonstration --trace of DIR replayed to stop "
+                             "--stop in the window, and you choose from there; the new "
+                             "choices replace the old ones and the rule is induced again")
+    parser.add_argument("--trace", type=int, default=0,
+                        help="which demonstration (from 0), for --correct and --resume")
+    parser.add_argument("--stop", type=int, default=0,
+                        help="which stop (from 0), for --correct and --resume")
     parser.add_argument("--with", dest="with_tree", type=Path, default=None,
-                        help="the tree that takes over, for --correct")
+                        help="the tree that takes over, for --correct; with --resume, a "
+                             "tree presses the window's keys and there is no window")
     args = parser.parse_args()
 
     if args.player_sensor:
@@ -115,6 +136,8 @@ def main() -> None:
         raise SystemExit(run_induce(args.induce))
     if args.ghost is not None:
         raise SystemExit(run_ghost(args.ghost, args.tree))
+    if args.resume is not None:
+        raise SystemExit(run_resume(args))
     if args.correct is not None:
         if args.with_tree is None:
             raise SystemExit("--correct needs --with TREE")
@@ -347,57 +370,165 @@ def run_ghost(workdir: Path, tree: Path | None) -> int:
 def run_correct(workdir: Path, which: int, stop: int, with_tree: Path) -> int:
     """Scrub demonstration `which` to stop `stop`, let `with_tree` take over from
     there, promote the suffix in place of the old one, and induce again. The scripted
-    form of the correction loop; the window's form is `--teach --resume`."""
+    form of the correction loop; `--teach --resume` is the window's, and both are one
+    `replay.resume.Resume`."""
     import time
 
-    from .demo.recording import Recording
-    from .demo.tree_chooser import TreeChooser
-    from .demo.trace_writer import TraceWriter
-    from .match.run_factory import RunFactory
-    from .policy.decision_tree import DecisionTree
-    from .policy.run_spec import RunSpec
-    from .replay import correction
-
     client = _client(workdir)
-    registry = _registry()
-    paths = _traces_in(workdir)
-    if not 0 <= which < len(paths):
-        raise SystemExit(f"--trace {which}: there are {len(paths)} demonstrations")
-    recordings = [Recording(trace=TraceWriter.read(p), path=p) for p in paths]
-    original = recordings[which]
-    trace = original.trace
-    tree = DecisionTree.load(with_tree, registry)
-    chooser = TreeChooser(tree, RunSpec.from_trace(trace.enabled_predicates,
-                                                   trace.enabled_actions, trace.params))
     started = time.perf_counter()
-    takeover = correction.scrub(RunFactory(), original, stop)
-    print(f"scrubbed {original.path.name} to stop {stop} (tick {trace.steps[stop].tick}, "
-          f"place {trace.steps[stop].junction}); {with_tree.name} takes over")
+    resume = _open_resume(workdir, client, which, stop)
+    chooser = _tree_chooser(with_tree, resume)
+    _print_resumed(resume, f"{with_tree.name} takes over")
+    takeover = resume.takeover
     while not takeover.done:
         assert takeover.stop is not None
         takeover.choose(chooser(takeover.stop))
-    suffix = takeover.suffix()
-    changed = [s.action for s in trace.steps[stop:]] != [s.action for s in suffix]
-    promoted = correction.promote(trace, stop, suffix, TraceWriter.from_match(takeover.match).outcome)
-    backup = original.path.with_suffix(".before-correction.json")
-    TraceWriter.write(trace, backup)
-    recordings[which] = Recording(trace=promoted, path=original.path)
-    out = workdir / "tree.json"
-    induction, _ = correction.reinduce(client, recordings, out)
-    seconds = time.perf_counter() - started
-    print(f"promoted stop {stop} onward ({'the suffix changed' if changed else 'the suffix came back identical'}: "
-          f"{len(trace.steps) - stop} old steps -> {len(suffix)} new); the old trace is at {backup.name}")
-    print(f"re-induced: {'consistent' if induction.consistent else 'INCONSISTENT'}; "
-          f"scrub -> take over -> promote -> re-induce in {seconds:.2f} s wall clock")
-    if induction.consistent and induction.path is not None:
-        rendered = client.render(out)
-        for line in rendered.lines:
+    result = resume.finish()
+    return _print_correction(result, time.perf_counter() - started)
+
+
+def _refuse(text: str) -> NoReturn:
+    """One line, exit RESUME_REFUSED_EXIT: there is nothing to resume."""
+    print(text, file=sys.stderr)
+    raise SystemExit(T.RESUME_REFUSED_EXIT)
+
+
+def _open_resume(workdir: Path, client: "InductClient", which: int, index: int) -> "Resume":
+    """Demonstration `which` of the workdir, replayed to stop `index`; or one line and
+    exit 2 when there is no such demonstration, no such stop, or the replay does not
+    reproduce the recorded stops."""
+    from .demo.recording import Recording
+    from .demo.trace_writer import TraceWriter
+    from .match.run_factory import RunFactory
+    from .replay.resume import Resume
+
+    folder = workdir / "traces"
+    paths = sorted(folder.glob("*.json"))
+    if not paths:
+        _refuse(f"no demonstrations under {folder.as_posix()}; --teach writes them")
+    if not 0 <= which < len(paths):
+        _refuse(f"--trace {which}: there are {len(paths)} demonstrations, "
+                f"--trace 0 to {len(paths) - 1}")
+    recordings = [Recording(trace=TraceWriter.read(p), path=p) for p in paths]
+    stops = len(recordings[which].trace.steps)
+    if not 0 <= index < stops:
+        _refuse(f"--stop {index}: {paths[which].name} has {stops} stops, "
+                f"--stop 0 to {stops - 1}")
+    try:
+        return Resume(RunFactory(), client, workdir, recordings, which, index)
+    except RuntimeError as err:
+        _refuse(f"{paths[which].name} cannot be resumed: {err}")
+
+
+def _tree_chooser(tree_path: Path, resume: "Resume") -> "Chooser":
+    from .demo.tree_chooser import TreeChooser
+    from .policy.decision_tree import DecisionTree
+    try:
+        return TreeChooser(DecisionTree.load(tree_path, _registry()), resume.match.spec)
+    except (ValueError, OSError) as err:
+        # A missing or unreadable tree file is the same kind of mistake as a malformed
+        # one: one line, exit 2, nothing written -- not a traceback.
+        _refuse(f"{tree_path.as_posix()}: {err}")
+
+
+def _print_resumed(resume: "Resume", then: str) -> None:
+    """Where the replay stopped, in both countings, and what happens next."""
+    step = resume.step
+    label = resume.match.registry.action(step.action).label
+    print(f"replayed {resume.recording.path.name} (--trace {resume.which}: run "
+          f"{resume.which + 1} of {resume.count}, seed {resume.old.seed}) to --stop "
+          f"{resume.index}, the window's stop {resume.index + 1} of {len(resume.old.steps)} "
+          f"(tick {step.tick}, place {step.junction}); last time you chose {label}; {then}")
+
+
+def _print_correction(result: "CorrectionResult", seconds: float | None = None) -> int:
+    """What the correction did and what the rule became; 1 when no rule fits."""
+    print(f"promoted stop {result.index} onward "
+          f"({'the suffix changed' if result.changed else 'the suffix came back identical'}: "
+          f"{result.replaced} old steps -> {result.new} new); wrote "
+          f"{result.path.as_posix()}; the old trace is at {result.backup.as_posix()}")
+    timing = ("" if seconds is None
+              else f"; scrub -> take over -> promote -> re-induce in {seconds:.2f} s wall clock")
+    print(f"re-induced: {'consistent' if result.consistent else 'INCONSISTENT'}{timing}")
+    if result.rendered is not None:
+        for line in result.rendered.lines:
             print(f"  {line}")
-        print(f"  {rendered.sentence}")
+        print(f"  {result.rendered.sentence}")
         return 0
-    if induction.query is not None:
-        print(induction.query.text)
+    if result.induction.query is not None:
+        print(result.induction.query.text)
     return 1
+
+
+def run_resume(args: argparse.Namespace) -> int:
+    """The window's form of the correction: demonstration --trace replayed to --stop,
+    the window opened there, and a person choosing from there to the end. With --with
+    a tree presses the keys and there is no window; with --snap, pictures of that stop
+    and the next, a scripted key between them, and nothing rewritten."""
+    from .view.backend import pick_backend
+
+    workdir: Path = args.resume
+    client = _client(workdir)
+    registry = _registry()
+    resume = _open_resume(workdir, client, args.trace, args.stop)
+    match = resume.match
+    size = (args.width, args.height)
+    backend = pick_backend()
+    from vispy import app
+    from .view.teach_view import TeachView
+
+    if args.with_tree is not None:
+        chooser = _tree_chooser(args.with_tree, resume)
+        _print_resumed(resume, f"{args.with_tree.name} presses the keys, no window")
+        view = TeachView(match, registry, workdir, show=False, size=size, resume=resume)
+        _resume_scripted(view, chooser)
+        if view.correction is None:
+            return 1
+        return _print_correction(view.correction)
+    if args.snap:
+        _print_resumed(resume, "a picture, one scripted key, another picture; nothing rewritten")
+        view = TeachView(match, registry, workdir, show=False, size=size, resume=resume)
+        return _snap_stops(view, Path(args.snap), "resume")
+
+    _print_resumed(resume, "the window opens there")
+    print("preparing the display...", flush=True)
+    view = TeachView(match, registry, workdir, show=True, size=size, resume=resume)
+    view.canvas.show()
+    view.draw()
+    view.canvas.render()
+    view.draw()
+    view.canvas.render()
+    view.reset_clock()
+    keys = "   ".join(f"{i + 1} {registry.action(a).label}"
+                      for i, a in enumerate(match.spec.enabled_actions))
+    print(f"ready.  backend {backend}.  It is stopped at stop {resume.index + 1}:  {keys}   "
+          f"Q quit", flush=True)
+    frame_clock = app.Timer(interval=1 / 60, connect=lambda ev: view.advance(),
+                            start=True, app=view.canvas.app)
+    app.run()
+    del frame_clock
+    if view.finish() is None or view.correction is None:
+        return 0
+    return _print_correction(view.correction)
+
+
+def _resume_scripted(view: "TeachView", chooser: "Chooser") -> None:
+    """A tree at the window's keys: the same `press` a person uses, stop by stop with
+    no wall clock, and the window's own conclusion when the run ends."""
+    match = view.match
+    actions = match.spec.enabled_actions
+    while (stop := view.run_to_stop()) is not None:
+        action = chooser(stop)
+        view.press(str(actions.index(action) + 1))
+        if match.stop is stop:
+            # The window refuses a key that does nothing here, because a person's
+            # no-op is not a demonstration. A tree under --correct may choose one and
+            # wait out the no-op; the scripted window does the same, and says so.
+            print(f"stop {view.recorded + 1}: the tree chose "
+                  f"{match.registry.action(action).label}, which does nothing here; "
+                  f"answered anyway, as --correct would")
+            match.answer(action)
+    view.conclude()
 
 
 def run_teach(args: argparse.Namespace) -> int:
@@ -419,7 +550,8 @@ def run_teach(args: argparse.Namespace) -> int:
 
     size = (args.width, args.height)
     if args.snap:
-        return _teach_snap(match, registry, Path(args.snap), size)
+        out = Path(args.snap)
+        return _snap_stops(TeachView(match, registry, out, show=False, size=size), out, "teach")
 
     print("preparing the display...", flush=True)
     view = TeachView(match, registry, workdir, show=True, size=size)
@@ -442,38 +574,39 @@ def run_teach(args: argparse.Namespace) -> int:
     return 0
 
 
-def _teach_snap(match: object, registry: "BlockRegistry", out: Path,
-                size: tuple[int, int]) -> int:
-    """The teach window with no screen: run to the first stop, take a picture, press
-    a key the way the window would, run to the next stop, take another."""
-    from .view.teach_view import TeachView
-
+def _snap_stops(view: "TeachView", out: Path, prefix: str) -> int:
+    """The teach window with no screen: run to the next stop, take a picture, press
+    a key the way the window would, run to the next stop, take another. Pictures are
+    named by the stop number the window shows."""
+    match, registry = view.match, view.registry
     out.mkdir(parents=True, exist_ok=True)
-    view = TeachView(match, registry, out, show=False, size=size)   # type: ignore[arg-type]
-    written: list[Path] = []
-    for index in range(2):
+    for _ in range(2):
         view.advance()                     # the live frame path, once, for its clock
         stop = view.run_to_stop()
         if stop is None:
             print("the match ended before a second stop")
             break
-        path = out / f"teach_stop{index + 1}.png"
+        number = view.recorded + 1
+        path = out / f"{prefix}_stop{number}.png"
         view.snapshot(str(path))
-        written.append(path)
-        offered = [a for a in match.spec.enabled_actions if stop.available.get(a, True)]   # type: ignore[attr-defined]
-        print(f"stop {index + 1} at {int(stop.t) // 60}:{stop.t % 60:04.1f} (tick {stop.tick}, "
+        offered = [a for a in match.spec.enabled_actions if stop.available.get(a, True)]
+        print(f"stop {number} at {int(stop.t) // 60}:{stop.t % 60:04.1f} (tick {stop.tick}, "
               f"place {stop.junction}, {stop.reason}): "
               + ", ".join(f"{pid}={'yes' if v else 'no'}"
                           + (f" ({stop.raw[pid]:.3g})" if pid in stop.raw else "")
                           for pid, v in stop.predicates.items())
               + f"; offered {offered}")
         print(f"wrote {path.as_posix()}")
-        # A scripted keypress: the first offered action's number key, through the
-        # same handler the window binds.
-        key = str(match.spec.enabled_actions.index(offered[0]) + 1)   # type: ignore[attr-defined]
+        # A scripted keypress through the same handler the window binds: the first
+        # offered action's number key -- in a resumed window, the first that is not
+        # what was chosen here last time, so the second picture is the run parting.
+        pick = offered[0]
+        if view.resume is not None:
+            old = view.resume.old_choice(view.recorded, stop)
+            pick = next((a for a in offered if a != old), offered[0])
+        key = str(match.spec.enabled_actions.index(pick) + 1)
         view.press(key)
-        print(f"pressed {key} -> {registry.action(offered[0]).label}; "
-              f"paused={match.paused}")   # type: ignore[attr-defined]
+        print(f"pressed {key} -> {registry.action(pick).label}; paused={match.paused}")
     return 0
 
 
