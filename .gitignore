@@ -16,3 +16,4 @@ docs/dev-plan.json
 target/
 __pycache__/
 *.pyc
+docs/phase1-playtests/cold-read/*.png
