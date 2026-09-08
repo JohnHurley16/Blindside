@@ -41,8 +41,7 @@ class CorrectionResult:
             if len(lines) > 2:
                 lines = lines[:2]
                 lines[1] = lines[1][:93].rstrip() + " ..."
-            return "
-".join(lines)
+            return "\n".join(lines)
         query = self.induction.query
         first = query.text.splitlines()[0] if query is not None and query.text else ""
         return "no one rule fits everything you did" + (f": {first}" if first else "")
