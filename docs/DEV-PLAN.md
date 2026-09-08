@@ -49,7 +49,7 @@ Tick a story when it is done and move its `Status:` line. `Ready` means every de
 
 ### Ready now (8)
 
-- [ ] **P2X-7** Run the P2X gate: she teaches the cave bot, then watches it *(P2X, P0, 0.5d)* — **designer**, after P2X-6
+- [ ] **P2X-11** Decide how the cave becomes winnable — the options are being measured *(P2X, P0, 0.25d)* — **designer**; blocks the cave session
 - [ ] **P2X-6** Run Phase 2's gate on the corridor with a non-engineer — twenty minutes, no build *(P2X, P0, 0.5d)* — **designer**
 - [ ] **P1X-18** Designer self-test on the live window before the next session *(P1X, P0, 0.25d)*
 
@@ -261,6 +261,8 @@ Tick a story when it is done and move its `Status:` line. `Ready` means every de
 ### Done
 
 - [x] **P2X-1..5** The cave bot is teachable: blocks, tree policy, demonstration mode, induction, the taught bot runs; verified *(P2X, P0, 4d)*
+- [x] **P2X-9** The human correction step in the cave *(P2X, P0, 1d)*
+- [x] **P2X-10** The cave induction measured *(P2X, P0, 0.5d)*
 - [x] **P1X-1** Record the failed gate with the tester's words and the diagnosis *(P1X, P0, 0.25d)*
 - [x] **P1X-2** Measure the dead air tick by tick *(P1X, P0, 0.5d)*
 - [x] **P1X-3** Redesign the spectator display *(P1X, P0, 1d)*
@@ -306,8 +308,12 @@ designer has been describing since the Tarkov conversation and it is the game's 
 | P2X-4 | Story | Induce from cave traces through blindside-induct; run the match on the induced tree with the full display; ghost and correction if they port | P0 | 1 | P2X-3 | Done (`273c48f`) — `--induce`, `--tree`, `--ghost`, `--correct` |
 | P2X-5 | Task | Adversarial verification: the invariant under the new code, blocks-are-a-list with a sixth block added, equivalence to the hand-written policies, the loop end to end | P0 | 0.5 | P2X-4 | Done — 32 probes, 10 walked through, all closed in the same commit; a sixth block needed one registry line and one file; the loop ran end to end on unseen seeds |
 | P2X-6 | Task | Run Phase 2's gate on the corridor with a non-engineer (BLD-59) — twenty minutes, no build needed, and it answers whether authorship is the hook | P0 | 0.5 | — | **Designer** |
-| P2X-7 | Task | Run the P2X gate: she teaches the cave bot, then watches it | P0 | 0.5 | P2X-5, P2X-6 | Backlog |
+| P2X-7 | Task | Run the P2X gate: she teaches the cave bot, then watches it | P0 | 0.5 | P2X-5, P2X-6, **P2X-11** | Backlog — do not run until the cave can be won; today she would lose 20 of 20 whatever she taught |
 | P2X-8 | Task | Re-run Phase 1's spectator gate on the taught machine, truth on then off (was P1X-19) | P0 | 0.5 | P2X-7 | Backlog |
+| P2X-9 | Story | The human correction step in the cave: `--teach --resume` scrubs a demonstration to a stop and she chooses differently by hand; promote, re-induce | P0 | 1 | P2X-4 | Done (`9609ceb`, `7c34554`, `8441966`) |
+| P2X-10 | Spike | Measure the cave induction before a human uses it: reference vs induced, demonstrations needed, noisy teaching, stop count | P0 | 0.5 | P2X-4 | Done (`b5afd1b`, `docs/CAVE-INDUCTION.md`) |
+| P2X-11 | Decision | **The cave cannot be won by the rule she teaches.** Both reference rules extract 0 of 20 on unseen seeds; with the spoof off, 4 of 20. The cave was tuned for a doomed spectator, never for a teachable game. Options with their cost to the beat sheet are being measured (`docs/CAVE-WINNABLE.md`). | P0 | 0.25 | P2X-10 | **Designer** — blocks P2X-7 |
+| P2X-12 | Design | The vision board: every art concept, surface and underground, a clear view and an in-situ view each; the surface proposed for the first time (DESIGN-PRINCIPLES §3) | P1 | 1 | — | In progress — `docs/art/vision/` |
 
 ## P1X — Answer R1: make eight minutes worth watching
 
