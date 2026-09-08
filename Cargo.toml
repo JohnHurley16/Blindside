@@ -6,6 +6,7 @@ members = [
     "crates/blindside-content",
     "crates/blindside-gen",
     "crates/blindside-harness",
+    "crates/blindside-induct",
     "tools/determinism-lint",
 ]
 

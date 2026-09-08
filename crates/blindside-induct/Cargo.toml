@@ -1,5 +1,5 @@
-# Standalone on this branch. The Cargo workspace lives on another branch; this crate joins
-# it when the branches merge. Until then it carries its own Cargo.lock.
+# A member of the root workspace since the Phase 0 harness merge: the workspace Cargo.lock is
+# authoritative and every CI step passes --locked, so this crate carries no lock of its own.
 #
 # blindside-induct is an unconstrained crate in ARCHITECTURE's sense: the sim never depends
 # on it, so floats and std collections are allowed. It still has no clock and no randomness
