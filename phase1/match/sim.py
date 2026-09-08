@@ -12,13 +12,20 @@ SPECTATOR-DISPLAY.md section 4.
 from __future__ import annotations
 
 import math
+from pathlib import Path
 
 import numpy as np
 
 from .. import geometry as G
 from .. import tuning as T
 from ..belief.belief import Belief
+from ..belief.survey_map import SurveyMap
+from ..policy.block_registry import BlockRegistry
+from ..policy.decision_tree import DecisionTree
+from ..policy.loadout import Loadout
 from ..policy.policy import Policy
+from ..policy.run_spec import RunSpec
+from ..policy.stop_view import StopView
 from ..sensing.sensor_rig import SensorRig
 from ..sound_character import SoundCharacter
 from ..truth import cave
@@ -34,12 +41,40 @@ def snap_to_tick(t: float) -> float:
     return round(t / T.DT) * T.DT
 
 
+def survey_for(name: str) -> SurveyMap:
+    """The prior intel an agent is handed at launch: the survey's chambers, its dry
+    passages with straight-line lengths, which chambers hold a deposit, which the
+    machinery, which is this agent's shaft. Complete and honest for the hand-authored
+    cave (CAVE-BLOCKS.md guess 7), and it marks the machinery's chamber as ground
+    the planner keeps out of. Built here because `Sim` may see truth; what crosses is
+    names and numbers."""
+    positions = {n: (float(c[0]), float(c[1])) for n, c in cave.CHAMBERS.items()}
+    passages = tuple((a, b, G.dist(*positions[a], *positions[b]))
+                     for a, b, _, flooded in cave.PASSAGES if not flooded)
+    deposits = tuple(n for n in positions if positions[n] in cave.DEPOSITS.values())
+    machinery = next(n for n in positions if positions[n] == cave.ANCIENT_POS)
+    shaft = next(n for n in positions if positions[n] == cave.SHAFTS[name])
+    return SurveyMap(places=tuple(positions), positions=positions, passages=passages,
+                     deposits=deposits, machinery=machinery, shaft=shaft,
+                     avoided=frozenset({machinery}))
+
+
 class Sim:
-    def __init__(self, seed: int = T.SEED, stage: bool = False) -> None:
+    def __init__(self, seed: int = T.SEED, stage: bool = False,
+                 tree: Path | None = None, spec: RunSpec | None = None,
+                 taught: bool = False) -> None:
         """`stage` switches the truth channel on. It is off by default, so --headless,
         --invariant and any future batch or training path never build a frame at all:
-        the leak has to be deliberately enabled rather than merely not used."""
+        the leak has to be deliberately enabled rather than merely not used.
+
+        `tree` is the player's policy as a tree.json; the cautious reference tree by
+        default. The rival always runs the aggressive one. `spec` is which blocks exist
+        in the player's run and at what thresholds (a demonstration's `--enabled`, or a
+        recorded trace's); by default a tree's own. `taught` makes the player's policy a
+        question at every stop instead of a tree: the match pauses (`paused`) until
+        `answer` is called, which is a demonstration."""
         self._world: World = World()
+        self.seed: int = seed
         self.t: float = 0.0
         self.tick: int = 0
         self.over: bool = False
@@ -61,22 +96,33 @@ class Sim:
             known["HOME"] = cave.SHAFTS[name]
             belief = Belief(name, agent.x, agent.y, agent.heading, known,
                             np.random.default_rng(int(rng.integers(1 << 30))),
-                            sensor=agent.sensor)
+                            survey_for(name), sensor=agent.sensor)
             shaft_id = f"shaft_{name}"
             belief.note_surveyed_beacon(shaft_id, *cave.SHAFTS[name])
             self.beliefs[name] = belief
             self.rigs[name] = SensorRig(name, int(rng.integers(1 << 30)))
 
+        # The two temperaments are two trees over one block list. The loadout carries
+        # what used to be the temperament's numbers (speed, ping cadence) and is not
+        # the tree's to change; CAVE-BLOCKS.md guess 6.
+        registry = BlockRegistry()
+        self.registry: BlockRegistry = registry
+        player_tree: DecisionTree | None = None
+        if not taught:
+            player_tree = DecisionTree.load(tree if tree is not None else T.CAUTIOUS_TREE, registry)
+        if spec is None:
+            spec = (RunSpec.for_tree(player_tree, registry) if player_tree is not None
+                    else RunSpec.for_demonstration(registry))
+        self.spec: RunSpec = spec
         self.policies["player"] = Policy(
             self.beliefs["player"],
-            {"out_A": cave.ROUTES["player_out_A"],
-             "A_to_B": cave.ROUTES["player_A_to_B"],
-             "home_from_A": cave.ROUTES["player_home_from_A"],
-             "home_from_B": cave.ROUTES["player_home_from_B"]},
-            cautious=True, shaft_beacon_id="shaft_player")
+            Loadout(T.AGENT_SPEED, T.CAUTIOUS_PING_COOLDOWN_S, T.PING_ONLY_IF_UNMAPPED_AHEAD),
+            "shaft_player", registry, spec, player_tree)
+        rival_tree = DecisionTree.load(T.AGGRESSIVE_TREE, registry)
         self.policies["rival"] = Policy(
-            self.beliefs["rival"], {"out": cave.ROUTES["rival_out"]},
-            cautious=False, shaft_beacon_id="shaft_rival")
+            self.beliefs["rival"],
+            Loadout(T.RIVAL_SPEED, T.AGGRESSIVE_PING_COOLDOWN_S, False),
+            "shaft_rival", registry, RunSpec.for_tree(rival_tree, registry), rival_tree)
 
         # The scripted echo: the same ping arriving a second time off a reflective
         # chamber, on a different bearing because it came by a different passage.
@@ -109,6 +155,20 @@ class Sim:
     def recall_pending(self) -> bool:
         return self.recall_at is not None
 
+    # ---- the player's stop, when the player is the chooser ------------------------------
+    @property
+    def paused(self) -> bool:
+        """The player's policy has asked and not been answered. Nothing moves."""
+        return self.policies["player"].waiting
+
+    @property
+    def stop(self) -> StopView | None:
+        policy = self.policies["player"]
+        return policy.stop if policy.waiting else None
+
+    def answer(self, action: str) -> None:
+        self.policies["player"].answer(action)
+
     # ---- one tick ---------------------------------------------------------------------
     def step(self) -> None:
         if self.over:
@@ -122,9 +182,20 @@ class Sim:
             self._in_tick = False
 
     def _tick(self) -> None:
+        # The player's policy is asked first whether a decision is due at the tick
+        # about to run -- before the world moves, so that a match paused for a person
+        # to answer has not moved at all, and a tree answering the same question runs
+        # the same match as one that never paused. The poll is idempotent per tick;
+        # `Policy.step` re-uses it.
+        w = self._world
+        t_next = (self.tick + 1) * T.DT
+        if w.agents["player"].active:
+            self.beliefs["player"].tick(t_next)
+            self.policies["player"].poll(t_next)
+            if self.policies["player"].waiting:
+                return
         self.tick += 1
         self.t = self.tick * T.DT
-        w = self._world
         w.t = self.t
         w.tick = self.tick
 
@@ -140,6 +211,7 @@ class Sim:
             belief = self.beliefs[name]
             policy = self.policies[name]
             rig = self.rigs[name]
+            belief.tick(self.t)
             cmd = policy.step(self.t)
             agent.move(cmd.heading, cmd.speed, T.DT)
             if cmd.drop:
@@ -220,7 +292,8 @@ class Sim:
         p = self._world.agents["player"]
         outcome = "extracted" if p.extracted else ("destroyed" if not p.alive else "lost in the cave")
         self.result = MatchResult(why, outcome, p.cargo if p.extracted else 0,
-                                  self.recall_used, self.t)
+                                  self.recall_used, self.t, ticks=self.tick,
+                                  extracted=p.extracted, alive=p.alive)
         self._world.log("end", why=why, player=outcome, cargo=self.result.cargo,
                        recall_used=self.recall_used)
 

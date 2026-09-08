@@ -21,13 +21,15 @@ from .. import tuning as T
 from ..audio.mixer import Mixer
 from ..audio.voice import SAMPLE_RATE
 from ..match.match_view import MatchView
+from .taught_rule import TaughtRule
 from .view import View
 
 
 class Recorder:
     def __init__(self, match: MatchView, out_path: str, fps: int = 20,
                  size: tuple[int, int] = (T.CANVAS_W, T.CANVAS_H), with_audio: bool = True,
-                 reveal_seconds: float = 12.0, recall_at: float | None = None) -> None:
+                 reveal_seconds: float = 12.0, recall_at: float | None = None,
+                 rule: TaughtRule | None = None) -> None:
         self.match: MatchView = match
         self.out_path: Path = Path(out_path)
         self.fps: int = fps
@@ -35,7 +37,7 @@ class Recorder:
         self.reveal_seconds: float = reveal_seconds
         self.recall_at: float | None = recall_at
         self.mixer: Mixer | None = Mixer(offline=True) if with_audio else None
-        self.view: View = View(match, audio=self.mixer, show=False, size=size)
+        self.view: View = View(match, audio=self.mixer, show=False, size=size, rule=rule)
         self.audio_chunks: list[np.ndarray] = []
 
     # ---- one frame ---------------------------------------------------------------------

@@ -1,0 +1,125 @@
+"""The block list, loaded from blocks.json, joined to its implementations.
+
+**This is the one place in Python where block ids appear.** Everything else -- the
+tree interpreter, the policy, the decision graph, the trace writer and the block
+panel -- works over the list this exposes, so that adding a block is a data
+change plus one entry here and one evaluator or motor file. The reference trees under
+`phase1/reference/` are data, built by hand, and are the other exception.
+"""
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Callable, Mapping
+
+from .. import tuning as T
+from ..belief.belief import Belief
+from .action import Action
+from .motor.body import Body
+from .motor.go_to_deposit import GoToDeposit
+from .motor.hold import Hold
+from .motor.interface_machinery import InterfaceMachinery
+from .motor.program import Program
+from .motor.return_to_beacon import ReturnToBeacon
+from .predicate import Predicate
+from .predicates import (
+    carrying_cargo,
+    deposit_remaining,
+    fix_jump_exceeds,
+    machinery_audible,
+    time_elapsed_exceeds,
+    uncertainty_exceeds,
+)
+
+BLOCKS_PATH: Path = Path(__file__).resolve().parent.parent / "blocks.json"
+
+Evaluator = Callable[[Belief, Mapping[str, float]], tuple[bool, float | None]]
+Motor = Callable[[Body, float], Program]
+
+
+class BlockRegistry:
+    """Predicates and actions keyed by stable id."""
+
+    def __init__(self, path: Path = BLOCKS_PATH) -> None:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        self.path: Path = path
+        self.predicates: list[Predicate] = [
+            Predicate(id=p["id"], label=p["label"], param=p.get("param"), stage=int(p.get("stage", 1)))
+            for p in data["predicates"]
+        ]
+        self.actions: list[Action] = [
+            Action(id=a["id"], label=a["label"], stage=int(a.get("stage", 1)))
+            for a in data["actions"]
+        ]
+        self._evaluators: dict[str, Evaluator] = {
+            "deposit_remaining": deposit_remaining.evaluate,
+            "carrying_cargo": carrying_cargo.evaluate,
+            "time_elapsed_exceeds": time_elapsed_exceeds.evaluate,
+            "uncertainty_exceeds": uncertainty_exceeds.evaluate,
+            "fix_jump_exceeds": fix_jump_exceeds.evaluate,
+            "machinery_audible": machinery_audible.evaluate,
+        }
+        self._motors: dict[str, Motor] = {
+            "go_to_deposit": GoToDeposit,
+            "return_to_beacon": ReturnToBeacon,
+            "hold": Hold,
+            "interface_machinery": InterfaceMachinery,
+        }
+        missing = [p.id for p in self.predicates if p.id not in self._evaluators]
+        missing += [a.id for a in self.actions if a.id not in self._motors]
+        if missing:
+            raise ValueError(f"blocks listed in {path.name} with no implementation: {missing}")
+        self._by_id: dict[str, Predicate] = {p.id: p for p in self.predicates}
+        self._action_by_id: dict[str, Action] = {a.id: a for a in self.actions}
+
+    # ---- the list ----------------------------------------------------------------------
+    def predicate_ids(self) -> list[str]:
+        return [p.id for p in self.predicates]
+
+    def action_ids(self) -> list[str]:
+        return [a.id for a in self.actions]
+
+    def predicate(self, predicate_id: str) -> Predicate:
+        return self._by_id[predicate_id]
+
+    def action(self, action_id: str) -> Action:
+        return self._action_by_id[action_id]
+
+    def predicate_ids_by_stage(self, stage: int) -> list[str]:
+        """The predicates that exist by the given tutorial run."""
+        return [p.id for p in self.predicates if p.stage <= stage]
+
+    def action_ids_by_stage(self, stage: int) -> list[str]:
+        return [a.id for a in self.actions if a.stage <= stage]
+
+    def last_stage(self) -> int:
+        return max([p.stage for p in self.predicates] + [a.stage for a in self.actions])
+
+    def parametric_ids(self) -> list[str]:
+        return [p.id for p in self.predicates if p.param is not None]
+
+    def provisional_params(self, predicate_ids: list[str] | None = None) -> dict[str, dict[str, float]]:
+        """The value each parametric predicate's boolean is read with in a demonstration:
+        `tuning.DEMONSTRATION_PARAMS`, by the parameter's name. Every parametric predicate
+        on the list must have one, or a run that enables it has no boolean to show. The
+        value is provisional and the panel says so: the induction refits it."""
+        out: dict[str, dict[str, float]] = {}
+        for p in self.predicates:
+            if predicate_ids is not None and p.id not in predicate_ids:
+                continue
+            if p.param is None:
+                continue
+            if p.param not in T.DEMONSTRATION_PARAMS:
+                raise ValueError(f"{p.id} takes a parameter named {p.param!r} and "
+                                 f"tuning.DEMONSTRATION_PARAMS has no value for it")
+            out[p.id] = {p.param: float(T.DEMONSTRATION_PARAMS[p.param])}
+        return out
+
+    # ---- the implementations -------------------------------------------------------------
+    def evaluate(self, predicate_id: str, belief: Belief,
+                 params: Mapping[str, float]) -> tuple[bool, float | None]:
+        return self._evaluators[predicate_id](belief, params)
+
+    def motor(self, action_id: str) -> Motor:
+        """The program an action hands off to: (body, t) -> Program."""
+        return self._motors[action_id]

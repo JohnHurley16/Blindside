@@ -16,11 +16,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from .. import tuning as T
 from .sim import Sim
 
 if TYPE_CHECKING:                       # pragma: no cover - types only
     from ..belief.belief import Belief
+    from ..policy.block_registry import BlockRegistry
     from ..policy.policy import Policy
+    from ..policy.run_spec import RunSpec
+    from ..policy.stop_view import StopView
     from .match_result import MatchResult
     from .reveal import Reveal
     from .stage_frame import StageFrame
@@ -33,6 +37,10 @@ class MatchView:
         self.__sim: Sim = sim
 
     # ---- where the match is -------------------------------------------------------
+    @property
+    def seed(self) -> int:
+        return self.__sim.seed
+
     @property
     def t(self) -> float:
         return self.__sim.t
@@ -70,6 +78,27 @@ class MatchView:
     def policies(self) -> dict[str, Policy]:
         return self.__sim.policies
 
+    @property
+    def registry(self) -> BlockRegistry:
+        return self.__sim.registry
+
+    @property
+    def spec(self) -> RunSpec:
+        """The blocks the player's run is played over; what its trace records."""
+        return self.__sim.spec
+
+    # ---- the demonstration: a stop in, an action out ---------------------------------
+    @property
+    def paused(self) -> bool:
+        return self.__sim.paused
+
+    @property
+    def stop(self) -> StopView | None:
+        return self.__sim.stop
+
+    def answer(self, action: str) -> None:
+        self.__sim.answer(action)
+
     # ---- driving ------------------------------------------------------------------
     def advance_to(self, target_t: float, max_steps: int = 1 << 30) -> int:
         """Step the match up to `target_t`. Returns the number of ticks taken.
@@ -81,10 +110,20 @@ class MatchView:
         steps = 0
         while self.__sim.t < target_t and not self.__sim.over and steps < max_steps:
             self.__sim.step()
+            if self.__sim.paused:
+                break                      # a question is open; the clock is stopped
             if self.__sim.tick % 10 == 0:
                 self.__sim.record_truth_trail()
             steps += 1
         return steps
+
+    def advance_to_stop(self) -> StopView | None:
+        """Run until the player's policy asks, or the match ends. A demonstration's loop."""
+        while not self.__sim.over:
+            self.advance_to(T.MATCH_SECONDS + 1.0)
+            if self.__sim.paused:
+                return self.__sim.stop
+        return None
 
     # ---- truth, one way, to the screen ---------------------------------------------
     def stage(self) -> StageFrame:
@@ -95,6 +134,7 @@ class MatchView:
 
     # ---- what the facade is, as data, so the invariant can assert on it -------------
     MEMBERS: tuple[str, ...] = (
-        "t", "tick", "over", "result", "recall_used", "recall_pending", "recall",
-        "beliefs", "policies", "advance_to", "stage", "reveal", "MEMBERS",
+        "seed", "t", "tick", "over", "result", "recall_used", "recall_pending", "recall",
+        "beliefs", "policies", "registry", "spec", "paused", "stop", "answer",
+        "advance_to", "advance_to_stop", "stage", "reveal", "MEMBERS",
     )

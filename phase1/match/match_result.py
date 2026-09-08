@@ -11,6 +11,9 @@ class MatchResult:
     cargo: int
     recall_used: bool
     ended_at: float
+    ticks: int = 0
+    extracted: bool = False    # the trace's `success` is extracted with cargo >= 1
+    alive: bool = True         # and its `lost` is alive, not extracted (CAVE-BLOCKS guess 8)
 
     def __str__(self) -> str:
         return (f"{self.player_outcome} (cargo {self.cargo}, "

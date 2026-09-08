@@ -7,6 +7,7 @@ renderer.
 from __future__ import annotations
 
 import math
+from pathlib import Path
 
 from .. import tuning as T
 from .sim import Sim
@@ -19,8 +20,9 @@ def format_time(t: float) -> str:
 
 
 def run_headless(recall_at: float | None = None, seed: int = T.SEED,
-                 report_every: float = 30.0, quiet: bool = False) -> Sim:
-    sim = Sim(seed)
+                 report_every: float = 30.0, quiet: bool = False,
+                 tree: Path | None = None) -> Sim:
+    sim = Sim(seed, tree=tree)
     timeline: list[TimelineEntry] = []
     seen: dict[str, int] = {name: 0 for name in sim.beliefs}
     next_report = 0.0
@@ -42,7 +44,7 @@ def run_headless(recall_at: float | None = None, seed: int = T.SEED,
                                  f"sigma {b.sigma_pos():5.1f} "
                                  f"truth ({agent.x:3.0f},{agent.y:3.0f}) "
                                  f"belief ({b.x:3.0f},{b.y:3.0f}) "
-                                 f"{sim.policies[name].mode} pts {b.cloud.n}"))
+                                 f"{sim.policies[name].doing} pts {b.cloud.n}"))
         for name, belief in sim.beliefs.items():
             for entry in belief.log[seen[name]:]:
                 timeline.append((entry[0], name, entry[1]))

@@ -12,9 +12,10 @@ any afternoon and this file would still have printed "invariant holds".
 
   1. `belief` and `policy` may not import `truth`.
   2. `belief` and `policy` may not import `match`, so a policy cannot name StageFrame.
-  3. `view` and `audio` may not import `truth`.
-  4. `view` and `audio` may not contain the attribute access `.world`, `._world`, `.__sim`
-     or `._MatchView__sim`, nor a getattr for any of them.
+  3. `view`, `audio`, `demo` and `replay` may not import `truth`, nor the modules in
+     `match` that read it or build a `Sim`.
+  4. `view`, `audio`, `demo` and `replay` may not contain the attribute access `.world`,
+     `._world`, `.__sim` or `._MatchView__sim`, nor a getattr for any of them.
   5. Only six files in `phase1` may import `truth` at all.
   6. `match/stage_builder.py` may not import `belief` or `policy`: the exporter cannot
      see belief, so it cannot be tricked into feeding it.
@@ -42,7 +43,14 @@ RULE_COUNT: int = 8
 
 CLEAN_PACKAGES: tuple[str, ...] = ("belief", "policy")
 CLEAN_FORBIDDEN: tuple[str, ...] = ("truth", "match")
-RENDER_PACKAGES: tuple[str, ...] = ("view", "audio")
+# Downstream of the facade: the renderer, the mixer, and -- since the teaching loop -- the
+# demonstration and the replay, which are handed a `MatchView` (or a `RunSource` that opens
+# one) and hold it for a whole match, exactly as the renderer does.
+RENDER_PACKAGES: tuple[str, ...] = ("view", "audio", "demo", "replay", "seam")
+# Top-level modules are downstream too. `induct_client.py` imported `match.sim` freely
+# because nothing scanned it; the only top-level file allowed to build a Sim is the entry
+# point, which is where matches are started on purpose.
+TOP_LEVEL_EXEMPT: tuple[str, ...] = ("__init__.py", "__main__.py")
 RENDER_FORBIDDEN: tuple[str, ...] = ("truth",)
 FORBIDDEN_ATTRS: tuple[str, ...] = ("world", "_world", "__sim", "_MatchView__sim")
 # Modules whose whole job is handing out other modules. No clean or render package has a use
@@ -57,13 +65,20 @@ REFLECTION_MODULES: tuple[str, ...] = ("importlib", "builtins", "sys", "inspect"
 MODULE_FETCHERS: tuple[str, ...] = ("__import__", "import_module", "modules",
                                     "__dict__", "__getattribute__")
 FETCHER_CALLS: tuple[str, ...] = ("getattr", "vars", "eval", "exec")
+# Names that ARE the import machinery. `__import__("phase1.truth.world")` as a bare call, and
+# `__builtins__["__import__"]`, both reached World from inside policy while the attribute
+# spelling `builtins.__import__` was refused -- the tool was blocked under one name only.
+FETCHER_NAMES: tuple[str, ...] = ("__import__", "__builtins__")
 TRUTH_READERS: tuple[str, ...] = (
     "truth", "sensing",                 # packages
     "match/sim.py", "match/headless.py", "match/reveal.py", "match/stage_builder.py")
+# Reads no truth, but builds the object that holds it: the one place a Sim is made for a
+# demonstration or a replay. A downstream package is handed what it opens, never the opener.
+SIM_BUILDERS: tuple[str, ...] = ("match/run_factory.py",)
 PLAIN_TYPES: tuple[str, ...] = ("float", "int", "bool", "str", "tuple", "None", "ndarray")
-# The dotted forms of TRUTH_READERS' files, for the render-package rule above.
+# The dotted forms of TRUTH_READERS' and SIM_BUILDERS' files, for the render-package rule above.
 _TRUTH_READER_MODULES: tuple[str, ...] = tuple(
-    r[:-3].replace("/", ".") for r in TRUTH_READERS if r.endswith(".py"))
+    r[:-3].replace("/", ".") for r in TRUTH_READERS + SIM_BUILDERS if r.endswith(".py"))
 
 
 # ---- source walking -------------------------------------------------------------------
@@ -103,6 +118,25 @@ def _rel(path: Path, base: Path) -> str:
     return path.relative_to(base).as_posix()
 
 
+def _downstream(base: Path) -> list[tuple[Path, tuple[str, ...], bool]]:
+    """Every file the rules scan: (path, forbidden packages, is_render_tier).
+
+    Clean packages may not touch truth or match at all. Render-tier code -- the renderer,
+    the mixer, the demonstration, the replay, the seam, and every top-level module except
+    the entry point -- may import match for the facade and the frame types but not the
+    modules inside it that read truth.
+    """
+    out: list[tuple[Path, tuple[str, ...], bool]] = []
+    for package in CLEAN_PACKAGES:
+        out += [(path, CLEAN_FORBIDDEN, False) for path in _sources(base / package)]
+    for package in RENDER_PACKAGES:
+        out += [(path, RENDER_FORBIDDEN, True) for path in _sources(base / package)]
+    for path in sorted(base.glob("*.py")):
+        if path.name not in TOP_LEVEL_EXEMPT:
+            out.append((path, RENDER_FORBIDDEN, True))
+    return out
+
+
 # ---- rules 1, 2, 3 ---------------------------------------------------------------------
 def _import_rules(base: Path) -> list[str]:
     """What a clean or render package may import.
@@ -115,33 +149,37 @@ def _import_rules(base: Path) -> list[str]:
     `from .. import x` names the package on the way without binding it, and is fine.
     """
     problems: list[str] = []
-    for packages, forbidden in ((CLEAN_PACKAGES, CLEAN_FORBIDDEN),
-                                (RENDER_PACKAGES, RENDER_FORBIDDEN)):
-        for package in packages:
-            for path in _sources(base / package):
-                rel = _rel(path, base)
-                tree = _tree(path)
-                for dotted in _imported_names(tree):
-                    for bad in forbidden:
-                        if _touches(dotted, bad):
-                            problems.append(f"{rel} imports {dotted}")
-                    # A render package may import `match` -- it needs the facade and the
-                    # frame types -- but not the modules inside it that read truth, which
-                    # bind World, AgentTruth and cave at module level. This is the hole the
-                    # truth channel itself opened: `from ..match.stage_builder import World`
-                    # handed the renderer the World class, verified live.
-                    if package in RENDER_PACKAGES:
-                        tail = dotted.lstrip(".")
-                        for reader in _TRUTH_READER_MODULES:
-                            if tail == reader or tail.startswith(reader + "."):
-                                problems.append(f"{rel} imports {dotted}, which reads truth")
-                    root = dotted.lstrip(".").split(".")[0]
-                    if root in REFLECTION_MODULES:
-                        problems.append(f"{rel} imports {root}, which hands out modules")
-                for node in ast.walk(tree):
-                    if isinstance(node, ast.Import):
-                        problems += [f"{rel} imports the bare {PACKAGE} package"
-                                     for a in node.names if a.name == PACKAGE]
+    for path, forbidden, render_tier in _downstream(base):
+        rel = _rel(path, base)
+        tree = _tree(path)
+        for dotted in _imported_names(tree):
+            for bad in forbidden:
+                if _touches(dotted, bad):
+                    problems.append(f"{rel} imports {dotted}")
+            # Render-tier code may import `match` -- it needs the facade and the frame
+            # types -- but not the modules inside it that read truth, which bind World,
+            # AgentTruth and cave at module level. This is the hole the truth channel
+            # itself opened: `from ..match.stage_builder import World` handed the
+            # renderer the World class, verified live.
+            if render_tier:
+                tail = dotted.lstrip(".")
+                for reader in _TRUTH_READER_MODULES:
+                    if tail == reader or tail.startswith(reader + "."):
+                        problems.append(f"{rel} imports {dotted}, which reads truth")
+            root = dotted.lstrip(".").split(".")[0]
+            if root in REFLECTION_MODULES:
+                problems.append(f"{rel} imports {root}, which hands out modules")
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                # `import phase1.geometry` binds the PACKAGE, not the leaf: the name
+                # left in the namespace is `phase1`, and `phase1.truth.world.World` is
+                # three attributes away once anything in the process has loaded truth.
+                # Only `import phase1.geometry as g` binds the leaf. A verifier reached
+                # World and the true shaft positions from a predicate file this way while
+                # the check printed "holds", because it tested the exact name `phase1`.
+                problems += [f"{rel} imports {a.name}, which binds the {PACKAGE} package"
+                             for a in node.names
+                             if a.asname is None and a.name.split(".")[0] == PACKAGE]
     return problems
 
 
@@ -149,10 +187,14 @@ def _import_rules(base: Path) -> list[str]:
 def _attribute_rule(base: Path) -> list[str]:
     """`self.sim.world` is not an import, so the import scan never saw it."""
     problems: list[str] = []
-    for package in RENDER_PACKAGES:
-        for path in _sources(base / package):
+    for path, _forbidden, _tier in _downstream(base):
+            # Every downstream file, not the render packages alone: `__import__(...)` and
+            # `eval(...)` inside a predicate reached a live Sim while this rule looked
+            # only at the view. A policy has even less use for reflection than a renderer.
             for node in ast.walk(_tree(path)):
-                if isinstance(node, ast.Attribute) and node.attr in MODULE_FETCHERS:
+                if isinstance(node, ast.Name) and node.id in FETCHER_NAMES:
+                    problems.append(f"{_rel(path, base)} names {node.id}")
+                elif isinstance(node, ast.Attribute) and node.attr in MODULE_FETCHERS:
                     problems.append(f"{_rel(path, base)} uses .{node.attr}")
                 elif (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
                       and node.func.id in FETCHER_CALLS
@@ -308,9 +350,10 @@ def assert_clean() -> None:
 
 def summary() -> str:
     return (f"invariant holds ({RULE_COUNT} rules): belief and policy cannot import truth "
-            "or match, view and audio cannot import truth or name a World, only truth/, "
-            "sensing/ and four files in match/ may read truth, the exporter cannot see "
-            "belief, and every field of a live StageFrame is frozen plain data")
+            "or match; view, audio, demo and replay cannot import truth, build a Sim or name "
+            "a World; only truth/, sensing/ and four files in match/ may read truth; the "
+            "exporter cannot see belief; and every field of a live StageFrame is frozen "
+            "plain data")
 
 
 if __name__ == "__main__":

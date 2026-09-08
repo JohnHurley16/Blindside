@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from .waypoint_kind import WaypointKind
+
 
 @dataclass(slots=True)
 class Waypoint:
@@ -15,6 +17,7 @@ class Waypoint:
     x: float
     y: float
     label: str
+    kind: WaypointKind = WaypointKind.PLACE
 
     def nudge(self, dx: float, dy: float) -> None:
         self.x += dx

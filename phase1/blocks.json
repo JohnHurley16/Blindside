@@ -1,0 +1,16 @@
+{
+  "predicates": [
+    {"id": "deposit_remaining",    "label": "a deposit left to try",                       "stage": 1},
+    {"id": "carrying_cargo",       "label": "carrying",                                    "stage": 1},
+    {"id": "time_elapsed_exceeds", "label": "late",                  "param": "seconds",   "stage": 1},
+    {"id": "uncertainty_exceeds",  "label": "lost",                  "param": "theta",     "stage": 2},
+    {"id": "fix_jump_exceeds",     "label": "the last fix was a jump", "param": "cells",   "stage": 2},
+    {"id": "machinery_audible",    "label": "the machinery is loud", "param": "level",     "stage": 3}
+  ],
+  "actions": [
+    {"id": "go_to_deposit",        "label": "fetch from a deposit",                        "stage": 1},
+    {"id": "return_to_beacon",     "label": "go back",                                     "stage": 1},
+    {"id": "hold",                 "label": "freeze until it passes",                      "stage": 3},
+    {"id": "interface_machinery",  "label": "go to the machinery and download",            "stage": 3}
+  ]
+}

@@ -153,6 +153,11 @@ class EventFeed:
             self._add(t, "cannot get through", f"giving up on {where}", EventKind.TROUBLE)
         elif ", loading" in text:
             self._add(t, "loading", "", EventKind.CARGO)
+        elif " -> " in text:
+            # A decision point: what the tree saw, and what it chose. The old policy's
+            # "too lost to continue" line was one of these with its reason baked in.
+            why, _, chose = text.partition(" -> ")
+            self._add(t, chose, why, EventKind.PHASE, major=True)
 
     def _contact(self, character: SoundCharacter, bearing: float, quality: float,
                  t: float) -> None:

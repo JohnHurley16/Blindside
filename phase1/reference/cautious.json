@@ -1,0 +1,19 @@
+{
+ "params": {
+  "machinery_audible": {"level": 0.45},
+  "uncertainty_exceeds": {"theta": 16.0}
+ },
+ "root": {
+  "predicate": "machinery_audible",
+  "yes": {"action": "hold"},
+  "no": {
+   "predicate": "uncertainty_exceeds",
+   "yes": {"action": "return_to_beacon"},
+   "no": {
+    "predicate": "deposit_remaining",
+    "yes": {"action": "go_to_deposit"},
+    "no": {"action": "return_to_beacon"}
+   }
+  }
+ }
+}

@@ -8,6 +8,8 @@ prompted it is written next to it. Those notes are the point of this file.
 """
 from __future__ import annotations
 
+import os
+from pathlib import Path
 from typing import Final
 
 # ---- time and scale ---------------------------------------------------------------
@@ -472,6 +474,65 @@ ESCAPES_REMEMBERED: Final[int] = 4                 # failed is not a new idea
 # 81-second freeze -- because the inputs to the choice had not changed, so neither had
 # the answer. Four remembered at 50 degrees rules out a 200-degree arc at worst, which
 # still leaves most of the circle; remembering more boxed it in against a real dead end.
+
+# ---- the tree: blocks and decision points ---------------------------------------------------------
+# docs/CAVE-BLOCKS.md. The policy is a decision tree over phase1/blocks.json, evaluated at
+# decision points; the two temperaments are the two reference trees under phase1/reference/.
+REFERENCE_DIR: Final[Path] = Path(__file__).resolve().parent / "reference"
+CAUTIOUS_TREE: Final[Path] = REFERENCE_DIR / "cautious.json"       # the player's temperament
+AGGRESSIVE_TREE: Final[Path] = REFERENCE_DIR / "aggressive.json"   # the rival's
+SIGNATURE_STALE_S: Final[float] = 1.0
+# A signature older than this is silence, to the block and to the hold alike. One number on
+# purpose: CAVE-BLOCKS guessed 1.5 s for the block (the old investigate window) and 1.5 s for
+# the hold's release, but the old hold released at 1.0 s, and a block that stayed true for
+# half a second after the hold let go would freeze the machine again on nothing. 1.0 is the
+# old hold's window, so the freeze starts and ends on the ticks it always did.
+NOOP_WAIT_S: Final[float] = 10.0            # a tree that picks an action with nothing to do
+                                            # (fetch with no deposit left, freeze in silence)
+                                            # stalls this long and asks again, visibly
+PREDICATE_REARM_S: Final[float] = 5.0       # a predicate that flickers across its threshold
+                                            # is one stop, not a stop every tick
+FIX_JUMP_MEMORY_S: Final[float] = 45.0      # `the last fix was a jump` remembers the largest
+                                            # jump this long: one beacon interval of walking,
+                                            # so the spoof's 8 s reassert cannot erase it
+PASSAGE_JOIN_CELLS: Final[float] = 10.0     # the route planner treats the agent as inside a
+                                            # survey passage when its believed position is
+                                            # within this of the passage's straight line: a
+                                            # 46-cell passage bends up to 8 cells (cave.py),
+                                            # and the survey knows nothing of the bend
+# The load dwell and the hold are the two places a decision point can land mid-action. A load
+# interrupted by a stop starts over when it resumes, because World's loading progress resets
+# the tick the machine stops asking to load; that is the honest cost of a freeze at a deposit.
+
+# ---- the teaching loop: demonstrations, the seam, the taught match ---------------------------------
+DEMONSTRATION_PARAMS: Final[dict[str, float]] = {
+    "level": 0.25, "theta": 10.0, "seconds": 270.0, "cells": 8.0}
+# The value each parametric predicate's boolean is read with in a demonstration, by the
+# name of its parameter -- this file names no block, and the induct crate refuses a block
+# list carrying a field it does not know, so the numbers cannot ride on blocks.json. They
+# are CAVE-BLOCKS.md guess 4, and they sit LOW on purpose: a decision point fires when a
+# predicate crosses its provisional threshold, so a player cannot teach a threshold lower
+# than the one the bot stops at. The bot asks early, the player says *carry on* until they
+# mean it, and the induction fits the boundary between the carry-ons and the reactions.
+# `level` 0.25 is under both temperaments (0.30, 0.45); `theta` 10 under the cautious 16;
+# `seconds` 270 is a minute and a half before the extraction window; `cells` 8 is the
+# feed's own "big jump". Two predicates that shared a parameter name would share a value.
+INDUCT_BIN: Final[Path] = (Path(__file__).resolve().parent.parent / "crates"
+                           / "blindside-induct" / "target" / "release"
+                           / ("induct.exe" if os.name == "nt" else "induct"))
+# The induction is Rust and is not throwaway; the two sides talk through JSON files only.
+# Overridable by the environment (INDUCT_BIN) so a build somewhere else can point at its own.
+TEACH_WORKDIR: Final[Path] = Path("phase1-session")   # traces/, seam/, tree.json; per --workdir
+TEACH_VALUES_HZ: Final[float] = 2.0
+# How often the block panel re-reads the live numbers between stops. Every string in the
+# teach window lives in the shared text group, and a changed string re-uploads the whole
+# group; at 60 fps that is the frame, at 2 Hz it is nothing, and a number that moves twice a
+# second still reads as moving.
+TEACH_TREE_LINE_H: Final[float] = 13.0    # px per rendered tree line on the spectator rail,
+                                          # at 9 pt; the rail has about 200 px for the rule
+TEACH_TREE_MAX_LINES: Final[int] = 15     # the rail's budget between the status rows and the
+                                          # timeline; a tree with more lines shows its first
+                                          # fifteen and says so, rather than printing on the strip
 
 # ---- recall -- the one player input --------------------------------------------------------------
 RECALL_DELAY_S: Final[float] = 3.0

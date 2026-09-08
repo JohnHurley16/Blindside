@@ -29,6 +29,7 @@ from .known_beacon import KnownBeacon
 from .own_ping import OwnPing
 from .point_cloud import PointCloud
 from .pose_correction import PoseCorrection
+from .survey_map import SurveyMap
 
 
 class Belief:
@@ -36,7 +37,7 @@ class Belief:
 
     def __init__(self, name: str, x: float, y: float, heading: float,
                  known_places: dict[str, tuple[float, float]],
-                 rng: np.random.Generator, sensor: str = "sonar") -> None:
+                 rng: np.random.Generator, survey: SurveyMap, sensor: str = "sonar") -> None:
         self.name: str = name
         self.sensor: str = sensor          # which active sensor it carries: it knows this
         self.x: float = float(x)
@@ -44,6 +45,10 @@ class Belief:
         self.theta: float = float(heading)
         self.rng: np.random.Generator = rng
         self.known_places: dict[str, tuple[float, float]] = dict(known_places)
+        self.survey: SurveyMap = survey    # prior intel, given at launch; never sensed
+        # The agent's own clock: the last time a sensor sample was fused. It is what
+        # `late` reads (CAVE-BLOCKS guess 1), so a stateless tree can know the window.
+        self.t: float = 0.0
 
         # uncertainty
         self.dist_since_fix: float = 0.0
@@ -63,6 +68,10 @@ class Belief:
         self.beacons: dict[str, KnownBeacon] = {}
         self.beacon_order: list[str] = []
         self.cargo: int = 0
+        # Deposits the load program has been to and is finished with: loaded from, given
+        # up on after the retries, or never reached. Told to belief the way a beacon drop
+        # is, so that `a deposit left to try` is a question about Belief alone.
+        self.tried_deposits: set[str] = set()
         self.dist_since_drop: float = 0.0
         self.ticks_since_ping: int = 10 ** 6
 
@@ -96,8 +105,19 @@ class Belief:
         angle = math.atan2(vy, vx) if math.hypot(vx, vy) > 1.0 else self.theta
         return self.sigma_along(), self.sigma_cross(), angle
 
+    # ---- the clock ------------------------------------------------------------------------
+    def tick(self, t: float) -> None:
+        """The agent's clock advances at the top of every tick, before the policy runs,
+        so that a predicate reading `belief.t` and a motor program reading the tick's
+        `t` agree on how old a sound is. Measured without this: the hold released on
+        the tick the signature went stale by the policy's clock, the block behind it
+        stayed true for one more tick by belief's, and the tree froze the machine
+        again on nothing -- a ten-second no-op stall after every freeze, all seeds."""
+        self.t = t
+
     # ---- fusion -------------------------------------------------------------------------
     def fuse(self, returns: list[Return], t: float) -> None:
+        self.t = t
         self.ticks_since_fix += 1
         self.ticks_since_ping += 1
         for r in returns:
@@ -228,6 +248,10 @@ class Belief:
         self.beacon_order.append(beacon_id)
         self.dist_since_drop = 0.0
         self.log.append((t, f"drop {beacon_id}"))
+
+    def note_deposit_tried(self, place: str, t: float, why: str) -> None:
+        self.tried_deposits.add(place)
+        self.log.append((t, f"{place} tried: {why}"))
 
     def note_surveyed_beacon(self, beacon_id: str, x: float, y: float) -> None:
         """The shaft: placed by survey, so its recorded position is its true one."""

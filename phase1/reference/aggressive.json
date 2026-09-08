@@ -1,0 +1,14 @@
+{
+ "params": {
+  "machinery_audible": {"level": 0.3}
+ },
+ "root": {
+  "predicate": "machinery_audible",
+  "yes": {"action": "interface_machinery"},
+  "no": {
+   "predicate": "deposit_remaining",
+   "yes": {"action": "go_to_deposit"},
+   "no": {"action": "return_to_beacon"}
+  }
+ }
+}
