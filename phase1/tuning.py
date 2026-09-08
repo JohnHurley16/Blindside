@@ -132,10 +132,37 @@ NEARFIELD_QUALITY: Final[float] = 0.28
 
 # ---- beacons ----------------------------------------------------------------------------
 BEACON_DROP_EVERY_CELLS: Final[float] = 45.0
+# Only while it is running the survey; a machine that has turned for home stops marking.
+# Dropping every 20 cells once it had given up on the survey was tried and reverted --
+# measured, it deleted the spoof from 8 recall-at-2:00 matches out of 8. The clone is
+# placed on the victim's most recent beacon and the lie only fires once the victim is
+# thirty cells clear of it, which a beacon every twenty cells never allows. It bit at
+# exactly one recall timing, 2:00, because that is the only one where the agent is
+# already home-bound when SPOOF_AFTER_S arrives -- and 2:00 is the timing that extracts.
+# A denser chain while lost is not a bad idea; it is a bad idea to lay it across the
+# thing the whole test is built to show.
+# Measured: a beacon answers within 6 cells of where it truly is, and the agent walks to
+# where it RECORDED it. The gap between those is the drift since the drop -- median 4-10
+# cells for a beacon under a minute old and 8-69 for one over three minutes -- so after
+# the spoof the chain is mostly out of range by the time the agent goes back for it, and
+# the second half has no map fixes at all in the worst seeds. Marking more densely while
+# lost is the part of that this file can fix; the rest is recorded in BEACON_RANGE.
 BEACON_RANGE: Final[float] = 6.0
 # Acquisition range is deliberately far below the drop interval. If it were not, the
 # agent would never leave its own chain, drift would never accumulate, and there would
 # be nothing to look at. The gap between 6 and 45 is where the smear happens.
+# Measured, sweeping 6/9/10/11/12/16 over eight seeds: raising this does NOT reliably
+# close the second-half fix drought, it only moves which seeds have it -- worst gap by
+# seed was 107-254 s at 6, 101-181 at 9, 97-191 at 12. What it does do reliably is
+# collapse the estimator's own sigma (max 6.2-17.3 at 12 against 7.1-34.0 at 6), which
+# retires the cautious agent's "too lost to continue" rule, and it re-rolls every path:
+# at 10 the PLAYER walked into the machinery in four seeds of eight, and at 9 the spoof
+# on seed 6 slipped from 2:26 to 4:49. So it stays at 6 and the drought is reported
+# rather than tuned away. The honest fix is not a number here: with HEADING_FIX_GAIN at
+# 0.0 the drift is ~0.26 cells per cell walked, so keeping a beacon acquirable for the
+# three minutes it takes to be re-crossed would need a range near 35. The only marker in
+# the cave whose recorded position does not drift is the survey-placed shaft, and
+# reaching that one is exactly what Recall buys.
 BEACON_FIX_NOISE: Final[float] = 0.35
 SHAFT_BEACON_RANGE: Final[float] = 10.0            # survey-placed: the only truth anchor
 HOME_REACHED: Final[float] = 6.0
@@ -428,6 +455,24 @@ ESCAPES_BEFORE_SKIP: Final[int] = 4
 # matches is the C3-to-ANC passage itself, which is a navigation-stack problem for
 # Phase 3, not a number here.
 
+JAM_SECONDS: Final[float] = 2.5                    # pressed against rock this long is a jam
+JAM_MOVE_CELLS: Final[float] = 0.5                 # ground covered that proves it is not
+# A jam is a different failure from "no progress toward the waypoint", and until now
+# the policy could only see the second. Measured over eight seeds: the agent was
+# commanding a step and achieving nothing for 1-27% of ticks, longest unbroken run
+# 59.3 s, and belief froze exactly as hard as truth because odometry of a swallowed
+# step reports zero. So the jam is visible in Belief -- dist_total stops -- and the
+# answer to it is different: not "try harder toward the target", but "the heading you
+# are holding is into rock, pick another one now" rather than in nine seconds.
+# 2.5 s at 1.1 cells/s is two cells of nothing, which no manoeuvre needs.
+ESCAPE_REPEAT_ARC_DEG: Final[float] = 50.0         # an escape this close to one that just
+ESCAPES_REMEMBERED: Final[int] = 4                 # failed is not a new idea
+# Measured: seven consecutive escapes on seed 7 all chose 170-180 degrees, into 0.2-3.2
+# cells of true clearance, while 290 degrees stayed open at forty cells for the whole
+# 81-second freeze -- because the inputs to the choice had not changed, so neither had
+# the answer. Four remembered at 50 degrees rules out a 200-degree arc at worst, which
+# still leaves most of the circle; remembering more boxed it in against a real dead end.
+
 # ---- recall -- the one player input --------------------------------------------------------------
 RECALL_DELAY_S: Final[float] = 3.0
 RECALL_LATENCY_PER_CELL: Final[float] = 0.02       # DESIGN: latency grows with depth
@@ -453,6 +498,66 @@ ECHO_TIMES: Final[tuple[float, ...]] = (155.0, 156.5)
 # The same ping arriving a second time off a reflective chamber, on a different bearing
 # because it came by a different passage. Scripted so the beat is guaranteed, but the
 # mechanism is real: it is a second sound field from a second point.
+
+# ---- the event feed -------------------------------------------------------------------------------
+# The feed selects by news, not by clock. Measured before this: 636 sounds heard on
+# seed 7, 481 past the quality gate, 50 lines printed, and 34 of the 50 were one of two
+# sentences arriving every 16.0 s +/- 0.1 for the whole match -- the rival pings on an
+# 8 s cooldown and the feed admitted the first window past its 12 s wall-clock, which is
+# always the third one. The longest silence in four of eight matches was 16.0 s, so
+# nothing in the feed could land as an event; a metronome teaches a viewer to stop
+# looking. These numbers replace that clock with three questions: is this the first I
+# have heard of it, has it swung round, is it closer than when I last spoke.
+#
+# Measured after, over eight seeds: 18-30 lines a match against 27-57; no single line
+# more than 20-42% of a feed against 34-52%; 11-14 distinct lines against 9-11; and the
+# longest quiet stretch now 48-70 s, where four seeds in eight previously could not go
+# quiet for longer than 16.0 s. Fewer lines, and each one is something that changed.
+FEED_CONTACT_FORGET_S: Final[float] = 40.0   # unheard this long and its return is news again
+FEED_CONTACT_TURN_DEG: Final[float] = 70.0   # a swing this wide is a contact that went somewhere
+# A return at the 0.45 quality gate carries about 14 degrees of bearing noise, halved
+# again by the smoothing, so this is well clear of a standing contact announcing that it
+# moved. It is also the number that decides how much of the feed is bearing chatter:
+# measured over eight seeds, at 40 degrees "the pinging has swung round" was 26-42% of
+# every feed, at 55 it was 17-32%, and at 70 it is 15-25%.
+FEED_CLOSER_QUALITY: Final[float] = 0.15     # louder by this much is "closer", ~15% of hearing range
+FEED_CONTACT_SMOOTH: Final[float] = 0.5      # the halving Contact.absorb already uses
+FEED_CONTACT_HOLD_S: Final[float] = 30.0     # having just spoken about a contact, wait
+# Not a metronome: the change tests still have to pass, so this only sets a floor on how
+# fast a genuinely moving contact can be narrated. Measured without it: a rival passing
+# close swung the bearing 165 to 030 over 1.5 s and the feed printed four lines about it.
+FEED_FIX_CELLS: Final[float] = 2.0           # announce an ordinary fix only this big
+# Reverted from 4.0 on instruction. First, what this number is NOT: it decides only
+# whether the feed prints a line. It cannot change how many fixes happen, how far any of
+# them moves the estimate, or what the point cloud does on screen -- verified by running
+# the same eight seeds at 2.0 and at 4.0, no recall and Recall at 2:00, and comparing:
+# identical paths, identical fix lists, to the cell. So the jump-size distribution can
+# never be an argument about this number.
+#
+# What it does decide is a straight trade, measured over eight seeds each way:
+#            largest single line        longest silence in the feed
+#   2.0      14-42% no-recall           30.8-69.8 s no-recall
+#            20-33% Recall 2:00         69.5-112.0 s Recall 2:00
+#   4.0      15-26% no-recall           37.5-69.8 s no-recall
+#            23-25% Recall 2:00         101.5-195.3 s Recall 2:00
+# At 2.0 one seed prints "position fix, corrected 2 cells" fifteen times, 42% of its
+# whole feed, about a snap that is 1% of the picture -- which is the metronome the feed
+# work exists to kill. At 4.0 the Recall run prints no fix line at all and goes silent
+# for up to 195 s while the agent searches -- which is the dead air the same work exists
+# to kill. Both readings cannot be had from one number. Which one the gate cares about
+# is a viewing question, so it stays where it was told to stay and this note is the lever.
+HAZARD_REPEAT_S: Final[float] = 25.0         # one warning per firing: shorter than the
+                                             # 75 s cycle, longer than the 9 s signature
+# Deliberately a clock, and the only one left in the feed. The signature is audible for
+# ANCIENT_WARNING_S = 9 s before each firing, so anything from 10 to 74 here prints
+# exactly one line per cycle; 25 is the middle of that and says so. Four warnings a
+# match at clock-exact 75.0 s spacing is not the metronome the contact work removed --
+# it is THE-MACHINERY.md section 3's fixed cycle being legible, which is what a player
+# has to hear six times to learn. Raise it above 75 to print fewer.
+FEED_REPEAT_COOLDOWN: Final[float] = 6.0     # the same sentence AND the same bearing, twice, is not news
+# Keyed on the sentence and its detail together, which is the fault the old cooldown
+# had: the bearing was not part of the key, so a contact ninety degrees away was
+# indistinguishable from the one already standing there.
 
 # ---- display -------------------------------------------------------------------------------------
 MAX_POINTS: Final[int] = 250_000
