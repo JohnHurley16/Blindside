@@ -975,10 +975,14 @@ READOUT_BLOCK_GAP: Final[float] = 38.0      # px between the two blocks. Close e
 # ---- display: the cold open ----------------------------------------------------------------------
 # SPECTATOR-DISPLAY.md 3 and 7.5. Twenty-one words before the clock starts, and the only place in
 # eight minutes anyone is told anything. Three of the four design proposals skipped it.
-COLD_OPEN_S: Final[float] = 6.0             # long enough to read four lines twice, short enough
-                                            # that a viewer never wonders whether it is broken
-COLD_OPEN_LINE_S: Final[float] = 0.60       # each line lands this long after the one above it, so
-                                            # the card is read in order rather than scanned
+COLD_OPEN_S: Final[float] = 6.5             # long enough to read seven lines twice, short enough
+                                            # that a viewer never wonders whether it is broken.
+                                            # Six, until the card gained the two lines that say
+                                            # which machine is which.
+COLD_OPEN_LINE_S: Final[float] = 0.44       # each line lands this long after the one above it, so
+                                            # the card is read in order rather than scanned. Seven
+                                            # lines at 0.44 are all up 1.4 s before the fade starts;
+                                            # at the old 0.60 the last one arrived as it began.
 COLD_OPEN_FADE_S: Final[float] = 1.8        # the words go and the cave comes up over this, at the
                                             # end of the six. A cut here would read as a glitch.
 COLD_OPEN_FROM_DEG: Final[float] = 90.0     # the camera starts flat and arrives at 72: the camera
@@ -998,7 +1002,7 @@ STATUS_BAR_H: Final[float] = 5.0
 READOUT_UNDERLINE_LEN: Final[float] = 96.0  # px. The same under both numbers, because it is one
                                             # mark saying "a correction landed", not a measurement
 READOUT_UNDERLINE_DROP: Final[float] = 22.0 # px below a number's centre; clear of a 34 pt descender
-COLD_OPEN_LINE_H: Final[float] = 54.0       # px between the card's lines at 34 pt. Loose: it is a
+COLD_OPEN_LINE_H: Final[float] = 68.0       # px between the card's lines at 34 pt. Loose: it is a
                                             # card, not a paragraph, and it is read in five beats.
 COLD_OPEN_LINE_IN_S: Final[float] = 0.28    # each line arrives over this -- long enough not to
                                             # read as a flash, short enough not to be a transition

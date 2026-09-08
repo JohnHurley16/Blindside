@@ -50,12 +50,20 @@ from .. import tuning as T
 from . import palette
 from .text_group import DISPLAY, Slot, TextGroup
 
-LINES: tuple[str, ...] = (
-    "no radio.",
-    "you cannot drive it.",
-    "it must bring two loads home",
-    "in eight minutes.",
-    "you can call it back once.",
+# Each line carries its own colour, because one of them has to. A verifier watching the
+# finished video said it knew what the machine was for and never learnt WHICH MACHINE WAS
+# ITS OWN -- it worked that out minutes later from the rail reading "IT IS CARRYING". So
+# the line that says so is drawn in the exact colour the machine is drawn in, and the one
+# about the other machine in the other machine's colour: the card teaches the two hues it
+# is about to rely on for eight minutes, without a legend and without naming a colour.
+LINES: tuple[tuple[str, palette.Rgb], ...] = (
+    ("no radio.", palette.PRIMARY),
+    ("you cannot drive it.", palette.PRIMARY),
+    ("the pale one is yours.", palette.BONE),
+    ("the orange one is not.", palette.EMBER),
+    ("it must bring two loads home", palette.PRIMARY),
+    ("in eight minutes.", palette.PRIMARY),
+    ("you can call it back once.", palette.PRIMARY),
 )
 
 
@@ -68,7 +76,7 @@ class ColdOpen:
         self.curtain: tuple[object, ...] = curtain
         self._was_visible: tuple[bool, ...] = ()
         self.slots: tuple[Slot, ...] = tuple(
-            group.slot(DISPLAY, line, rgb=palette.PRIMARY, alpha=0.0) for line in LINES)
+            group.slot(DISPLAY, line, rgb=hue, alpha=0.0) for line, hue in LINES)
 
         # An Image, not a Rectangle: setting any property on a Rectangle regenerates its
         # geometry and forces a synchronous repaint, and this one changes every frame for
@@ -123,10 +131,12 @@ class ColdOpen:
 
         out_from = T.COLD_OPEN_S - T.COLD_OPEN_FADE_S
         out = _ramp(elapsed, out_from, T.COLD_OPEN_S)          # 0 while up, 1 when gone
-        for index, slot in enumerate(self.slots):
+        for index, (slot, hue) in enumerate(zip(self.slots, (h for _, h in LINES))):
             arrive = _ramp(elapsed, index * T.COLD_OPEN_LINE_S,
                            index * T.COLD_OPEN_LINE_S + T.COLD_OPEN_LINE_IN_S)
-            slot.tint(palette.PRIMARY, round(arrive * (1.0 - out), 2))
+            # The line's own colour, not PRIMARY: two of them are the machines' hues and
+            # tinting everything white here is what threw that away.
+            slot.tint(hue, round(arrive * (1.0 - out), 2))
 
         settled = T.COLD_OPEN_SCRIM_HOLD + (1.0 - T.COLD_OPEN_SCRIM_HOLD) * (
             1.0 - _smooth(_ramp(elapsed, 0.0, T.COLD_OPEN_SCRIM_S)))
