@@ -55,3 +55,22 @@ items.
 **What it does not change yet.** Phase 2 stages its tutorial by run, not by depth, because
 that is controllable and the phase is testing induction, not discovery. Depth-gated
 discovery is a Phase 3+ content question.
+
+## 3. There is a surface, and you teach there — 2026-09-08
+
+> The training stuff will happen on the surface as well.
+
+**What it binds.**
+- The game has a surface: the pit-head, where the shaft comes up. It is where machines are
+  kept, prepared, taught, and sent down, and it is the only place in the game with sky. Every
+  art concept, every environment list and every plan that assumed the whole game was underground
+  is short by one place.
+- Teaching is a physical act in the world, not only a panel. The corridor test (Phase 2) is, in
+  the fiction, a training course on the surface; the cave demonstrations are the same act
+  underground. Both are the player's, and both feed the same induction.
+- The surface is safe and lit; the cave is not. That contrast is the game's structure — Tarkov's
+  stash and raid (§2) — and the art should make the descent feel like leaving somewhere.
+
+**What it does not settle.** What the surface looks like, what the teaching interface is in the
+world, and whether anything is at stake up there. Proposed, marked as proposals, in the vision
+board under `docs/art/vision/`.
