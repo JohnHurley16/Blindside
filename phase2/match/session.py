@@ -38,10 +38,17 @@ class Session:
         self.params: dict[str, dict[str, float]] = {
             pid: {k: float(v) for k, v in vals.items()} for pid, vals in (params or {}).items()
         }
-        for pid in self.enabled_predicates:
-            param = registry.predicate(pid).param
-            if param is not None and param not in self.params.get(pid, {}):
-                raise ValueError(f"{pid} is enabled and needs a value of {param}")
+        # An enabled parametric predicate the tree never tests still has to be evaluated
+        # at every stop -- it is on the panel and in the trace -- so it runs on the
+        # provisional value beside it on the block list, exactly as a demonstration does
+        # before anything is fitted. This used to refuse instead, which was harmless while
+        # every induced tree carried a stray value for every predicate; once the induction
+        # stopped writing values it never fitted, a rule that happens not to need "lost"
+        # -- three demonstrations where the machine never got lost -- refused to replay.
+        # A human's first three runs can easily be exactly that.
+        for pid, vals in registry.provisional_params(self.enabled_predicates).items():
+            for param, value in vals.items():
+                self.params.setdefault(pid, {}).setdefault(param, float(value))
         self.rig: SensorRig = SensorRig(world.seed, drift=drift)
         self.belief: Belief = Belief()
         self.tick: int = 0
