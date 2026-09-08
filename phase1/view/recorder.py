@@ -73,6 +73,7 @@ class Recorder:
     def run(self) -> Path:
         import imageio.v2 as imageio
 
+        cold_frames = int(T.COLD_OPEN_S * self.fps)
         total_frames = int((T.MATCH_SECONDS + self.reveal_seconds) * self.fps)
         video_path = self.out_path.with_suffix(".video.mp4")
         # Measured, per frame, at 1600x1000: readback 56 ms, draw 12, encode 12, sim 2.
@@ -86,6 +87,20 @@ class Recorder:
         started = time.perf_counter()
         last_report = started
         try:
+            # The cold open is prepended rather than run under the match, because the gate
+            # viewer watched a recording: an explanation that only exists in the live
+            # window is an explanation she never got. Six seconds at 20 fps, the sim held
+            # at t = 0, the camera descending from 90 degrees to 72 underneath it.
+            for frame_index in range(cold_frames):
+                self.view.present_cold_open(frame_index / self.fps)
+                self.view.draw()
+                self._pull_audio()
+                writer.append_data(self._frame())
+            # Close it explicitly. The loop's last index is one frame short of
+            # COLD_OPEN_S, so without this the card never reaches its own end: the
+            # curtain stays down and the whole eight minutes record with the inset, the
+            # minimap, the panel grounds and the timeline hidden.
+            self.view.present_cold_open(T.COLD_OPEN_S)
             for frame_index in range(total_frames):
                 t_target = frame_index / self.fps
                 if t_target <= T.MATCH_SECONDS:

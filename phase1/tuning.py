@@ -835,3 +835,68 @@ AUDIO_PANEL_AMP: Final[float] = 0.042
 AUDIO_MAX_VOICES: Final[int] = 48              # was 24. A crash is fourteen voices and a wind-up
                                                # runs under it; measured concurrency peaked at 5
                                                # before and there is no cost to the headroom.
+
+# ---- display: type, and the three levels of weight ------------------------------------------
+# SPECTATOR-DISPLAY.md 6.2. Four sizes, nothing below nine points. The gate tester watched a
+# compressed H.264 video, where 7.5 pt grey is not small -- it is absent. Four is a performance
+# rule as well as a design one: 6.10 groups every chrome string into one Text visual per size,
+# so a fifth size would be a fifth visual.
+TYPE_DISPLAY_PT: Final[float] = 34.0        # the two error numbers, the match clock, the cold open
+TYPE_HEAD_PT: Final[float] = 15.0           # titles, the action line, the now-line
+TYPE_BODY_PT: Final[float] = 11.0           # chamber names, labels, the timeline clock
+TYPE_MICRO_PT: Final[float] = 9.0           # units only -- "cells", "to go". The floor.
+AMBIENT_MAX_LUMINANCE: Final[float] = 0.35  # 6.3's hierarchy rule as a number palette.py asserts
+                                            # at import: an ambient value's relative luminance
+                                            # never exceeds this fraction of the brightest
+                                            # primary's, which is what stops a lit cave competing
+                                            # with the bone machine standing on it
+
+# ---- display: the readout row ------------------------------------------------------------------
+# SPECTATOR-DISPLAY.md 3 and 6.9.1: two numbers of the same size under near-identical labels,
+# the whole game in four words and two integers with no vocabulary to learn.
+READOUT_RAMP_CELLS: Final[tuple[float, float, float]] = (3.0, 12.0, 30.0)
+                                            # where IT IS WRONG BY steps tertiary -> primary ->
+                                            # lie -> kill. Deliberately TETHER_MIN/HOT/ALARM: the
+                                            # rope and the number are one fact drawn twice and
+                                            # they may not disagree about how bad it is.
+READOUT_FIX_HOLD_S: Final[float] = 2.5      # a fix underlines BOTH numbers for this long. At 1:44
+                                            # both fall and the rule is taught; at 2:21.4 the same
+                                            # mark fires and the left one leaps to 34.
+READOUT_LABEL_GAP: Final[float] = 34.0      # px from a label down to its own number
+READOUT_UNIT_GAP: Final[float] = 30.0       # px from a number down to its unit
+READOUT_BLOCK_GAP: Final[float] = 38.0      # px between the two blocks. Close enough to read as a
+                                            # pair; the eye must land on the numbers, not the gap.
+
+# ---- display: the cold open ----------------------------------------------------------------------
+# SPECTATOR-DISPLAY.md 3 and 7.5. Twenty-one words before the clock starts, and the only place in
+# eight minutes anyone is told anything. Three of the four design proposals skipped it.
+COLD_OPEN_S: Final[float] = 6.0             # long enough to read four lines twice, short enough
+                                            # that a viewer never wonders whether it is broken
+COLD_OPEN_LINE_S: Final[float] = 0.60       # each line lands this long after the one above it, so
+                                            # the card is read in order rather than scanned
+COLD_OPEN_FADE_S: Final[float] = 1.8        # the words go and the cave comes up over this, at the
+                                            # end of the six. A cut here would read as a glitch.
+COLD_OPEN_FROM_DEG: Final[float] = 90.0     # the camera starts flat and arrives at 72: the camera
+                                            # arriving is what makes a plan resolve into a place
+
+# ---- display: the rail's rows ----------------------------------------------------------------
+# SPECTATOR-DISPLAY.md 3.5. The old panel put a 10.5 pt value at row_y + 14 with the next
+# 7.5 pt label at row_y + 30, so every value struck through the label under it -- visible in
+# every render of the display the gate failed on. Taller rows and bigger type, both.
+STATUS_ROW_H: Final[float] = 44.0           # an 11 pt label and a 15 pt value, clear of each other
+STATUS_VALUE_DROP: Final[float] = 21.0      # px from a row's label to its own value
+STATUS_BAR_ROW_EXTRA: Final[float] = 22.0   # a row with a bar is taller, so the bar never lands
+                                            # on the next row's label
+STATUS_BAR_H: Final[float] = 5.0
+
+# ---- display: the readout's one mark, and the card's ---------------------------------------------
+READOUT_UNDERLINE_LEN: Final[float] = 96.0  # px. The same under both numbers, because it is one
+                                            # mark saying "a correction landed", not a measurement
+READOUT_UNDERLINE_DROP: Final[float] = 22.0 # px below a number's centre; clear of a 34 pt descender
+COLD_OPEN_LINE_H: Final[float] = 54.0       # px between the card's lines at 34 pt. Loose: it is a
+                                            # card, not a paragraph, and it is read in five beats.
+COLD_OPEN_LINE_IN_S: Final[float] = 0.28    # each line arrives over this -- long enough not to
+                                            # read as a flash, short enough not to be a transition
+COLD_OPEN_SCRIM_HOLD: Final[float] = 0.55   # what the scrim settles to under the words, so the
+                                            # cave comes up *beneath* them rather than after them
+COLD_OPEN_SCRIM_S: Final[float] = 2.0       # how long it takes to get there from solid black

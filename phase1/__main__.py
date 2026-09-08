@@ -24,7 +24,10 @@ def main() -> None:
     parser.add_argument("--headless", action="store_true",
                         help="run the match with no window and print the timeline")
     parser.add_argument("--snap", type=str, default=None,
-                        help="comma-separated sim times; render PNGs with no window")
+                        help="comma-separated sim times; render PNGs with no window. "
+                             "A NEGATIVE time is cold-open time, which the beat sheet "
+                             "writes as -0:06 to 0:00: --snap=-3 is three seconds into "
+                             "the card, before the match clock has started")
     parser.add_argument("--snap-dir", type=str, default=".",
                         help="where --snap writes its PNGs")
     parser.add_argument("--no-audio", action="store_true")
@@ -74,8 +77,8 @@ def main() -> None:
         from .view.recorder import Recorder
         recorder = Recorder(match, args.record, fps=args.fps, size=size,
                             with_audio=not args.no_audio, recall_at=args.recall)
-        print(f"recording {T.MATCH_SECONDS:.0f}s of match plus the reveal "
-              f"at {args.fps} fps, {args.width}x{args.height}...")
+        print(f"recording {T.COLD_OPEN_S:.0f}s of cold open, {T.MATCH_SECONDS:.0f}s of "
+              f"match and the reveal at {args.fps} fps, {args.width}x{args.height}...")
         path = recorder.run()
         print(f"wrote {path}")
         return
@@ -145,7 +148,19 @@ def _snap(match: object, args: argparse.Namespace, size: tuple[int, int]) -> Non
     out = Path(args.snap_dir)
     out.mkdir(parents=True, exist_ok=True)
     view = View(match, audio=None, show=False, size=size)   # type: ignore[arg-type]
-    for at in sorted(float(x) for x in args.snap.split(",")):
+    # Match times ascending -- `advance_to` only moves forward -- and the cold open after
+    # all of them, because driving the card mutes every other string on the screen and it
+    # stays muted until the six seconds are up, which is never inside a snapshot.
+    times = sorted((float(x) for x in args.snap.split(",")), key=lambda x: (x < 0.0, x))
+    for at in times:
+        if at < 0.0:
+            # Cold-open time, which section 5's beat sheet writes as -0:06 to 0:00. The
+            # card runs before the match clock, so it has no sim time to be asked for.
+            view.present_cold_open(-at)
+            path = out / f"snap_open_{int(-at):03d}.png"
+            view.snapshot(str(path))
+            print(f"wrote {path}  cold open at -0:{int(-at):02d}")
+            continue
         if args.recall is not None and at >= args.recall:
             if not match.recall_used:                        # type: ignore[attr-defined]
                 match.recall()                               # type: ignore[attr-defined]

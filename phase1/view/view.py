@@ -12,10 +12,18 @@ on the truth side: the filled cave, the eleven named rooms, the drawn rival, the
 countdown clock, the tether with a number on it. The belief scene has no names in it by
 construction -- the machine does not know what room it is in.
 
+Down the right-hand edge, two numbers of the same size under near-identical labels --
+`IT IS WRONG BY 34` and `IT THINKS IT IS WRONG BY 1` -- which is the whole game in four
+words and two integers with no vocabulary to learn (`readout.py`). Before any of it,
+twenty-one words for six seconds (`cold_open.py`). And every string on the screen lives
+in four `Text` visuals rather than twenty-two (`text_group.py`), which is what pays for
+the rest: it took the median frame from 29.3 ms to 20.0 at 5:41.
+
 What this class may see: `MatchView`, which yields Beliefs, Policies and a frozen
 `StageFrame`. There is no `Sim` here and no `World` reachable from anything it holds.
 
-Camera: the director drives it. Slice 1 binds no mouse. R sends Recall.
+Camera: the director drives it, except for six seconds at the start when the cold open
+brings it down from 90 degrees to 72. Slice 1 binds no mouse. R sends Recall.
 """
 from __future__ import annotations
 
@@ -32,28 +40,41 @@ from ..match.match_view import MatchView
 from ..match.stage_frame import StageFrame, StageMachine
 from ..sound_character import SoundCharacter
 from . import palette
+from .cold_open import ColdOpen
 from .director import Director
 from .event_feed import EventFeed
 from .minimap import Minimap
+from .readout import Readout
 from .shapes import ring, to_segments, wedge
 from .status_panel import StatusPanel
+from .text_group import BODY, HEAD, TextGroup
 from .timeline import TimelineView
 from .truth_panel import TruthPanel
 
 FIX_ANIM_SECONDS: float = 0.7
+# Draw order among the canvas overlay's children. The three ViewBoxes and the panel
+# grounds sit at 0; the cold open's scrim goes over all of them, and the chrome text goes
+# over the scrim, because the card's own five lines live in the same four `Text` visuals
+# as the rail's and cannot be hidden by hiding a visual.
+SCRIM_ORDER: int = 90
+CHROME_ORDER: int = 95
 
 FRIENDLY: dict[str, str] = {"DA": "deposit A", "DB": "deposit B",
                             "S": "the shaft", "HOME": "the shaft"}
-STATUS_LABELS: tuple[str, ...] = ("CARGO", "CONDITION",
-                                  "IT THINKS IT KNOWS WHERE IT IS TO",
-                                  "LAST POSITION FIX", "MAP IT HAS BUILT",
-                                  "YOUR ONE COMMAND")
+# Six rows became four. `IT THINKS IT KNOWS WHERE IT IS TO  within 8 cells` is the
+# readout's right-hand number said again in more words, at a third of the size, and one
+# of them had to go; `MAP IT HAS BUILT  3900 points, 12 pings` is an engineer's row -- a
+# stranger cannot use a point count for anything, and 3.5 is blunt that a non-engineer
+# reads that sort of line as noise.
+STATUS_LABELS: tuple[str, ...] = ("IT IS CARRYING", "CONDITION",
+                                  "LAST POSITION FIX", "YOUR ONE COMMAND")
 CONDITION_ROW: int = 1
 # THE-MACHINERY.md 4.7's second mark: the machine's own damage as a number and a bar.
 # Second in the rail rather than last, because it is the answer to the note the gate
 # failed on and a row below the fold is not an answer. It is what it is CARRYING and
 # then what STATE it is in, which is the order a person asks those two questions in.
-MAIN_TITLE: str = "THE CAVE     what is actually there"
+MAIN_TITLE: str = "THE CAVE"
+MAIN_SUBTITLE: str = "what is actually there"
 INSET_TITLE: str = "ITS MAP     what it thinks is there"
 
 
@@ -82,7 +103,7 @@ class View:
 
         # The belief scene is exactly what it was, on exactly the camera it had. A
         # layout change and nothing else -- the slice-3 rebuild is a separate look.
-        self.view = scene.ViewBox(parent=overlay, bgcolor=palette.BACKGROUND)
+        self.view = scene.ViewBox(parent=overlay, bgcolor=palette.VOID)
         belief_camera = scene.TurntableCamera(elevation=58, azimuth=0, fov=0, up="z")
         belief_camera.center = (100, 60, 0)
         belief_camera.scale_factor = 150
@@ -102,7 +123,6 @@ class View:
         self._chrome(overlay, w, h)
 
         self.feed: EventFeed = EventFeed(self.b)
-        self._header_cache: str = ""
         self._prev_xy: tuple[np.ndarray, np.ndarray] | None = None
         self._anim_from: tuple[np.ndarray, np.ndarray] | None = None
         self._anim_start: float = -1e9
@@ -134,18 +154,18 @@ class View:
         """Unchanged from the display the gate was run on."""
         self.cloud = visuals.Markers(parent=s)
         self.cloud.set_gl_state("translucent", depth_test=False)
-        self.trail = visuals.Line(parent=s, color=palette.TRAIL, width=1)
-        self.beacon_chain = visuals.Line(parent=s, color=palette.BEACON_CHAIN, width=1)
+        self.trail = visuals.Line(parent=s, color=(*palette.COOL_DIM, 0.30), width=1)
+        self.beacon_chain = visuals.Line(parent=s, color=(*palette.COOL_DIM, 0.30), width=1)
         self.beacons = visuals.Markers(parent=s)
         self.places = visuals.Markers(parent=s)
-        self.ellipse = visuals.Line(parent=s, color=palette.ELLIPSE, width=1.5)
+        self.ellipse = visuals.Line(parent=s, color=(*palette.GHOST, 0.55), width=1.5)
         self.agent = visuals.Markers(parent=s)
-        self.heading = visuals.Line(parent=s, color=palette.AGENT, width=2)
+        self.heading = visuals.Line(parent=s, color=(*palette.GHOST, 1.0), width=2)
         self.contacts = visuals.Line(parent=s, connect="segments", width=1.5)
         self.signature = visuals.Line(parent=s, connect="segments", width=2)
         self.fronts = visuals.Line(parent=s, connect="segments", width=1.2)
         self.fix_flash = visuals.Line(parent=s, connect="segments", width=2)
-        self.intent = visuals.Line(parent=s, color=palette.INTENT, width=1.5)
+        self.intent = visuals.Line(parent=s, color=(*palette.GHOST, 0.40), width=1.5)
         self.intent_marker = visuals.Markers(parent=s)
         self.believed = visuals.Line(parent=s, connect="segments", width=1.5)
         for v in (self.trail, self.ellipse, self.heading, self.contacts, self.signature,
@@ -155,36 +175,51 @@ class View:
             v.set_gl_state("translucent", depth_test=False)
 
     def _chrome(self, overlay: object, w: float, h: float) -> None:
-        """Words and grounds. Every `Rectangle` here is touched only in `_layout()`:
-        setting any property on one regenerates its geometry and forces a synchronous
-        repaint, and a *static* one costs nothing."""
+        """Words and grounds -- and every word of it in four `Text` visuals.
+
+        Every `Rectangle` here is touched only in `_layout()`: setting any property on one
+        regenerates its geometry and forces a synchronous repaint, and a *static* one costs
+        nothing. The strings are a different trap and a bigger one. Twenty-two separate
+        `Text` visuals cost about half a millisecond each a frame *just to exist*, whether
+        or not anything ever assigns to them, and that was fifteen of a twenty-seven
+        millisecond frame. `text_group.py` holds all of them in one visual per type size;
+        the four sizes of 6.2 are what makes four enough.
+        """
         self.panel_header = self._panel(overlay, w / 2, T.HEADER_H / 2, w, T.HEADER_H)
         self.panel_rail = self._panel(overlay, w - T.RAIL_W / 2, h / 2, T.RAIL_W, h)
         self.panel_timeline = self._panel(overlay, w / 2, h - T.TIMELINE_H / 2,
                                           w, T.TIMELINE_H)
+        # One px separators, and the only thing on the screen drawn in `rule`.
+        self.rules = visuals.Line(parent=overlay, connect="segments", width=1,
+                                  color=(*palette.RULE, 1.0))
+        self.rules.set_gl_state("translucent", depth_test=False)
 
-        self.title = visuals.Text("BLINDSIDE", parent=overlay, pos=(18, T.HEADER_H / 2),
-                                  anchor_x="left", anchor_y="center", color=palette.TITLE,
-                                  font_size=15, bold=True)
-        self.subtitle = visuals.Text(
-            "nobody is driving it", parent=overlay, pos=(196, T.HEADER_H / 2),
-            anchor_x="left", anchor_y="center", color=palette.DIM, font_size=11)
-        self.header_right = visuals.Text("", parent=overlay, pos=(w - 18, T.HEADER_H / 2),
-                                         anchor_x="right", anchor_y="center",
-                                         color=palette.BANNER, font_size=11, bold=True)
-        self.main_title = visuals.Text(MAIN_TITLE, parent=overlay, anchor_x="left",
-                                       anchor_y="center", color=palette.HUD,
-                                       font_size=11, bold=True, pos=(T.MARGIN, 0))
-        self.compass = visuals.Text("N", parent=overlay, anchor_x="right",
-                                    anchor_y="center", color=palette.DIM,
-                                    font_size=11, pos=(0, 0))
-        self.inset_title = visuals.Text(INSET_TITLE, parent=overlay, anchor_x="left",
-                                        anchor_y="bottom", color=palette.DIM,
-                                        font_size=9, pos=(0, 0))
-        self.status = StatusPanel(overlay, 0.0, 0.0, T.RAIL_W - 2 * T.MARGIN,
-                                  STATUS_LABELS, bar_rows=(CONDITION_ROW,))
-        self.timeline = TimelineView(overlay, T.MARGIN, h - T.TIMELINE_H + 6,
-                                     w - 2 * T.MARGIN, T.TIMELINE_H - 12)
+        self.text: TextGroup = TextGroup(overlay, order=CHROME_ORDER)
+        self.title = self.text.slot(HEAD, "BLINDSIDE", rgb=palette.PRIMARY)
+        self.subtitle = self.text.slot(BODY, "nobody is driving it", rgb=palette.SECONDARY)
+        self.header_right = self.text.slot(HEAD, " ", rgb=palette.CARGO)
+        self.main_title = self.text.slot(HEAD, MAIN_TITLE, rgb=palette.PRIMARY)
+        self.main_subtitle = self.text.slot(BODY, MAIN_SUBTITLE, rgb=palette.SECONDARY)
+        self.compass = self.text.slot(BODY, "N", rgb=palette.SECONDARY)
+        self.inset_title = self.text.slot(BODY, INSET_TITLE, rgb=palette.SECONDARY)
+
+        # Top of the rail, immediately right of the inset: the small picture of the
+        # machine's belief and the small claim that belief makes are one saccade apart.
+        self.readout: Readout = Readout(self.text, overlay, order=CHROME_ORDER)
+        self.status: StatusPanel = StatusPanel(self.text, STATUS_LABELS,
+                                               bar_rows=(CONDITION_ROW,), parent=overlay)
+        self.timeline: TimelineView = TimelineView(self.text, overlay)
+        # Everything on the screen that is not a string, for the cold open to put away.
+        # The two overlay scenes are on it and the main view is not: the cave is what the
+        # card's scrim lifts off, and the belief inset at 0:00 holds three rings and a
+        # chevron, which is not a picture anyone can learn anything from.
+        self.cold: ColdOpen = ColdOpen(
+            self.text, overlay, order=SCRIM_ORDER,
+            curtain=(self.panel_header, self.panel_rail, self.panel_timeline, self.rules,
+                     self.readout.underline, self.status.bars, self.timeline.track,
+                     self.timeline.window, self.timeline.marks, self.timeline.playhead,
+                     self.view, self.minimap_view))
+        self.text.build()
 
     # ---- layout ------------------------------------------------------------------------
     def _layout(self, w: float, h: float) -> None:
@@ -218,11 +253,7 @@ class View:
         _assert_overlays_clear(main_w, main_h,
                                (inset_x - main_x, inset_y - main_y, inset_w, inset_h),
                                (mini_x - main_x, mini_y - main_y, mini_w, mini_h))
-
-        # The director frames in cells across the rectangle, so it needs to know how
-        # much of that width fits in the height: the aspect, undone by the tilt.
-        elevation = math.radians(self.truth_view.camera.elevation)
-        self.director.vertical_fraction = (main_h / main_w) / max(math.sin(elevation), 1e-3)
+        self._retilt()
 
         self.panel_header.center = (w / 2, T.HEADER_H / 2)
         self.panel_header.width = w
@@ -230,13 +261,40 @@ class View:
         self.panel_rail.height = h
         self.panel_timeline.center = (w / 2, h - T.TIMELINE_H / 2)
         self.panel_timeline.width = w
-        self.header_right.pos = (w - T.RAIL_W - 2 * T.MARGIN, T.HEADER_H / 2)
-        self.subtitle.visible = w > 760
-        self.main_title.pos = (main_x, T.HEADER_H + T.TITLE_H / 2)
-        self.compass.pos = (main_x + main_w, T.HEADER_H + T.TITLE_H / 2)
-        self.inset_title.pos = (inset_x, inset_y - 4)
-        self.status.move(w - T.RAIL_W + T.MARGIN, T.HEADER_H + T.MARGIN + 10)
-        self.timeline.move(T.MARGIN, h - T.TIMELINE_H + 20, max(w - 2 * T.MARGIN, 80))
+
+        # Everything in the group is anchored left, so anything that used to be right- or
+        # centre-aligned is given a left x here. That is what collapses the grouping key
+        # from (size, weight, anchor) to (size), and therefore twenty-two visuals to four.
+        rail_x = w - T.RAIL_W + T.MARGIN
+        self.title.at(18.0, T.HEADER_H / 2)
+        # Fractions, not fixed offsets: point-sized type scales with the display's DPI
+        # and so does the canvas, so a gap stated as a fraction of the width survives
+        # both, while `title_x + 190` is a guess that clips on somebody else's monitor.
+        self.subtitle.at(w * 0.135, T.HEADER_H / 2)
+        self.subtitle.set("nobody is driving it" if w > 760 else " ")
+        self.header_right.at(w - T.RAIL_W - 2 * T.MARGIN - 330.0, T.HEADER_H / 2)
+        self.main_title.at(main_x, T.HEADER_H + T.TITLE_H / 2)
+        self.main_subtitle.at(main_x + main_w * 0.16, T.HEADER_H + T.TITLE_H / 2)
+        self.compass.at(main_x + main_w - 14.0, T.HEADER_H + T.TITLE_H / 2)
+        self.inset_title.at(inset_x, inset_y - 9.0)
+
+        rail_top = T.HEADER_H + T.MARGIN + 8.0
+        self.readout.move(rail_x, rail_top)
+        rule_y = rail_top + self.readout.height + T.MARGIN
+        self.status.move(rail_x, rule_y + T.MARGIN + 6.0)
+        self.rules.set_data(np.array([[rail_x, rule_y],
+                                      [w - T.MARGIN, rule_y]], dtype=np.float32))
+        self.timeline.move(T.MARGIN, h - T.TIMELINE_H + 18.0, max(w - 2 * T.MARGIN, 80.0))
+        self.cold.move(w, h, self._main)
+
+    def _retilt(self) -> None:
+        """The director frames in cells across the rectangle, so it needs to know how much
+        of that width fits in the height: the aspect, undone by the tilt. Re-derived rather
+        than cached because the cold open moves the camera from 90 degrees to 72 while the
+        minimap's footprint box is already on screen."""
+        _, _, main_w, main_h = self._main
+        elevation = math.radians(self.truth_view.camera.elevation)
+        self.director.vertical_fraction = (main_h / main_w) / max(math.sin(elevation), 1e-3)
 
     def on_resize(self, ev: object) -> None:
         w, h = self.canvas.size
@@ -246,7 +304,7 @@ class View:
     @staticmethod
     def _panel(parent: object, cx: float, cy: float, w: float, h: float) -> object:
         return visuals.Rectangle(center=(cx, cy), width=w, height=h,
-                                 color=palette.PANEL, border_color=palette.PANEL_EDGE,
+                                 color=(*palette.PANEL, 0.94), border_color=(*palette.RULE, 0.9),
                                  border_width=1, parent=parent)
 
     # ---- input ------------------------------------------------------------------------
@@ -269,10 +327,31 @@ class View:
     def advance(self) -> None:
         if self._wall_clock_zero is None:
             self._wall_clock_zero = time.perf_counter()
-        self.match.advance_to(time.perf_counter() - self._wall_clock_zero, max_steps=8)
+        elapsed = time.perf_counter() - self._wall_clock_zero
+        self.present_cold_open(elapsed)
+        # Presentation time runs COLD_OPEN_S ahead of match time for the whole match: the
+        # card holds the sim at t = 0 rather than running under it, because a stranger
+        # reading five lines has not started watching yet.
+        self.match.advance_to(max(0.0, elapsed - T.COLD_OPEN_S), max_steps=8)
         self.draw()
         if self.live:
             self.canvas.update()
+
+    def present_cold_open(self, elapsed: float) -> bool:
+        """The card, and the camera arriving under it. Returns whether it is still up.
+
+        A branch against the existing wall clock, not a new timer: every attempt in this
+        project to own a vispy timer outside `__main__` produced one that fired once or
+        never. The recorder owns its own clock and calls this directly, because the gate
+        viewer watched a recording and an explanation that only exists live is one she
+        never got.
+        """
+        if self.cold.done:
+            return False
+        running = self.cold.update(elapsed)
+        self.truth_view.camera.elevation = self.cold.elevation(elapsed)
+        self._retilt()
+        return running
 
     def draw(self) -> None:
         b, t = self.b, self.match.t
@@ -289,6 +368,10 @@ class View:
         self._draw_truth(frame, b)
         self._draw_panels(frame, b, t)
         self.timeline.update(self.feed, t)
+        # One upload per group per frame, and only for the groups something changed in.
+        self.text.flush()
+        if self.cold.showing:
+            self.cold.hold()
         if self.audio is not None:
             self.audio.update(b, t, self.view.camera.azimuth)   # type: ignore[attr-defined]
         if self.match.over and not self.revealed:
@@ -346,17 +429,21 @@ class View:
 
         q = b.cloud.confidence[:n]
         walked = b.cloud.source[:n] == 1
-        rgb = palette.POINT_LOW[None, :] + (palette.POINT_HIGH - palette.POINT_LOW)[None, :] * q[:, None]
-        alpha = 0.32 + 0.68 * q
-        size = 2.6 + 5.2 * q
+        # Two classes and no third. The colour lerp, the alpha ramp, the size ramp and
+        # three source overrides used to be four channels doing one job, and that is most
+        # of why the map read as noise: confidence is alpha and size, and colour says only
+        # whether the machine pinged this ground or merely walked over it.
+        rgb = np.repeat(palette.POINT_SENSED[None, :], n, axis=0)
+        alpha = 0.35 + 0.50 * q
+        size = 2.4 + 3.0 * q
         rgb[walked] = palette.POINT_WALKED
-        alpha[walked] = 0.22
-        size[walked] = 1.7
+        alpha[walked] = 0.20
+        size[walked] = 1.6
         # Lidar is precise and dense; drawn at sonar size it turns into a blob. Small
         # points let a lidar map read as a wall line, and the ghosting still shows.
         lidar = b.cloud.source[:n] == 3
-        size[lidar] = 2.2
-        alpha[lidar] = 0.55 + 0.35 * q[lidar]
+        size[lidar] = 1.8
+        alpha[lidar] = 0.35 + 0.50 * q[lidar]
         self.cloud.set_data(np.column_stack([xs, ys, b.cloud.z[:n]]),
                             face_color=np.column_stack([rgb, alpha]),
                             edge_width=0, size=size, symbol="disc")
@@ -370,7 +457,7 @@ class View:
         if b.beacon_order:
             pts = [b.beacons[bid] for bid in b.beacon_order]
             self.beacons.set_data(np.array([[k.x, k.y, 0.12] for k in pts]),
-                                  face_color=palette.BEACON, size=8,
+                                  face_color=(*palette.GHOST, 0.95), size=8,
                                   symbol="diamond", edge_width=0)
             self.beacons.visible = True
             if len(pts) > 1:
@@ -387,14 +474,16 @@ class View:
             if place is None:
                 continue
             marks.append([place[0], place[1], 0.12])
-            colours.append(palette.SHAFT if name == "HOME" else palette.DEPOSIT)
+            # Prior intel, not something it sensed: the objective is CARGO green wherever
+            # it appears, in either picture, and the shaft is not its own colour.
+            colours.append((*palette.CARGO, 0.85))
         if marks:
             self.places.set_data(np.array(marks), face_color=np.array(colours),
-                                 size=15, symbol="star", edge_width=0)
+                                 size=14, symbol="ring", edge_width=0)
             self.places.visible = True
 
     def _draw_agent(self, b: Belief) -> None:
-        self.agent.set_data(np.array([[b.x, b.y, 0.2]]), face_color=palette.AGENT,
+        self.agent.set_data(np.array([[b.x, b.y, 0.2]]), face_color=(*palette.GHOST, 1.0),
                             size=13, symbol="triangle_up", edge_width=0)
         self.heading.set_data(np.array([[b.x, b.y, 0.2],
                                         [b.x + 4 * math.cos(b.theta),
@@ -416,7 +505,7 @@ class View:
         wp = policy.route[policy.i]
         self.intent.set_data(np.array([[b.x, b.y, 0.18], [wp.x, wp.y, 0.18]]))
         self.intent_marker.set_data(np.array([[wp.x, wp.y, 0.18]]),
-                                    face_color=palette.INTENT, size=14,
+                                    face_color=(*palette.GHOST, 0.40), size=14,
                                     symbol="ring", edge_width=0)
         self.intent.visible = True
         self.intent_marker.visible = True
@@ -430,8 +519,12 @@ class View:
         """
         segments: list[np.ndarray] = []
         colours: list[tuple[float, float, float, float]] = []
-        for tracker, colour in ((b.hazard_track, palette.BELIEVED_HAZARD),
-                                (b.rival_track, palette.BELIEVED_RIVAL)):
+        # Demoted from the brightest rings on screen to ambient, and kept: with the truth
+        # scene in the other slot, the gap between where it thinks the machinery is and
+        # where it is becomes a readable joke. Magenta is the machinery in every picture;
+        # the rival is ember in every picture; a belief about one is the same hue, hollow.
+        for tracker, colour in ((b.hazard_track, (*palette.HAZARD, 0.34)),
+                                (b.rival_track, (*palette.EMBER, 0.34))):
             guess = tracker.estimate()
             if guess is None:
                 continue
@@ -460,7 +553,7 @@ class View:
                                 + (T.BEARING_NOISE_FAR_DEG - T.BEARING_NOISE_NEAR_DEG) * (1 - c.quality))
             pts = wedge(b.x, b.y, c.bearing, half, 11 + 17 * c.quality)
             segments += pts
-            rgb = palette.CONTACT.get(c.character, (1.0, 1.0, 1.0))
+            rgb = palette.CONTACT.get(c.character, palette.GHOST)
             colours += [(*rgb, alpha * (0.25 + 0.5 * c.quality))] * len(pts)
         if segments:
             self.contacts.set_data(np.array(segments), color=np.array(colours))
@@ -474,7 +567,7 @@ class View:
             pulse = 0.5 + 0.5 * math.sin(t * (3 + 14 * strength))
             pts = wedge(b.x, b.y, sig.bearing, math.radians(8), 26 + 34 * strength, 0.16)
             self.signature.set_data(np.array(pts),
-                                    color=(*palette.SIGNATURE, 0.30 + 0.6 * pulse * strength))
+                                    color=(*palette.HAZARD, 0.30 + 0.6 * pulse * strength))
             self.signature.visible = True
         else:
             self.signature.visible = False
@@ -487,13 +580,13 @@ class View:
             if 0.0 <= age < T.WAVEFRONT_LIFE_S:
                 circle = ring(ping.x, ping.y, age * T.WAVEFRONT_SPEED, n=96, z=0.12)
                 segments += list(to_segments(circle))
-                colours += [(0.55, 0.88, 1.0, 0.55 * (1 - age / T.WAVEFRONT_LIFE_S))] * (2 * 96 - 2)
+                colours += [(*palette.GHOST, 0.55 * (1 - age / T.WAVEFRONT_LIFE_S))] * (2 * 96 - 2)
         for t_scan in b.own_scans[-3:]:
             age = t - t_scan
             if 0.0 <= age < 0.45:
                 sweep = ring(b.x, b.y, T.LIDAR_RANGE, n=96, z=0.12)
                 segments += list(to_segments(sweep))
-                colours += [(0.55, 0.88, 1.0, 0.35 * (1 - age / 0.45))] * (2 * 96 - 2)
+                colours += [(*palette.GHOST, 0.35 * (1 - age / 0.45))] * (2 * 96 - 2)
         arrivals = [x for x in b.heard[-40:]
                     if x.character in (SoundCharacter.PING, SoundCharacter.CRASH)]
         for sound in arrivals[-6:]:
@@ -525,10 +618,10 @@ class View:
             alpha = 1 - age / 3.0
             segments += [np.array([record.pre_x, record.pre_y, 0.2]),
                          np.array([record.post_x, record.post_y, 0.2])]
-            colours += [(*palette.FIX_FLASH, alpha)] * 2
+            colours += [(*palette.LIE, alpha)] * 2
             circle = ring(record.post_x, record.post_y, 1.5 + age * 4, n=32, z=0.2)
             segments += list(to_segments(circle))
-            colours += [(*palette.FIX_FLASH, alpha * 0.6)] * (2 * 32 - 2)
+            colours += [(*palette.LIE, alpha * 0.6)] * (2 * 32 - 2)
         if segments:
             self.fix_flash.set_data(np.array(segments), color=np.array(colours))
             self.fix_flash.visible = True
@@ -537,46 +630,55 @@ class View:
 
     # ---- the rail ---------------------------------------------------------------------------
     def _draw_panels(self, frame: StageFrame, b: Belief, t: float) -> None:
-        """The frame is passed in rather than fetched: `stage()` is not cached, and one
-        CONDITION row is not worth building a second 24,000-cell field for."""
-        since = b.ticks_since_fix * T.DT
+        """The rail: two numbers, then four rows, then the header's one line.
+
+        The frame is passed in rather than fetched: `stage()` is not cached, and one
+        CONDITION row is not worth building a second 24,000-cell field for.
+        """
+        # The whole game, in four words and two integers. `error_cells` is the truth
+        # channel's; `sigma_pos()` is the machine's own claim about itself; neither is
+        # derived from the other and that is the point of putting them at one size.
         fix = b.last_fix
+        self.readout.update(frame.error_cells, b.sigma_pos(), t,
+                            None if fix is None else fix.t)
+
+        since = b.ticks_since_fix * T.DT
         surprised = fix is not None and fix.surprise >= 2.5 and fix.jump >= 8.0
         if fix is None:
             fix_text = "none yet"
         else:
-            ago = f"{int(since) // 60}:{int(since) % 60:02d} ago"
-            fix_text = f"{ago}, moved it {fix.jump:.0f} cells"
+            fix_text = f"{int(since) // 60}:{int(since) % 60:02d} ago"
         condition, condition_rgb = _condition(frame.player)
         self.status.set((
-            f"{b.cargo} of {T.CARGO_CAPACITY}",
+            f"{b.cargo} of {T.CARGO_CAPACITY} LOADS",
             condition,
-            f"within {b.sigma_pos():.0f} cell" + ("" if round(b.sigma_pos()) == 1 else "s"),
             fix_text,
-            (f"{(b.cloud.n // 50) * 50} points, {len(b.own_scans)} sweeps" if b.sensor == "lidar"
-             else f"{(b.cloud.n // 50) * 50} points, {len(b.own_pings)} pings"),
-            "spent" if self.match.recall_used else "ready - press R",
+            "SPENT" if self.match.recall_used else "READY - PRESS R",
         ), (
-            None,
+            palette.CARGO if b.cargo else palette.PRIMARY,
             condition_rgb,
-            palette.BANNER if b.sigma_pos() > 12 else palette.TITLE,
-            palette.BANNER if surprised else palette.TITLE,
-            None,
-            palette.DIM if self.match.recall_used else palette.TREE_LIVE,
+            palette.LIE if surprised or since > 60.0 else palette.PRIMARY,
+            palette.TERTIARY if self.match.recall_used else palette.PRIMARY,
         ))
-        self.status.set_bars((max(0.0, 1.0 - frame.player.damage),), (condition_rgb,))
+        # The meter's colour is the *damage*, so an undamaged machine's full bar is drawn
+        # in tertiary. A full-width white rule across the rail for "nothing has happened
+        # yet" is the loudest mark on the screen saying the quietest thing, and 6.3 puts
+        # a meter that is not moving in the ambient layer.
+        self.status.set_bars(
+            (max(0.0, 1.0 - frame.player.damage),),
+            (condition_rgb if frame.player.damage > T.DAMAGE_TINT_FROM else palette.TERTIARY,))
 
         result = self.match.result
         if self.match.over and result is not None:
-            header = f"MATCH OVER - {result.player_outcome}, cargo {result.cargo}"
+            header, rgb = f"OVER - {result.player_outcome} - CARGO {result.cargo}", palette.PRIMARY
         elif t >= T.EXTRACT_WINDOW_OPENS:
-            header = "EXTRACTION WINDOW OPEN"
+            header, rgb = "EXTRACTION WINDOW OPEN", palette.CARGO
         else:
             left = T.EXTRACT_WINDOW_OPENS - t
-            header = f"extraction opens in {int(left) // 60}:{int(left) % 60:02d}"
-        if header != self._header_cache:
-            self._header_cache = header
-            self.header_right.text = header
+            header = f"EXTRACTION OPENS IN {int(left) // 60}:{int(left) % 60:02d}"
+            rgb = palette.CARGO
+        self.header_right.set(header)
+        self.header_right.tint(rgb)
 
     @staticmethod
     def _place_name(label: str) -> str:
@@ -603,19 +705,18 @@ class View:
         r = self.match.reveal()
         s = self.view.scene
 
+        # Warm over cool. The reveal used to draw the true walls in red over a grey map,
+        # which put a second meaning on the one colour that now means only lethal; and it
+        # drew the flooded cells as a third layer, which at this size is a dark blue haze
+        # over a dark blue map. The reveal is the true *outline* over the map the machine
+        # built, and that is one mark.
         walls = np.column_stack([r.walls, np.full(len(r.walls), -0.1)])
         wall_vis = self._over_the_cave(visuals.Markers(parent=s))
-        wall_vis.set_data(walls, face_color=palette.TRUTH_WALL, size=2.5, edge_width=0)
+        wall_vis.set_data(walls, face_color=(*palette.WARM_DIM, 0.75), size=2.5, edge_width=0)
         self.reveal_visuals.append(wall_vis)
 
-        if len(r.flooded):
-            flooded = np.column_stack([r.flooded, np.full(len(r.flooded), -0.1)])
-            flood_vis = self._over_the_cave(visuals.Markers(parent=s))
-            flood_vis.set_data(flooded, face_color=palette.TRUTH_FLOOD, size=2, edge_width=0)
-            self.reveal_visuals.append(flood_vis)
-
-        for name, colour, width in (("player", palette.TRUTH_TRAIL_PLAYER, 2),
-                                    ("rival", palette.TRUTH_TRAIL_RIVAL, 1.5)):
+        for name, colour, width in (("player", (*palette.BONE, 0.90), 2),
+                                    ("rival", (*palette.EMBER, 0.55), 1.5)):
             path = r.truth_trail.get(name)
             if path:
                 self.reveal_visuals.append(self._over_the_cave(visuals.Line(
@@ -625,22 +726,22 @@ class View:
         ax, ay, ar = r.ancient
         self.reveal_visuals.append(self._over_the_cave(
             visuals.Line(parent=s, pos=ring(ax, ay, ar, z=0.3),
-                         color=(*palette.SIGNATURE, 0.9), width=2)))
+                         color=(*palette.HAZARD, 0.9), width=2)))
         ends = np.array([[x, y, 0.35] for (x, y, _, _) in r.agents.values()])
         end_vis = self._over_the_cave(visuals.Markers(parent=s))
-        end_vis.set_data(ends, face_color=palette.TRUTH_TRAIL_PLAYER, size=12, symbol="x")
+        end_vis.set_data(ends, face_color=(*palette.WARM_DIM, 0.95), size=12, symbol="x")
         self.reveal_visuals.append(end_vis)
 
         own = np.array([[x, y, 0.35] for (x, y, owner) in r.beacons.values() if owner == "player"])
         if len(own):
             beacon_vis = self._over_the_cave(visuals.Markers(parent=s))
-            beacon_vis.set_data(own, face_color=palette.TRUTH_BEACON, size=7, symbol="diamond")
+            beacon_vis.set_data(own, face_color=(*palette.WARM_DIM, 0.90), size=7, symbol="diamond")
             self.reveal_visuals.append(beacon_vis)
 
         for dx, dy in r.deposits.values():
             self.reveal_visuals.append(self._over_the_cave(
                 visuals.Line(parent=s, pos=ring(dx, dy, 3, n=24, z=0.3),
-                             color=palette.TRUTH_DEPOSIT, width=2)))
+                             color=(*palette.CARGO, 0.85), width=2)))
 
     # ---- offscreen -----------------------------------------------------------------------------
     def snapshot(self, path: str) -> None:
@@ -670,10 +771,10 @@ def _condition(subject: StageMachine) -> tuple[str, tuple[float, float, float]]:
         return "wrecked", palette.KILL
     hull = int(round((1.0 - subject.damage) * 100.0))
     if subject.damage < T.DAMAGE_HURT_FROM:
-        return "unhurt", palette.TITLE
+        return "unhurt", palette.PRIMARY
     if subject.damage < T.DAMAGE_LIMPING_FROM:
-        return f"hurt {hull}% - seeing less far", palette.BANNER
-    return f"limping, {hull}%", palette.KILL
+        return f"hurt {hull}% - seeing less far", palette.LIE
+    return f"limping, {hull}%", palette.HURT
 
 
 # ---- framing ------------------------------------------------------------------------------------

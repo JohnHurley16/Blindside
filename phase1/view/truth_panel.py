@@ -19,6 +19,12 @@ turning (THE-MACHINERY.md 4.7). Nothing about the cycle's timing moved; the draw
 Every overlay is `translucent, depth_test=False` and ordered after the mesh, so the
 subject is never lost behind rock; the tether and the chamber names are additionally
 lifted above the wall height, which is the same result and is stable under orbit.
+
+The three `Text` visuals here are the only strings on the screen that are **not** in
+`text_group.py`'s four, and they cannot be: they are positioned in scene coordinates
+inside a camera's ViewBox rather than in canvas pixels. They take their sizes from the
+same four-value scale, so the type discipline of 6.2 holds across the whole screen even
+though the grouping cannot.
 """
 from __future__ import annotations
 
@@ -63,7 +69,7 @@ class TruthPanel:
         self.names = visuals.Text(
             [name for name, _, _ in CHAMBER_LABELS],
             pos=np.array([[x, y, LABEL_Z] for _, x, y in CHAMBER_LABELS]),
-            parent=parent, color=(*palette.WARM_DIM, 0.85), font_size=11,
+            parent=parent, color=(*palette.WARM_DIM, 0.85), font_size=T.TYPE_BODY_PT,
             anchor_x="center", anchor_y="center")
 
         self.deposits = visuals.Line(parent=parent, connect="segments", width=1.5,
@@ -73,10 +79,10 @@ class TruthPanel:
         self.machines = visuals.Line(parent=parent, connect="segments", width=2.0)
         self.tether = visuals.Line(parent=parent, connect="segments", width=2.0)
         self.tether_label = visuals.Text("", parent=parent, pos=(0.0, 0.0, T.TETHER_Z_CELLS),
-                                         color=(*palette.LIE, 0.95), font_size=15,
+                                         color=(*palette.LIE, 0.95), font_size=T.TYPE_HEAD_PT,
                                          bold=True, anchor_x="center", anchor_y="bottom")
         self.hazard_label = visuals.Text("", parent=parent, pos=(0.0, 0.0, COUNTDOWN_Z),
-                                         color=(*palette.HAZARD, 0.95), font_size=11,
+                                         color=(*palette.HAZARD, 0.95), font_size=T.TYPE_BODY_PT,
                                          bold=True, anchor_x="center", anchor_y="center")
 
         overlays = (self.names, self.deposits, self.comet_player, self.comet_rival,
@@ -266,8 +272,16 @@ class TruthPanel:
             # the believed pose is downscreen -- which at CLOSE framing is most of the
             # match.
             back = math.atan2(end_y - py, end_x - px)
-            self.tether_label.pos = (end_x + math.sin(back) * 2.6,
-                                     end_y - math.cos(back) * 2.6, z + 0.8)
+            # Which side of the rope: whichever is further from the minimap. The label
+            # sits in world space and the minimap is a fixed opaque rectangle in the
+            # lower left of the frame, so at the spoof -- when the arrow leaves through
+            # that very corner -- "-> 34 cells" was drawn under it and read as "lls",
+            # while the rail said 34. tuning.py's own note is that the rope and the
+            # number are one fact drawn twice and may not disagree; at the beat the
+            # display exists for, they did.
+            side = 1.0 if _left_of_frame(end_x, end_y, z, camera) else -1.0
+            self.tether_label.pos = (end_x + math.sin(back) * 2.6 * side,
+                                     end_y - math.cos(back) * 2.6 * side, z + 0.8)
         else:
             self.tether_label.pos = ((px + end_x) / 2.0, (py + end_y) / 2.0, z + 0.8)
         if rgb != self._tether_rgb:
@@ -300,7 +314,7 @@ def _hurt(rgb: tuple[float, float, float], subject: StageMachine) -> tuple[float
         return palette.KILL
     if subject.damage <= T.DAMAGE_TINT_FROM:
         return rgb
-    return palette.lerp(rgb, palette.KILL,
+    return palette.lerp(rgb, palette.HURT,
                         (subject.damage - T.DAMAGE_TINT_FROM) / (1.0 - T.DAMAGE_TINT_FROM))
 
 
@@ -308,6 +322,19 @@ def _show(visual: object, wanted: bool) -> None:
     """`Node.visible` always calls `update()`, whether or not the value changed."""
     if visual.visible is not wanted:                    # type: ignore[attr-defined]
         visual.visible = wanted                         # type: ignore[attr-defined]
+
+
+def _left_of_frame(x: float, y: float, z: float, camera: Camera) -> bool:
+    """Is this world point in the lower-left quarter of the frame, where the minimap is?
+
+    The minimap is drawn opaque over the main view at a fixed screen position, so a mark
+    that lands there is not dimmed, it is gone. Only the tether label moves for it: it is
+    the one mark whose position is chosen rather than meant.
+    """
+    cx, cy, fx, fy, sin_el, cos_el = camera
+    sx = (x - cx) / (fx * 0.5)
+    sy = ((y - cy) * sin_el + z * cos_el) / (fy * 0.5)
+    return sx < -0.25 and sy < -0.15
 
 
 def _clip_to_frame(px: float, py: float, gx: float, gy: float, z: float,
