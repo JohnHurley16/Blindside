@@ -41,14 +41,10 @@ This file is the board. Edit it directly. It was generated once from `docs/dev-p
 
 Tick a story when it is done and move its `Status:` line. `Ready` means every dependency is done or there were none; the first epics in the order of work can start today.
 
-### Ready now (10)
+### Ready now (6)
 
-- [ ] **P1X-10** The readout row: the two numbers under near-identical labels *(P1X, P0, 0.5d)*
-- [ ] **P1X-11** The palette pass: one meaning per colour, four type sizes, a 9pt floor *(P1X, P0, 1d)*
-- [ ] **P1X-12** The cold open: the rules in twenty-two words before the clock starts *(P1X, P0, 0.5d)*
-- [ ] **P1X-14** The last 79 s are frozen: the policy will not abandon a waypoint *(P1X, P0, 0.75d)*
-- [ ] **P1X-15** No map fix for the final 236 s *(P1X, P0, 0.5d)*
-- [ ] **P1X-16** The event feed is a metronome *(P1X, P0, 0.5d)*
+- [ ] **P1X-13** The release beat: a near miss needs an exhale, not just an alarm *(P1X, P1, 0.5d)*
+- [ ] **P1X-18** Designer self-test on the live window before the next session *(P1X, P0, 0.25d)*
 
 > **Phase 1's gate failed on 2026-09-06** (`docs/phase1-playtests/2026-09-06-gate.md`). Per CLAUDE.md Phase 2 does not start, whatever its stories say below; the Phase 2 build that exists was made on the wrong reading and is not advanced by it. The next move is BLD-16b: re-run the gate on the live window with Recall in the player's hand, which is the cheapest experiment that separates "the display is illegible" from "the run phase is boring".
 
@@ -236,7 +232,8 @@ Tick a story when it is done and move its `Status:` line. `Ready` means every de
 
 ### In progress
 
-- [ ] **P1X-9** Build the Assayer: geometry, cycle, pointing hazard, graded damage *(P1X, P0, 2d)*
+- [ ] **P1X-22** Cold read: three viewers with no context watch the finished video *(P1X, P0, 0.5d)*
+- [ ] **P1X-23** Art direction, building on the parametric walker *(P1X, P1, 1d)*
 - [ ] **BLD-16** Run the Phase 1 gate playtest with a non-engineer and write the readiness report *(BLD-1, P0, 0.5d)*
 - [ ] **BLD-19** Create the Cargo workspace, pin the toolchain, and lock blindside-sim's dependency tree *(BLD-18, P0, 0.5d)*
 - [ ] **BLD-22** Land the CI determinism lint and prove a PR adding f64 to blindside-sim goes red *(BLD-18, P0, 1d)*
@@ -264,6 +261,15 @@ Tick a story when it is done and move its `Status:` line. `Ready` means every de
 - [x] **P1X-6** Slice one: the truth channel and the 3D picture-in-picture view *(P1X, P0, 2.5d)*
 - [x] **P1X-7** Close the invariant against every route a verifier found *(P1X, P0, 0.5d)*
 - [x] **P1X-8** Decide what the machinery is, how it harms, and the damage model *(P1X, P0, 1d)*
+- [x] **P1X-9** Build the Assayer *(P1X, P0, 2d)*
+- [x] **P1X-10** The readout row *(P1X, P0, 0.5d)*
+- [x] **P1X-11** The palette pass *(P1X, P0, 1d)*
+- [x] **P1X-12** The cold open *(P1X, P0, 0.5d)*
+- [x] **P1X-14** The frozen ending *(P1X, P0, 0.75d)*
+- [x] **P1X-15** The fix drought — attempted, reverted, written up *(P1X, P0, 0.5d)*
+- [x] **P1X-16** The metronome *(P1X, P0, 0.5d)*
+- [x] **P1X-20** Sound that carries information *(P1X, P0, 2d)*
+- [x] **P1X-21** Say which machine is yours *(P1X, P0, 0.25d)*
 - [x] **BLD-15** Designer self-test: twenty minutes on the gate build before the external session *(BLD-1, P0, 0.25d)*
 - [x] **BLD-2** Fix SEARCH-mode crash: decision_report reads undefined T.RECALL_SEARCH_RADIUS_RATE *(BLD-1, P0, 0.25d)*
 - [x] **BLD-3** Verify and commit the in-progress Phase 1 retune, one commit per concern *(BLD-1, P0, 0.75d)*
@@ -292,17 +298,23 @@ the plan assumed the gate passed. Nothing in Phases 2–9 starts until this does
 | P1X-6 | Story | Slice one: the truth channel and the 3D picture-in-picture view | P0 | 2.5 | P1X-4, P1X-5 | Done (`e2cfd46`) |
 | P1X-7 | Bug | Close the invariant against every route a verifier found | P0 | 0.5 | P1X-6 | Done — 12 of 12 routes caught |
 | P1X-8 | Design | Decide what the machinery is, how it harms, and the damage model | P0 | 1 | — | Done (`97563a1`, the Assayer) |
-| P1X-9 | Story | Build the Assayer: geometry, cycle, pointing hazard, graded damage | P0 | 2 | P1X-8 | In progress |
-| P1X-10 | Story | The readout row: the two numbers under near-identical labels | P0 | 0.5 | P1X-6 | Backlog |
-| P1X-11 | Story | The palette pass: one meaning per colour, four type sizes, a 9pt floor | P0 | 1 | P1X-6 | Backlog |
-| P1X-12 | Story | The cold open: the rules in twenty-two words before the clock starts | P0 | 0.5 | P1X-6 | Backlog |
+| P1X-9 | Story | Build the Assayer: geometry, cycle, pointing hazard, graded damage | P0 | 2 | P1X-8 | Done (`d0bde71`) — damage costs speed and range, not odometry; see §11 of THE-MACHINERY |
+| P1X-10 | Story | The readout row: the two numbers under near-identical labels | P0 | 0.5 | P1X-6 | Done (`a7f757a`) |
+| P1X-11 | Story | The palette pass: one meaning per colour, four type sizes, a 9pt floor | P0 | 1 | P1X-6 | Done (`a7f757a`) — 53 values to 24; red is lethal only |
+| P1X-12 | Story | The cold open: the rules in twenty-two words before the clock starts | P0 | 0.5 | P1X-6 | Done (`a7f757a`, `9ed9274`) — seven lines, two in the machines' own colours |
 | P1X-13 | Story | The release beat: a near miss needs an exhale, not just an alarm | P1 | 0.5 | P1X-9 | Backlog |
-| P1X-14 | Bug | The last 79 s are frozen: the policy resets its escape counter instead of abandoning the waypoint | P0 | 0.75 | — | Backlog |
-| P1X-15 | Bug | No map fix for the final 236 s, so the cloud never snaps in the second half | P0 | 0.5 | — | Backlog |
-| P1X-16 | Bug | The event feed is a metronome: 34 of 50 events are two strings every 16 s | P0 | 0.5 | — | Backlog |
+| P1X-14 | Bug | The last 79 s are frozen: the policy resets its escape counter instead of abandoning the waypoint | P0 | 0.75 | — | Done (`d3f2a9e`) — 16 of 88 runs frozen to 1 of 88 |
+| P1X-15 | Bug | No map fix for the final 236 s, so the cloud never snaps in the second half | P0 | 0.5 | — | **Attempted and reverted.** More fixes made each one smaller; the 8–16 cell band emptied. Written up as a finding, not a bug: `2026-09-07-freeze-vs-drift.md` |
+| P1X-16 | Bug | The event feed is a metronome: 34 of 50 events are two strings every 16 s | P0 | 0.5 | — | Done (`d3f2a9e`) — the 16 s clock is gone; the 75 s hazard clock is kept on purpose and says so |
 | P1X-17 | Decision | Should the player have a reason to go to the machinery? Today only the rival does, so only the rival is ever at risk | P0 | 0.25 | P1X-8 | **Designer** |
 | P1X-18 | Task | Designer self-test on the live window before the next session | P0 | 0.25 | P1X-9..P1X-16 | Backlog |
 | P1X-19 | Task | Re-run the gate live, truth on then truth off, and write the report | P0 | 0.5 | P1X-18 | Backlog |
+| P1X-20 | Story | Sound that carries information: distance, whose sensor, approach, the wind-up, death — and survives laptop speakers | P0 | 2 | — | Done (`6c879c1`) — the crash and hammer were below 150 Hz and vanished on the device the tester used |
+| P1X-21 | Story | Say which machine is yours | P0 | 0.25 | P1X-12 | Done (`9ed9274`) |
+| P1X-22 | Spike | Cold read: three viewers with no context watch the finished video and say what they understood | P0 | 0.5 | P1X-9..P1X-21 | In progress — a rehearsal, not the gate |
+| P1X-23 | Design | Art direction: the caves, the agents, the machinery, what is found — building on the parametric Blender walker in `agent_model/` | P1 | 1 | P1X-8 | In progress |
+| P1X-24 | Finding | Under recall the machine stands on the extraction point for three minutes without knowing it, because its last four fixes are the spoofed beacon. Nobody designed this. | — | — | — | Recorded: `2026-09-07-standing-on-the-shaft.md` |
+| P1X-25 | Finding | Fixing the boredom cost drama: a machine that stops grinding walls stops accumulating the drift that makes a fix worth watching, and stops being caught by the machinery. | — | — | — | Recorded: `2026-09-07-freeze-vs-drift.md`. **Designer**: which do you want? |
 
 ### P1X-17 — Should the player have a reason to go to the machinery?
 
