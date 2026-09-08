@@ -1,5 +1,11 @@
 # The cave session — she teaches it, then watches it
 
+> **Do not run this yet.** Measured 2026-09-08: the cave as tuned cannot be won by the rule she
+> would teach — both reference rules extract 0 of 20 on unseen seeds, 4 of 20 with the spoof
+> off. She would lose every time whatever she taught, which tests nothing and costs her
+> goodwill. The options are in `docs/CAVE-WINNABLE.md` and the decision is P2X-11 on the board.
+> Run the corridor session (`PROTOCOL.md`) now; run this one after the cave is winnable.
+
 Run this **after** the corridor session (`PROTOCOL.md`), on the same day if she is willing. The
 corridor asks whether teaching works. This asks the question the whole re-sequence rests on:
 does she care about a machine she taught, when it goes somewhere she cannot follow.
@@ -58,7 +64,7 @@ Add these, because they are what changed:
 | The first time it does something she did **not** expect | What she says, unprompted. Wait ten seconds before asking anything. |
 | The spoof, about 2:20 — the big number leaps | Does she connect it to the other machine? |
 | If it walks toward the machinery | Does she know why? Does she want to stop it? Does she reach for the key? |
-| If it dies | Her words. Then, after a beat: *"What would you teach it differently?"* |
+| If it dies | Her words. Then, after a beat: *"What would you teach it differently?"* — and if she answers, `python -m phase1 --teach --resume WORKDIR --trace N --stop K` replays that demonstration to the stop she names and lets her choose differently by hand; the rule is re-induced and shown. Start the stopwatch. |
 | Recall — `R`, once | When, if ever, and what she says before pressing it |
 
 ## Afterwards — the two questions
