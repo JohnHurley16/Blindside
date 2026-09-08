@@ -30,6 +30,11 @@ R1 through R3 are cheap to test and catastrophic if wrong. They come first, befo
 
 Not a game. The tooling that makes everything after it survivable.
 
+> Crate names follow `ARCHITECTURE.md` (`blindside-*`); the `deadwater-*` names below and
+> throughout this document are the old working title. Lint scope likewise follows
+> `DETERMINISM.md` — `blindside-sim`, `blindside-vm` and `blindside-gen`, not "the sim
+> crate" alone. Built shape and decisions: `HARNESS.md`.
+
 - `deadwater-harness`: headless runner, batch executor, state hash per tick
 - Desync canary: two sim instances, identical inputs, hash comparison, panic on divergence
 - Replay format: seed + input log, load and re-run

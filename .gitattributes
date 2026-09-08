@@ -1,0 +1,28 @@
+# Byte-identical checkouts on every OS (BLD-19). The content pack hash
+# (blindside-content) and the replay fixtures are hashes over file bytes, so a CRLF
+# checkout on Windows would change every recorded hash. Anything binary that ever lands
+# under content/ needs its own `binary` line here, above the content/** rule.
+*.rs        text eol=lf
+*.toml      text eol=lf
+*.md        text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.json      text eol=lf
+# Cargo.lock is authoritative (every CI step passes --locked) and has no extension
+# the rules above match. It is LF in the index and in the working copy today; this
+# line stops a Windows checkout converting it and is a no-op otherwise.
+Cargo.lock  text eol=lf
+content/**  text eol=lf
+fixtures/** text eol=lf
+# Shell scripts are run by bash on all three CI OSes; a CRLF checkout makes bash fail on
+# the shebang line with `$'\r': command not found`, which is a confusing way to learn about
+# line endings at 1am. Same reason for ci/**, which is read line by line by shell steps in
+# .github/workflows: a CR at the end of a line would be passed through to
+# `cargo tree -p <crate>` as part of the crate name.
+*.sh        text eol=lf
+ci/**       text eol=lf
+# Dotfiles with no extension the rules above match. Not hash-relevant, but `core.autocrlf`
+# is on for this repository, so without these two lines git rewrites them to CRLF on a
+# Windows checkout and every Linux collaborator sees a whole-file phantom diff.
+.gitignore     text eol=lf
+.gitattributes text eol=lf

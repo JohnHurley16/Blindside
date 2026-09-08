@@ -1,0 +1,576 @@
+# Phase 0 determinism CI (docs/PHASE-0-HARNESS.md acceptance criteria 1-5;
+# docs/DETERMINISM.md "Enforcement").
+#
+#   build-test-lint   x3 OS   build, unit tests, determinism lint, the parallel-window
+#                              assertion, the 10k-tick canary on
+#                              fixtures/phase0-empty-10k.record, `verify` against the
+#                              record's own final_hash, a recorded replay, a state dump at
+#                              tick 5000, the 100-seed batch and the golden generator;
+#                              uploads hashes-<os>
+#   cross-platform             the three hashes.hashlog, the three batch.csv and the three
+#                              tick-5000 dumps must each be byte-identical (criterion 3,
+#                              BLD-38); on a difference it builds the harness and prints
+#                              `diff-dumps`' field-level report
+#   feature-gates              BLD-29: for every crate in ci/no-tooling-features.txt the
+#                              resolved feature set must contain neither `diagnostics` nor
+#                              `inject-desync`
+#   canary-injection           the BLD-35 fixture: the lint must still pass with the
+#                              fixture in the tree; with `--features inject-desync` the
+#                              canary must exit 1 at the injection tick naming the mutated
+#                              field; the plain build must exit 0 clean and 2 on
+#                              `--injected` (criteria 2 and 4)
+#   unsafe-policy              BLD-34 rule 8: the checked-in pass fixture must lint clean
+#                              and the fail fixture must produce four rule-8 findings
+#   lint-rejects-f64           a copy of blindside-sim with `pub fn bad() -> f64 { 0.0 }`
+#                              appended must FAIL the lint (criterion 5)
+#   nightly-long-run  x3 OS    schedule + workflow_dispatch only: a 10,000,000-tick canary
+#                              and a 1,000-seed batch, so Phase 3 can move long runs here
+#                              without breaking the every-commit budget (BLD-37)
+#   nightly-cross-platform     the three nightly logs and records must be identical
+#
+# PER-COMMIT BUDGET (BLD-37: under 10 minutes). Measured on run 34066438383 (HEAD
+# 25b3ac8). That commit's file declared THREE jobs -- build-test-lint, cross-platform,
+# lint-rejects-f64 -- which the OS matrix expanded to five job runs: 2 min 10 s wall clock
+# end to end, ubuntu 58 s, macOS 46 s, Windows 2 min 01 s, lint-rejects-f64 16 s,
+# cross-platform 4 s. Since then build-test-lint gained five steps, each well under a
+# second on the empty sim (measured on the dev laptop, release binary: parallel window
+# 0.78 s, verify 0.07 s, state dump 0.05 s, 100-seed batch 0.05 s, golden run twice
+# 0.09 s), and five jobs were added. Two of those are nightly-only and cost the per-commit
+# budget nothing -- they never run on push. The other three run in PARALLEL with the
+# matrix, so they do not extend the chain either: feature-gates and unsafe-policy are
+# cargo-tree and lint only (~20 s each), and canary-injection is one more ubuntu build
+# with a different feature set (~90 s, still shorter than Windows). Wall clock is the
+# longest chain -- Windows build-test-lint, then cross-platform -- so the estimate is
+# about 3 minutes, roughly 7 minutes inside the budget. This is an ESTIMATE against a
+# measured baseline, not a measurement of the current file: no run of it exists yet.
+# Re-measure with `gh run view <id> --json jobs` on the first run after the next push,
+# and whenever a step is added; the number to watch is the Windows job, which is half
+# the total on its own.
+#
+# The hash log is plain `tick,hash` text (BLD-31), so `cmp`, `diff` and `sha256sum` compare
+# two machines' logs without this binary; the batch table is plain `seed,final_hash` and a
+# state dump is plain `field = value` lines, for the same reason.
+#
+# BLD-29 build rule: every step that PRODUCES a hash (canary, record, verify, batch,
+# golden, and later a release build) runs `cargo run -p blindside-harness`, never
+# `--workspace`. Cargo unifies features per package across one invocation, so a
+# `--workspace` build would compile blindside-sim with the harness's `diagnostics` feature
+# on, and the injection fixture could reach a shipped binary the same way. `cargo
+# build/test --workspace` below produce no hash that leaves the job and stay as they are.
+
+name: determinism
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    # 07:17 UTC daily. An odd minute on purpose: the top of the hour is when GitHub's
+    # scheduler is most congested, and a nightly that starts forty minutes late is a
+    # nightly nobody reads.
+    - cron: "17 7 * * *"
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  build-test-lint:
+    name: build, test, lint, canary (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: cargo build --workspace
+        run: cargo build --workspace --locked
+
+      - name: cargo test --workspace
+        run: cargo test --workspace --locked
+
+      - name: determinism lint (sources + dependency tree)
+        run: cargo run -p determinism-lint --locked -- --check-all
+
+      # BLD-40. Phase 0 is built in parallel with Phases 1 and 2 against a sim that must
+      # stay empty until the Phase 2 gate report exists. Nothing in the compiler enforces
+      # that, so it is asserted on every commit, not only at readiness.
+      - name: parallel window -- the sim is still empty
+        shell: bash
+        run: bash tools/assert-empty-sim.sh
+
+      - name: desync canary on the checked-in fixture, 10000 ticks
+        run: cargo run -p blindside-harness --release --locked -- canary --record fixtures/phase0-empty-10k.record
+
+      # BLD-37: the fixture carries its own final_hash, so `verify` is the criterion-3
+      # comparison done locally on each OS before the artifacts are compared to each other.
+      - name: verify the fixture against its recorded final hash
+        run: cargo run -p blindside-harness --release --locked -- verify fixtures/phase0-empty-10k.record
+
+      - name: record replay (seed 7, 5000 ticks) -> replay.json + hashes.hashlog
+        run: cargo run -p blindside-harness --release --locked -- record --seed 7 --ticks 5000 --out replay.json --hash-log hashes.hashlog
+
+      # A state dump is the only form in which ground truth crosses a machine boundary:
+      # strings, produced inside the sim behind the `diagnostics` feature. Uploading one
+      # per OS is what lets `cross-platform` compare field VALUES, not just a digest.
+      - name: state dump at tick 5000
+        run: cargo run -p blindside-harness --release --locked -- run fixtures/phase0-empty-10k.record --dump-state-at 5000
+
+      # BLD-38: one empty match per seed, table sorted by seed. The table is compared
+      # across the three OSes in `cross-platform`; the throughput line goes to the job
+      # summary so the trend is visible on the run page without opening the log. It is a
+      # trend, not a gate: an empty-sim tick moves two agents.
+      - name: 100-seed batch and throughput to the job summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo run -p blindside-harness --release --locked -- batch --seeds 0..100 --ticks 9600 --jobs 8 --out batch.csv | tee batch.out
+          {
+            echo "### batch throughput -- ${{ matrix.os }}"
+            echo ""
+            echo '```'
+            cat batch.out
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          test "$(wc -l < batch.csv)" -eq 100
+
+      # `golden` regenerates crates/blindside-sim/src/golden_tables.rs, so it is a
+      # hash-producing build like the others and is built the same way (BLD-29). That its
+      # CONTENT still matches the checked-in file is asserted by
+      # `golden_prints_the_checked_in_tables` in `cargo test`, which can normalise
+      # rustfmt's line splitting; what is checked here is that the generator is itself
+      # deterministic -- two runs in one job, byte-identical.
+      - name: golden generator is deterministic
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo run -p blindside-harness --release --locked -- golden > golden.1
+          cargo run -p blindside-harness --release --locked -- golden > golden.2
+          cmp golden.1 golden.2
+          test "$(wc -l < golden.1)" -eq 116
+          echo "OK: golden is byte-identical across two runs, 116 lines"
+
+      - name: show artifact digests
+        shell: bash
+        run: |
+          ls -l replay.json hashes.hashlog batch.csv phase0-empty-10k.tick5000.dump
+          if command -v sha256sum >/dev/null; then
+            sha256sum hashes.hashlog batch.csv phase0-empty-10k.tick5000.dump
+          else
+            shasum -a 256 hashes.hashlog batch.csv phase0-empty-10k.tick5000.dump
+          fi
+
+      - name: upload hashes-${{ matrix.os }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: hashes-${{ matrix.os }}
+          path: |
+            hashes.hashlog
+            batch.csv
+            phase0-empty-10k.tick5000.dump
+            replay.json
+          if-no-files-found: error
+          retention-days: 14
+
+  cross-platform:
+    name: hashes identical across Linux, macOS, Windows
+    needs: build-test-lint
+    runs-on: ubuntu-latest
+    steps:
+      # Checked out for the failure path only: `diff-dumps` needs the harness, and building
+      # it on every green run would spend a minute of the per-commit budget on output
+      # nobody reads.
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: hashes-*
+          path: artifacts
+          merge-multiple: false
+
+      # Three comparisons, one shape: acceptance criterion 3 over the per-tick hash log of
+      # one replay, BLD-38 over the 100-seed table, and BLD-36 over a field-level state
+      # dump. The log proves the three platforms agree tick by tick on one match; the table
+      # proves they agree on the final hash of a hundred different ones, which is the shape
+      # Phase 3's 1,000-match gate takes; the dump proves they agree on the VALUES, so a
+      # hash that matched by covering nothing would still be caught here.
+      - name: compare hashes.hashlog, batch.csv and the tick-5000 dump byte-for-byte
+        id: compare
+        shell: bash
+        run: |
+          set -euo pipefail
+          fail=0
+          dumps_differ=0
+          for file in hashes.hashlog batch.csv phase0-empty-10k.tick5000.dump; do
+            a="artifacts/hashes-ubuntu-latest/$file"
+            b="artifacts/hashes-macos-latest/$file"
+            c="artifacts/hashes-windows-latest/$file"
+            for f in "$a" "$b" "$c"; do
+              test -s "$f" || { echo "::error::missing or empty: $f"; exit 1; }
+            done
+            sha256sum "$a" "$b" "$c"
+            differs=0
+            for pair in "ubuntu:macos:$a:$b" "ubuntu:windows:$a:$c" "macos:windows:$b:$c"; do
+              IFS=: read -r x y fx fy <<< "$pair"
+              if ! cmp "$fx" "$fy"; then
+                echo "::error::$x vs $y: $file differs"
+                echo "first differing lines:"
+                diff "$fx" "$fy" | head -20 || true
+                differs=1
+                fail=1
+                case "$file" in *.dump) dumps_differ=1 ;; esac
+              fi
+            done
+            if [ "$differs" -eq 0 ]; then
+              echo "OK: $file is byte-identical on all three platforms"
+            fi
+          done
+          echo "dumps_differ=$dumps_differ" >> "$GITHUB_OUTPUT"
+          exit "$fail"
+
+      # Only on a real cross-platform divergence: name the fields, not the byte offset.
+      - name: field-level diff of the differing dumps
+        if: failure() && steps.compare.outputs.dumps_differ == '1'
+        shell: bash
+        run: |
+          set +e
+          set -uo pipefail
+          d=artifacts
+          for pair in "ubuntu-latest:macos-latest" "ubuntu-latest:windows-latest" "macos-latest:windows-latest"; do
+            IFS=: read -r x y <<< "$pair"
+            echo "=== $x vs $y ==="
+            cargo run -p blindside-harness --release --locked -- diff-dumps \
+              "$d/hashes-$x/phase0-empty-10k.tick5000.dump" \
+              "$d/hashes-$y/phase0-empty-10k.tick5000.dump"
+          done
+          # This step explains a failure that has already been reported. It must never
+          # turn a red run green.
+          exit 1
+
+  feature-gates:
+    # BLD-29. `default = []` on a feature proves nothing: Cargo unifies features per
+    # package across one build invocation, so any crate compiled alongside the harness
+    # gets blindside-sim's `diagnostics` -- the String window onto ground truth -- and the
+    # `inject-desync` fixture can follow the same route into a shipped binary.
+    # ARCHITECTURE.md: "Make it awkward to pass ground truth."
+    name: tooling features are absent from the crates that ship
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: no crate in ci/no-tooling-features.txt resolves diagnostics or inject-desync
+        shell: bash
+        run: |
+          set -euo pipefail
+          crates="$(sed 's/#.*//' ci/no-tooling-features.txt | tr -d '\r' | awk 'NF')"
+          test -n "$crates" || { echo "::error::ci/no-tooling-features.txt names no crate"; exit 1; }
+          fail=0
+          for c in $crates; do
+            tree="$(cargo tree -e features --locked -p "$c")"
+            found=0
+            for gate in diagnostics inject-desync; do
+              if grep -q "feature \"$gate\"" <<<"$tree"; then
+                echo "::error::$c resolves blindside-sim's \`$gate\` feature"
+                grep -n "feature \"$gate\"" <<<"$tree" | head -5
+                found=1
+                fail=1
+              fi
+            done
+            if [ "$found" -eq 0 ]; then echo "OK: $c resolves neither gate"; fi
+          done
+          exit "$fail"
+
+      - name: and the harness does resolve them, so the check can fail
+        shell: bash
+        run: |
+          # A check that cannot go red is not a check. blindside-harness is the crate the
+          # gates exist for; if this stops finding them the grep above has gone blind.
+          set -euo pipefail
+          tree="$(cargo tree -e features --locked -p blindside-harness)"
+          grep -q 'feature "diagnostics"' <<<"$tree" \
+            || { echo "::error::the probe no longer sees diagnostics; the check is blind"; exit 1; }
+          echo "OK: the same grep finds the gate where it is meant to be"
+
+  canary-injection:
+    # PHASE-0-HARNESS.md criterion 2 and its kill line: "A canary that does not catch a
+    # known bug is worse than no canary, because it is trusted." This job is red if the
+    # canary passes with the fixture armed. It is the ONLY job that enables
+    # `inject-desync` (BLD-29); every hash-producing step elsewhere runs the plain build.
+    name: canary catches the injected HashMap desync
+    runs-on: ubuntu-latest
+    env:
+      REC: fixtures/phase0-empty-10k.record
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      # BLD-35, last bullet: the deliberate rule-2 violation lives in the tree permanently,
+      # so the lint has to stay green WITH it there. The exemption is scoped to items under
+      # `#[cfg(feature = "inject-desync")]` and to nothing else; if someone widens it to a
+      # module path this step still passes, and the test named in HARNESS.md section 6 is
+      # what fails instead.
+      - name: the lint still passes with the injection fixture in the tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'pub fn inject_desync' crates/blindside-sim/src/world.rs \
+            || { echo "::error::the BLD-35 fixture is gone; this job proves nothing"; exit 1; }
+          grep -q 'HashMap' crates/blindside-sim/src/world.rs \
+            || { echo "::error::the fixture no longer uses a HashMap"; exit 1; }
+          cargo run -p determinism-lint --locked -- --check-all
+          echo "OK: the one sanctioned HashMap does not cost the lint its green"
+
+      - name: injected canary must FAIL at tick 5000 naming the mutated field
+        shell: bash
+        run: |
+          # `shell: bash` runs with -e; these steps expect a non-zero exit, so turn it off
+          # and check the code by hand. Without `set +e` the step would abort on the very
+          # failure it is here to observe.
+          set +e
+          set -uo pipefail
+          out="$(cargo run -p blindside-harness --release --locked --features inject-desync \
+                 -- canary --record "$REC" --injected 2>&1)"
+          code=$?
+          echo "$out"
+          echo "exit code: $code"
+          if [ "$code" -ne 1 ]; then
+            echo "::error::the armed canary must exit 1; it exited $code"
+            exit 1
+          fi
+          grep -q 'DESYNC at tick 5000' <<<"$out" \
+            || { echo "::error::divergence not reported at the injection tick"; exit 1; }
+          grep -q 'inject_fold' <<<"$out" \
+            || { echo "::error::the diff does not name the mutated field"; exit 1; }
+          echo "OK: caught in the tick it was armed for (acceptance criterion 2)"
+
+      - name: bisect locates the injection in one command (criterion 4)
+        shell: bash
+        run: |
+          set +e
+          set -uo pipefail
+          out="$(cargo run -p blindside-harness --release --locked --features inject-desync \
+                 -- bisect --record "$REC" --injected 2>&1)"
+          code=$?
+          echo "$out"
+          if [ "$code" -ne 1 ]; then
+            echo "::error::bisect --injected must exit 1; it exited $code"
+            exit 1
+          fi
+          grep -q 'DIVERGENCE at tick 5000' <<<"$out" \
+            || { echo "::error::bisect did not locate tick 5000"; exit 1; }
+          grep -q 'inject_fold' <<<"$out" || { echo "::error::empty diff"; exit 1; }
+
+      - name: the plain build is clean for 10000 ticks and refuses --injected
+        shell: bash
+        run: |
+          set +e
+          set -uo pipefail
+          cargo run -p blindside-harness --release --locked -- canary --record "$REC"
+          code=$?
+          if [ "$code" -ne 0 ]; then
+            echo "::error::the unarmed canary must exit 0; it exited $code"
+            exit 1
+          fi
+          out="$(cargo run -p blindside-harness --release --locked \
+                 -- canary --record "$REC" --injected 2>&1)"
+          code=$?
+          echo "$out"
+          if [ "$code" -ne 2 ]; then
+            echo "::error::--injected without the feature must exit 2; it exited $code"
+            exit 1
+          fi
+          grep -q 'no inject-desync fixture' <<<"$out" \
+            || { echo "::error::wrong error for a build without the fixture"; exit 1; }
+          echo "OK: the fixture exists only where it is asked for"
+
+  unsafe-policy:
+    # BLD-34 / DETERMINISM.md rule 8. `#![deny(unsafe_code)]` at each constrained crate
+    # root stops accidental `unsafe`; this is the other half -- a deliberate exception must
+    # carry a written justification, and a crate-wide allow is never one. The lint checks
+    # that the `// SAFETY:` line EXISTS; whether it is true is a review item, which is what
+    # the PR template's first checkbox is for.
+    name: unsafe needs a written justification
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: the constrained crates deny unsafe_code at the root
+        shell: bash
+        run: |
+          set -euo pipefail
+          for c in blindside-sim blindside-vm blindside-gen blindside-content; do
+            grep -q '^#!\[deny(unsafe_code)\]' "crates/$c/src/lib.rs" \
+              || { echo "::error::crates/$c/src/lib.rs has no #![deny(unsafe_code)]"; exit 1; }
+            echo "OK: $c denies unsafe_code"
+          done
+
+      - name: pass fixture -- justified unsafe lints clean
+        run: cargo run -p determinism-lint --locked -- ci/fixtures/unsafe-justified
+
+      - name: fail fixture -- unjustified unsafe produces four rule-8 findings
+        shell: bash
+        run: |
+          set +e
+          set -uo pipefail
+          out="$(cargo run -p determinism-lint --locked -- ci/fixtures/unsafe-unjustified)"
+          code=$?
+          echo "$out"
+          if [ "$code" -ne 1 ]; then
+            echo "::error::the unjustified fixture must fail the lint; it exited $code"
+            exit 1
+          fi
+          grep -q 'rule 8' <<<"$out" \
+            || { echo "::error::the findings are not rule-8 findings"; exit 1; }
+          grep -q '#!\[allow(unsafe_code)\]' <<<"$out" \
+            || { echo "::error::the crate-wide allow was not reported"; exit 1; }
+          grep -q 'FAIL -- 4 finding(s)' <<<"$out" \
+            || { echo "::error::expected exactly four findings"; exit 1; }
+          echo "OK: rule 8 is enforced, and the check has been shown to go red"
+
+  lint-rejects-f64:
+    name: lint rejects f64 added to blindside-sim
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: build the lint
+        run: cargo build -p determinism-lint --locked
+
+      - name: copy blindside-sim, append a float fn, lint the copy (must FAIL)
+        shell: bash
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp -d)"
+          cp -r crates/blindside-sim "$tmp/blindside-sim"
+          printf '\npub fn bad() -> f64 { 0.0 }\n' >> "$tmp/blindside-sim/src/lib.rs"
+          set +e
+          out="$(cargo run -p determinism-lint --locked -- --check-all "$tmp/blindside-sim")"
+          code=$?
+          set -e
+          echo "$out"
+          echo "lint exit code: $code"
+          if [ "$code" -ne 1 ]; then
+            echo "::error::lint should exit 1 on the f64 copy, exited $code"
+            exit 1
+          fi
+          echo "$out" | grep -q 'lib.rs:[0-9]*:[0-9]*: `f64` -- rule 1' \
+            || { echo "::error::lint did not name the f64 line"; exit 1; }
+          echo "OK: lint rejects f64 in blindside-sim (acceptance criterion 5)"
+
+      - name: "sanity: the unmodified crates still pass"
+        run: cargo run -p determinism-lint --locked -- --check-all
+
+  nightly-long-run:
+    # BLD-37: "a scheduled nightly variant exists so Phase 3 can move full-length canaries
+    # there without breaking the every-commit rule." It never runs on push, so it cannot
+    # spend the 10-minute per-commit budget. Phase 3 lengthens the numbers HERE, not in
+    # build-test-lint: 10,000,000 ticks is 4.3 s against the Phase 0 sim and will be
+    # minutes against a real one.
+    name: nightly long run (${{ matrix.os }})
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      # 1,000x the per-commit canary. The log is thinned to a checkpoint every 10,000 ticks
+      # so the artifact stays small; the canary still compares EVERY tick -- thinning the
+      # log never thins the comparison.
+      - name: record and canary 10,000,000 ticks
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo run -p blindside-harness --release --locked -- \
+            record --seed 7 --ticks 10000000 --out long.record
+          cargo run -p blindside-harness --release --locked -- \
+            canary --record long.record --hash-every 10000 --hash-log long.hashlog
+          cargo run -p blindside-harness --release --locked -- \
+            verify long.record --hash-every 10000 --hash-log verify.hashlog
+          cmp long.hashlog verify.hashlog
+          echo "OK: 10,000,000 ticks; the canary's log and verify's log agree"
+
+      # BLD-38's dev-laptop budget shape: 1,000 seeds x 9,600 ticks, which the story asks
+      # to finish in under 60 s. Here it is a trend line across three OSes over time, and
+      # the table is compared between them like the per-commit one.
+      - name: 1000-seed batch
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo run -p blindside-harness --release --locked -- \
+            batch --seeds 0..1000 --ticks 9600 --jobs 8 --out batch1000.csv | tee batch1000.out
+          {
+            echo "### nightly 1000-seed batch -- ${{ matrix.os }}"
+            echo ""
+            echo '```'
+            cat batch1000.out
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          test "$(wc -l < batch1000.csv)" -eq 1000
+
+      - name: upload nightly-${{ matrix.os }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-${{ matrix.os }}
+          path: |
+            long.record
+            long.hashlog
+            batch1000.csv
+          if-no-files-found: error
+          retention-days: 14
+
+  nightly-cross-platform:
+    name: nightly artifacts identical across three OSes
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    needs: nightly-long-run
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: nightly-*
+          path: artifacts
+          merge-multiple: false
+
+      - name: compare the three long runs
+        shell: bash
+        run: |
+          set -euo pipefail
+          fail=0
+          for file in long.record long.hashlog batch1000.csv; do
+            a="artifacts/nightly-ubuntu-latest/$file"
+            b="artifacts/nightly-macos-latest/$file"
+            c="artifacts/nightly-windows-latest/$file"
+            for f in "$a" "$b" "$c"; do
+              test -s "$f" || { echo "::error::missing or empty: $f"; exit 1; }
+            done
+            sha256sum "$a" "$b" "$c"
+            differs=0
+            for pair in "ubuntu:macos:$a:$b" "ubuntu:windows:$a:$c" "macos:windows:$b:$c"; do
+              IFS=: read -r x y fx fy <<< "$pair"
+              if ! cmp "$fx" "$fy"; then
+                echo "::error::$x vs $y: $file differs"
+                diff "$fx" "$fy" | head -20 || true
+                differs=1
+                fail=1
+              fi
+            done
+            if [ "$differs" -eq 0 ]; then
+              echo "OK: $file is byte-identical on all three platforms"
+            fi
+          done
+          exit "$fail"

@@ -12,8 +12,25 @@ snap_*.png
 # The dev plan board is docs/DEV-PLAN.md. The JSON it was generated from is an
 # intermediate; edit the markdown directly.
 docs/dev-plan.json
-# Rust build output
-target/
-__pycache__/
-*.pyc
 docs/phase1-playtests/cold-read/*.png
+# Rust build output (Phase 0+)
+target/
+
+# Phase 0 harness output. The CI steps in .github/workflows/determinism.yml write these
+# into the working directory, and README-phase0.md tells a developer to run the same
+# commands locally -- so without these lines a `git add -A` before the readiness commit
+# sweeps a 340 KB hash log and a state dump into the tree. Every pattern is anchored to
+# the repository root: the checked-in replay fixture is fixtures/phase0-empty-10k.record
+# and is deliberately still tracked.
+/artifacts/
+/*.hashlog
+/*.record
+/*.dump
+/replay.json
+/divergence.json
+/batch*.csv
+# README's worked example writes these two by name
+/j1.csv
+/j8.csv
+/batch*.out
+/golden.[0-9]

@@ -1,0 +1,28 @@
+# BLD-29 — crates whose RESOLVED feature set must never contain blindside-sim's tooling
+# gates, `diagnostics` (the string-only window onto ground truth) or `inject-desync` (the
+# BLD-35 HashMap fixture).
+#
+# Cargo features are NOT a privacy boundary. Cargo unifies features per package across one
+# build invocation, so `cargo build --workspace` — with blindside-harness in it asking for
+# `blindside-sim/diagnostics` — turns that feature on for blindside-sim in every crate
+# compiled by that invocation, including the client and net crates when they exist. The
+# String dump of `World` would then be callable from the client at compile time, and the
+# injected HashMap path could be compiled into a shipped binary.
+#
+# Two things enforce the gates instead:
+#   1. the check that reads this file (`.github/workflows/determinism.yml`, job
+#      `feature-gates`, and `feature_gates_are_absent_from_the_resolved_sets` in
+#      crates/blindside-harness/tests/workspace.rs): for each crate named below,
+#      `cargo tree -e features -p <crate>` must mention neither gate;
+#   2. the rule that every hash-producing or shippable CI build uses `-p <crate>`, never
+#      `--workspace`.
+#
+# One crate name per line. `#` starts a comment; blank lines are ignored.
+#
+# Extend this list, do not replace the mechanism:
+#   - Phase 4 adds blindside-client   (BLD-115)
+#   - Phase 6 adds blindside-net      (BLD-164)
+# blindside-harness is deliberately absent: it is the tool the gates exist for, and its
+# dev-dependencies arm `inject-desync` on purpose so `cargo test` exercises the fixture.
+
+blindside-sim

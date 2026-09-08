@@ -1,0 +1,11 @@
+error[E0603]: struct `World` is private
+ --> tests/ui/name_world.rs:2:20
+  |
+2 | use blindside_sim::World;
+  |                    ^^^^^ private struct
+  |
+note: the struct `World` is defined here
+ --> $WORKSPACE/crates/blindside-sim/src/lib.rs
+  |
+  | use world::World;
+  |     ^^^^^^^^^^^^

@@ -1,0 +1,44 @@
+[package]
+name = "blindside-harness"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "headless runner, canary, batch eval, replay tooling"
+
+# This crate is tooling and is NOT subject to the DETERMINISM.md hard rules: it may use
+# serde, std::time (throughput timing), HashMap, floats for reporting, etc. It must never
+# reach into `World`; it sees a `Sim` only through tick/hash and the string-only
+# `diagnostics` module. tests/world_unreachable.rs proves it cannot do otherwise.
+
+[lib]
+name = "blindside_harness"
+path = "src/lib.rs"
+
+[[bin]]
+name = "harness"
+path = "src/main.rs"
+
+[dependencies]
+# `diagnostics` unlocks blindside_sim::diagnostics::{diff, dump} for the canary and bisect.
+blindside-sim = { path = "../blindside-sim", features = ["diagnostics"] }
+blindside-content = { path = "../blindside-content" }
+blake3 = { workspace = true }
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+# The harness's own tests exercise the BLD-35 injection, so the sim's `inject-desync`
+# feature is on for `cargo test -p blindside-harness` (and --workspace) but, under resolver
+# 2, NOT for `cargo build -p blindside-harness`: dev-dependency features are unified only
+# when dev-dependencies are being built. A release harness binary therefore has the stub
+# `Sim::set_inject_tick` that reports the feature absent, and `canary --inject` exits 2.
+blindside-sim = { path = "../blindside-sim", features = ["diagnostics", "inject-desync"] }
+# Compile-fail tests (BLD-32). Not rand-family; the constrained crates never see it.
+trybuild = "1"
+
+[features]
+# Opt in to the injection fixture for a real binary: the canary-injection CI job builds
+# `cargo run -p blindside-harness --features inject-desync -- canary --record <r> --injected`.
+inject-desync = ["blindside-sim/inject-desync"]

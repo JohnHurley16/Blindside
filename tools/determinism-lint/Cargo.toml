@@ -1,0 +1,20 @@
+[package]
+name = "determinism-lint"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "CI lint enforcing docs/DETERMINISM.md rules 1-5 and the dependency tree in the constrained crates."
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "determinism-lint"
+path = "src/main.rs"
+
+[dependencies]
+# Rust lexer (the front end syn is built on). Used purely at the token level: it drops
+# comments, turns doc comments into string literals, and keeps string literals opaque, so
+# prose never false-positives. span-locations gives line:column for every token.
+proc-macro2 = { version = "1", default-features = false, features = ["span-locations"] }

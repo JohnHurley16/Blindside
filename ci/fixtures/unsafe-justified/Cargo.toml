@@ -1,0 +1,13 @@
+# BLD-34 fixture, PASS half. Never built or run — only read by tools/determinism-lint,
+# which needs a Cargo.toml and a src/lib.rs or it reports the crate as unscannable.
+# The empty [workspace] table keeps cargo from treating this directory as a stray member
+# of the real workspace above it.
+[workspace]
+
+[package]
+name = "unsafe-justified"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[dependencies]

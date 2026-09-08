@@ -1,0 +1,13 @@
+error[E0603]: module `world` is private
+ --> tests/ui/world_module.rs:3:35
+  |
+3 |     let _w: Option<blindside_sim::world::World> = None;
+  |                                   ^^^^^  ----- struct `World` is not publicly re-exported
+  |                                   |
+  |                                   private module
+  |
+note: the module `world` is defined here
+ --> $WORKSPACE/crates/blindside-sim/src/lib.rs
+  |
+  | mod world;
+  | ^^^^^^^^^
