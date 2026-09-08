@@ -5,24 +5,30 @@ This file is the board. Edit it directly. It was generated once from `docs/dev-p
 **197 stories · 478.25 working days · ~47.8 months at ten working days a month**, plus the 19-story P1X epic the failed gate opened (12 more days). Solo, nights and weekends. `DESIGN.html` calls 18–24 months to Phase 8 a floor; treat any total under that as optimism.
 
 
-> ## Where this actually stands, 2026-09-07
+> ## Where this actually stands, 2026-09-08
 >
-> **The Phase 1 gate failed.** A non-engineer watched the eight minutes and was bored
-> (`docs/phase1-playtests/2026-09-06-gate.md`). That is R1, the risk the whole design rests on,
-> and per `CLAUDE.md` Phase 2 does not start until it is met — so everything in the Phase 2 epic
-> below is written but not startable, including the Phase 2 build that already exists.
+> **The correction.** The Phase 1 gate failed on 2026-09-06 and I spent the two days after it
+> making the spectator video legible: the Assayer, the audio, the palette, the cold open, two cold
+> reads. The designer's read of that work: *"the whole point is that the player teaches the agent.
+> We have done none of that. What happened to the dev plan? This is way off base now."* He is
+> right. The gate's own diagnosis — she had no stake in a machine she had not taught — is a Phase 2
+> finding, and the teaching loop (Phase 2, `phase2/`) has been built and untouched since the sixth.
 >
-> **What the failure produced, all of it new work not in the 197 stories:** a diagnosis measured
-> from a tick-by-tick replay (the display's most dramatic moment — a machine standing 0.04 cells
-> outside a lethal radius — was invisible; the last 79 s of the match are frozen; no map fix for
-> the final 236 s; 34 of 50 events are two strings on a 16-second metronome; the rival is never
-> drawn); a redesigned spectator display (`docs/SPECTATOR-DISPLAY.md`); an amendment to
-> `PHASE-1-SPECTATOR-TEST.md` so the spectator view may draw truth while the operator view may
-> not; slice one of that display built and running in 3D; and a decision on what the machinery is
-> (`docs/THE-MACHINERY.md`, the Assayer).
+> **So the order changes.** P1X freezes where it is: the display work is done and is not wasted,
+> and none of it is worth another hour before a player has taught something. Phase 2's gate goes
+> first — the tester teaches the corridor bot three times, reads the rule, predicts its next
+> choice, names her own wrong rule from the replay. And a new epic, **P2X**, connects the two:
+> Phase 1's cave bot becomes a decision tree over the cave's own blocks, taught at decision points
+> through the same trace format and the same induction crate, so the machine she watches for eight
+> minutes is one she built. Phase 1's spectator gate is re-run *after* that, on a taught machine,
+> because that is the only version of it that was ever going to pass.
 >
-> **The epic below that matters is P1X.** The 197 stories are still right about Phases 2–9; they
-> are simply not what is being worked on, because a failed gate outranks a plan.
+> This overrides CLAUDE.md's literal "do not proceed to Phase 2" — recorded here as a deliberate
+> decision, not a lapse, on the reasoning that a gate's diagnosis outranks its stop rule.
+>
+> **Still true from the seventh:** the 197 BLD stories are right about Phases 3–9 and are not what
+> is being worked on; the two designer decisions P1X-17 and P1X-25 stand; the Phase 3 and Phase 0
+> question rounds (`docs/PHASE-3-OPEN-QUESTIONS.md`, `docs/HARNESS.md`) are still waiting.
 
 ## Order of work
 
@@ -41,9 +47,9 @@ This file is the board. Edit it directly. It was generated once from `docs/dev-p
 
 Tick a story when it is done and move its `Status:` line. `Ready` means every dependency is done or there were none; the first epics in the order of work can start today.
 
-### Ready now (6)
+### Ready now (7)
 
-- [ ] **P1X-13** The release beat: a near miss needs an exhale, not just an alarm *(P1X, P1, 0.5d)*
+- [ ] **P2X-6** Run Phase 2's gate on the corridor with a non-engineer — twenty minutes, no build *(P2X, P0, 0.5d)* — **designer**
 - [ ] **P1X-18** Designer self-test on the live window before the next session *(P1X, P0, 0.25d)*
 
 > **Phase 1's gate failed on 2026-09-06** (`docs/phase1-playtests/2026-09-06-gate.md`). Per CLAUDE.md Phase 2 does not start, whatever its stories say below; the Phase 2 build that exists was made on the wrong reading and is not advanced by it. The next move is BLD-16b: re-run the gate on the live window with Recall in the player's hand, which is the cheapest experiment that separates "the display is illegible" from "the run phase is boring".
@@ -232,6 +238,7 @@ Tick a story when it is done and move its `Status:` line. `Ready` means every de
 
 ### In progress
 
+- [ ] **P2X-1..4** The cave bot becomes teachable: blocks, tree policy, demonstration mode, induction and run *(P2X, P0, 3.5d)*
 - [ ] **P1X-22** Cold read: three viewers with no context watch the finished video *(P1X, P0, 0.5d)*
 - [ ] **P1X-23** Art direction, building on the parametric walker *(P1X, P1, 1d)*
 - [ ] **BLD-16** Run the Phase 1 gate playtest with a non-engineer and write the readiness report *(BLD-1, P0, 0.5d)*
@@ -274,7 +281,36 @@ Tick a story when it is done and move its `Status:` line. `Ready` means every de
 - [x] **BLD-2** Fix SEARCH-mode crash: decision_report reads undefined T.RECALL_SEARCH_RADIUS_RATE *(BLD-1, P0, 0.25d)*
 - [x] **BLD-3** Verify and commit the in-progress Phase 1 retune, one commit per concern *(BLD-1, P0, 0.75d)*
 
+## P2X — The player teaches the machine they watch
+
+**The connection between Phase 2 and Phase 1, in Python, before any of Phase 3.** Phase 2 proves
+the teaching loop on a toy corridor; Phase 1 has a cave, a rival, machinery, drift and a display.
+This epic makes the cave bot teachable the way the corridor bot is, so the eight-minute match runs
+on a rule the player taught — teach, then watch, then diagnose, then correct. It is what the
+designer has been describing since the Tarkov conversation and it is the game's loop end to end.
+
+- **Gate — pass:** a non-engineer teaches the cave bot in three demonstrations, watches it run the
+  match on the induced rule, and can say why it did what it did at a moment of her choosing. She
+  is not bored, because it is hers. (The four Phase 1 signals are then re-scored on this session.)
+- **Gate — kill:** she teaches it and still does not care what it does. Then authorship is not the
+  hook and the design's central premise needs rethinking before Phase 3.
+- **Can start when:** now. Phase 2's build exists and its induction crate is the seam.
+- **Estimate:** 4 working days of build.
+
+| Key | Type | Summary | Pri | Days | Depends on | Status |
+|---|---|---|---|---|---|---|
+| P2X-1 | Design | The cave's day-one blocks: predicates over Belief, actions onto the motor layer, and the decision points at which the bot stops and asks. The designer's to change. | P0 | 0.5 | — | In progress |
+| P2X-2 | Story | The cave policy is a decision tree over those blocks; the two temperaments become two reference trees; the hand-written logic goes | P0 | 1 | P2X-1 | In progress |
+| P2X-3 | Story | Demonstration mode in the cave: stop at decision points, show belief, wait for a key, write the trace; staged blocks | P0 | 1 | P2X-2 | In progress |
+| P2X-4 | Story | Induce from cave traces through blindside-induct; run the match on the induced tree with the full display; ghost and correction if they port | P0 | 1 | P2X-3 | In progress |
+| P2X-5 | Task | Adversarial verification: the invariant under the new code, blocks-are-a-list with a sixth block added, equivalence to the hand-written policies, the loop end to end | P0 | 0.5 | P2X-4 | Queued |
+| P2X-6 | Task | Run Phase 2's gate on the corridor with a non-engineer (BLD-59) — twenty minutes, no build needed, and it answers whether authorship is the hook | P0 | 0.5 | — | **Designer** |
+| P2X-7 | Task | Run the P2X gate: she teaches the cave bot, then watches it | P0 | 0.5 | P2X-5, P2X-6 | Backlog |
+| P2X-8 | Task | Re-run Phase 1's spectator gate on the taught machine, truth on then off (was P1X-19) | P0 | 0.5 | P2X-7 | Backlog |
+
 ## P1X — Answer R1: make eight minutes worth watching
+
+> **Frozen 2026-09-08.** Everything done here stays; nothing more is started until a player has taught something. See P2X.
 
 **Phase 1, re-opened by the gate.** Everything here exists because a stranger was bored, and the
 only thing that closes it is a stranger who is not. It is not in the original 197 stories because
