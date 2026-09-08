@@ -98,24 +98,67 @@ first, which is exact because subtree sizes are fixed once the root is. It is wr
 about six predicates and refuses a block list with more than eight (`tuning.rs` says
 why); past that the search needs a different algorithm.
 
-**Threshold fitting.** For each parametric predicate, the candidate values are the
-midpoints between consecutive distinct raw values across all traces, plus one below the
-minimum and one above the maximum (half the smallest gap outside; one unit when only one
-value was ever recorded). Each candidate's margin is its distance to the nearest recorded
-value. Every combination of candidates across parametric predicates is tried; predicates
-are re-evaluated from raw under each. The combination chosen is the one that admits the
-smallest tree (by the three criteria above), then the widest margin (the smallest margin
-across parametric predicates, when there are several), then the smallest values. A
-parametric predicate with no raw value anywhere keeps the first value any trace's
-`params` gives it, or has no entry.
+**Threshold fitting.** For each parametric predicate, the distinct raw values recorded
+across all traces cut the line into bands: one below the smallest, one between each
+consecutive pair, one above the largest. Every threshold within a band reads the recorded
+stops identically, so one threshold per band is all the search tries. Every combination of
+bands across parametric predicates is tried; predicates are re-evaluated from raw under
+each. The combination chosen is the one that admits the smallest tree (by the three
+criteria above), then the widest band (the narrowest band across parametric predicates,
+when there are several), then the smallest values. The two outer bands are unbounded --
+nothing was ever recorded past the ends -- and are taken to reach half the smallest gap
+past the end reading (one unit when only one value was ever recorded), so they never win
+on width unless every gap is that tight. A parametric predicate with no raw value anywhere
+keeps the first value any trace's `params` gives it, or has no entry.
+
+**The threshold reported is the roundest number in the chosen band.** Not the band's
+midpoint: the shortest decimal strictly inside the band, and of two equally short the one
+nearer the middle, and of those the smaller. A midpoint of two readings is a sixteen-digit
+number, three digits of which reach the player through the render -- so the number on the
+panel would not be the number in the file, and a stop between them would decide one way in
+the sim and the other in the tree. Choosing a round number when the threshold is fitted,
+rather than rounding one when it is printed, is what makes `induce`, `render` and `decide`
+agree on a reading that sits exactly on the boundary. `tests/fitted_numbers.rs` is that
+property.
+
+**What the threshold fit guarantees, and what it does not.** It guarantees that the
+reported threshold reads every recorded stop exactly as the search's candidate did, so the
+tree reproduces every recorded choice and `decide` agrees with `induce` on all of them;
+that the threshold is a round number, and a pure function of the traces. It guarantees
+nothing about where the true threshold was within the bracket the demonstrations left it,
+because the demonstrations do not say: every threshold in the bracket reproduces them
+equally well. Measured over the corridor sweep in `tests/threshold_fit.rs` (270 runs at ten
+non-round thresholds, 200 unseen stops each), the widest-band rule decides 94.85% of unseen
+stops the way the generating tree would, against 94.83% for a threshold put at the exact
+middle of the bracket, and lands 2.7 cells from the true threshold on average; a rule that
+reports the middle of the bracket measured within noise of it on unseen decisions and was
+not kept. What is left is the width of the bracket, and no rule that reads only the
+demonstrations can do better than the bracket allows. `tests/round_trip.rs` bounds the
+fit's error as a fraction of the bracket.
 
 **Conflicts.** Two stops conflict when their vectors are identical and their actions
 differ. When no candidate combination is free of conflicts, `consistent` is false, `tree`
 is null and `--out` is not written. The conflicts reported are those under the combination
 that would need the fewest stops disowned to become consistent (within each vector class,
-every stop outside its majority action), then the widest margin, then the smallest values.
-Pairs are listed with the earlier stop first (trace order as given on the command line,
-then stop index) and sorted.
+every stop outside its majority action). Pairs are listed with the earlier stop first
+(trace order as given on the command line, then stop index) and sorted.
+
+Which band the threshold is reported from matters most here, because several bands usually
+tie on the count of stops to disown and they do not report the same pairs. On data where
+every band ties, a threshold below every reading makes every stop read alike, and a flipped
+choice is then reported as contradicting every other stop -- including the ones whose
+readings sit the other side of it, which is not a pair anyone can act on. So among the
+tying bands -- all of them, not only those next to the one the search found, since the tie
+set need not be contiguous -- the one reported from is the one whose conflict pairs are
+between the closest readings: pairs are compared by how far apart their two readings are,
+widest first, so the band whose widest pair is narrowest wins, then the one whose next
+widest is, and so on, and a band that has no pair left to compare beats one that has more.
+A stop with no reading for the predicate is at no distance from anything, since its reading
+did not enter into the pair. Of bands that compare equal, the widest, then the lowest. The
+threshold reported is the roundest number in that band, as above. The contradiction shown
+is then the one a player would name: it turned back at this reading and kept going at a
+higher one. `tests/contradiction.rs` holds the cases, including the tie sets that are not
+contiguous.
 
 **The query.** The pair asked about is the conflicting pair whose resolution removes the
 most conflicts. Resolving a pair means one of its two stops takes the other's action; a
@@ -148,6 +191,19 @@ that has ended. All three are null when the lists are identical.
 randomness, and every map whose order reaches the output is a `BTreeMap`. Identical input
 gives byte-identical output.
 
+**What is refused.** A file that is quietly misread is worse than one that is rejected,
+because the Python side cannot tell the difference: it gets an answer either way. So every
+document read by any subcommand -- block list, trace, tree, choice list, and the stop
+`decide` reads on stdin -- must be a JSON **object**, never a positional array, and so must
+everything the contract nests inside one (a predicate, an action, a stop, an outcome, a
+node); no object anywhere in the document may **repeat a key**; and no object may carry a
+**field this file does not name**. The one exception is `"stage"` on a predicate or an
+action, which is in the contract above, is Python-side, and is read and ignored; it must be
+an integer. A node carrying both `"action"` and `"predicate"` is a typed error rather than
+an action with its branch silently dropped, and a node carrying `"predicate"` must carry
+both `"yes"` and `"no"`. `decide` checks the stop it is handed exactly as `induce` checks a
+trace's stops: every predicate id it reads must be in the block list.
+
 **Exit codes.** 0 with JSON on stdout; 2 with a message on stderr for a usage error, an
 unreadable or unwritable file, JSON that does not match the contract, an id that is not
 in the block list, a trace set with no stops at all, or a block list with more predicates
@@ -161,3 +217,9 @@ runs); `demo-3-flipped.json` (`demo-3` with its first stop's choice flipped, so 
 inducing it beside `demo-2` shows the inconsistent output and the query); `tree.json`
 (the contract's example); `stop.json` (one stop for `decide`); `choices-a.json` and
 `choices-b.json` (for `diff`).
+
+`tests/threshold_fit.rs` measures the fit against a known tree over the corridor
+`phase2/tuning.py` describes; run it with `cargo test --test threshold_fit -- --nocapture`
+to see the tables. `tests/round_trip.rs` prints, under `--nocapture`, how far the fit lands
+from the true threshold as a fraction of the bracket, beside what the bracket's middle and
+its edges would score.

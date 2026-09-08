@@ -22,6 +22,7 @@ pub mod render;
 pub mod search;
 pub mod step_input;
 pub mod step_ref;
+pub mod strict;
 pub mod thresholds;
 pub mod trace;
 pub mod tree;

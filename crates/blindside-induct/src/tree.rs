@@ -2,10 +2,12 @@
 //! serde shape is exactly the contract's `tree.json`.
 
 use std::collections::BTreeSet;
+use std::fmt;
 use std::fs;
 use std::path::Path;
 
-use serde::{Deserialize, Serialize};
+use serde::de::{self, MapAccess, Visitor};
+use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::blocks::BlockSet;
 use crate::error::{Error, Result};
@@ -13,8 +15,10 @@ use crate::evaluate::predicate_value;
 use crate::leaf_path::LeafPath;
 use crate::params::Params;
 use crate::step_input::StepInput;
+use crate::strict;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct DecisionTree {
     #[serde(default)]
     pub params: Params,
@@ -22,7 +26,11 @@ pub struct DecisionTree {
 }
 
 /// Either `{"action": id}` or `{"predicate": id, "yes": node, "no": node}`.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+///
+/// Read by hand rather than as an untagged enum, which would try the variants in turn and
+/// take the first that fit: a node carrying both an action and a predicate would parse as
+/// the action, and the branch under it would be dropped without a word.
+#[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(untagged)]
 pub enum Node {
     Action {
@@ -38,11 +46,11 @@ pub enum Node {
 impl DecisionTree {
     pub fn load(path: &Path) -> Result<Self> {
         let text = fs::read_to_string(path).map_err(|e| Error::io(path, e))?;
-        serde_json::from_str(&text).map_err(|e| Error::json(&path.display().to_string(), e))
+        strict::from_str(&text, &path.display().to_string())
     }
 
     pub fn from_json(text: &str) -> Result<Self> {
-        serde_json::from_str(text).map_err(|e| Error::json("tree", e))
+        strict::from_str(text, "tree")
     }
 
     /// Every predicate and action in the tree must be in the block list.
@@ -64,6 +72,62 @@ impl DecisionTree {
         let mut out = BTreeSet::new();
         self.root.collect_predicates(&mut out);
         out
+    }
+}
+
+const NODE_FIELDS: &[&str] = &["action", "predicate", "yes", "no"];
+
+impl<'de> Deserialize<'de> for Node {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> std::result::Result<Self, D::Error> {
+        deserializer.deserialize_map(NodeVisitor)
+    }
+}
+
+struct NodeVisitor;
+
+impl<'de> Visitor<'de> for NodeVisitor {
+    type Value = Node;
+
+    fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(r#"{"action": id} or {"predicate": id, "yes": node, "no": node}"#)
+    }
+
+    fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> std::result::Result<Node, A::Error> {
+        let mut action: Option<String> = None;
+        let mut predicate: Option<String> = None;
+        let mut yes: Option<Node> = None;
+        let mut no: Option<Node> = None;
+        while let Some(key) = map.next_key::<String>()? {
+            let taken = match key.as_str() {
+                "action" => action.replace(map.next_value()?).is_some(),
+                "predicate" => predicate.replace(map.next_value()?).is_some(),
+                "yes" => yes.replace(map.next_value()?).is_some(),
+                "no" => no.replace(map.next_value()?).is_some(),
+                other => return Err(de::Error::unknown_field(other, NODE_FIELDS)),
+            };
+            if taken {
+                return Err(de::Error::custom(format!("duplicate key {key:?}")));
+            }
+        }
+        match (action, predicate) {
+            (Some(_), Some(_)) => Err(de::Error::custom(
+                "a node is either an action or a predicate with two branches, not both",
+            )),
+            (Some(action), None) => match (yes, no) {
+                (None, None) => Ok(Node::Action { action }),
+                _ => Err(de::Error::custom(
+                    r#"an action node cannot carry "yes" or "no""#,
+                )),
+            },
+            (None, Some(predicate)) => Ok(Node::Branch {
+                predicate,
+                yes: Box::new(yes.ok_or_else(|| de::Error::missing_field("yes"))?),
+                no: Box::new(no.ok_or_else(|| de::Error::missing_field("no"))?),
+            }),
+            (None, None) => Err(de::Error::custom(
+                r#"a node needs either "action" or "predicate""#,
+            )),
+        }
     }
 }
 

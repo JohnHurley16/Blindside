@@ -73,7 +73,9 @@ Build is ready for the gate when:
       roughly a third; one that turns back at the right θ succeeds on at least nine in ten
       (this is what makes the gate's 70% reachable and the failures worth a replay)
 - [ ] Three synthetic demonstrations generated from a known tree induce that tree back,
-      including θ within the gap between the nearest recorded sigmas
+      including θ inside the constraining bracket: above the largest sigma among the stops
+      that took a branch and below the smallest among the stops that went back, counting
+      only the stops the other predicates do not already decide[^bracket]
 - [ ] Two demonstrations that contradict each other produce no separator and the query
       names the two contradicting stops
 - [ ] The staged tutorial runs start to finish in the live window; the block readout at
@@ -92,3 +94,13 @@ From `ROADMAP.md`:
 
 Criterion 3 is the real one. If players cannot self-diagnose, the forensics layer does not
 work. Report the build as ready for the gate; the designer calls it.
+
+[^bracket]: Changed 2026-09-08. This criterion originally read "θ within the gap between the
+    nearest recorded sigmas", which is unsatisfiable: a stop the other predicates already
+    decide (carrying cargo, say) is sent the same way whatever its sigma, so its sigma says
+    nothing about θ however close to θ it sits, and the gap between the two recorded sigmas
+    nearest θ is usually bounded by such stops. Measured on the synthetic round trip, the
+    original wording held on 11 of 30 seeds under every version of the fit; the bracket
+    above is exactly what the demonstrations say about θ, and
+    `crates/blindside-induct/tests/round_trip.rs` asserts it, with a second bound on how far
+    inside it the fit lands.

@@ -1,4 +1,6 @@
-//! The binary, end to end, on the files under examples/.
+//! The binary, end to end, on the files under examples/ -- including everything it has to
+//! refuse. A file the CLI misreads is worse than one it rejects, because the Python side
+//! cannot tell: it gets an answer either way.
 
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -92,4 +94,202 @@ fn usage_and_io_errors_exit_two() {
     assert_eq!(code, 2);
     assert_eq!(json, Value::Null);
     assert!(!stderr.is_empty());
+}
+
+/// Writes a file under the test target directory and returns its path.
+fn scratch(name: &str, text: &str) -> String {
+    let path = Path::new(env!("CARGO_TARGET_TMPDIR")).join(name);
+    std::fs::write(&path, text).expect("the target directory is writable");
+    path.to_string_lossy().into_owned()
+}
+
+/// Every refusal is the same shape: exit 2, one line on stderr, nothing on stdout.
+fn refuses(what: &str, args: &[&str], stdin: Option<&str>) {
+    let (code, json, stderr) = induct(args, stdin);
+    assert_eq!(code, 2, "{what}: exited 0");
+    assert_eq!(json, Value::Null, "{what}: wrote to stdout");
+    assert_eq!(stderr.lines().count(), 1, "{what}: {stderr}");
+}
+
+#[test]
+fn decide_refuses_what_induce_would_refuse() {
+    let blocks = example("blocks.json");
+    let tree = example("tree.json");
+    let args = ["decide", &tree, "--blocks", &blocks];
+    let cases = [
+        // A struct will deserialise from a JSON array, positionally, so an empty list used to
+        // read as a stop with nothing on it and decide something.
+        ("an empty array", "[]"),
+        ("an array of one object", r#"[{"predicates": {}}]"#),
+        // Everything induce checks about a stop, decide checks too.
+        (
+            "a predicate that is not a block",
+            r#"{"predicates": {"nonsense": true}, "raw": {}}"#,
+        ),
+        (
+            "a reading for a predicate that is not a block",
+            r#"{"predicates": {}, "raw": {"nonsense": 1.0}}"#,
+        ),
+        (
+            "a field the contract does not have",
+            r#"{"predicates": {}, "raw": {}, "tick": 5}"#,
+        ),
+        (
+            "a repeated key",
+            r#"{"predicates": {"carrying_cargo": true, "carrying_cargo": false}, "raw": {}}"#,
+        ),
+    ];
+    for (what, stdin) in cases {
+        refuses(what, &args, Some(stdin));
+    }
+}
+
+#[test]
+fn a_tree_that_is_two_things_at_once_is_refused_rather_than_half_read() {
+    let blocks = example("blocks.json");
+    // Read as an untagged enum this parses as the action, and the branch under it disappears.
+    let both = scratch(
+        "both-keys.json",
+        r#"{"params": {}, "root": {"action": "take_branch", "predicate": "carrying_cargo",
+             "yes": {"action": "take_branch"}, "no": {"action": "return_to_beacon"}}}"#,
+    );
+    refuses(
+        "a node with both keys",
+        &["render", &both, "--blocks", &blocks],
+        None,
+    );
+
+    let half = scratch(
+        "half-branch.json",
+        r#"{"params": {}, "root": {"predicate": "carrying_cargo", "yes": {"action": "take_branch"}}}"#,
+    );
+    refuses(
+        "a branch with one child",
+        &["render", &half, "--blocks", &blocks],
+        None,
+    );
+
+    let neither = scratch("empty-node.json", r#"{"params": {}, "root": {}}"#);
+    refuses(
+        "a node that is neither",
+        &["render", &neither, "--blocks", &blocks],
+        None,
+    );
+
+    let dup = scratch(
+        "duplicate-param.json",
+        r#"{"params": {"uncertainty_exceeds": {"theta": 1.0, "theta": 2.0}},
+            "root": {"action": "take_branch"}}"#,
+    );
+    refuses(
+        "a repeated parameter",
+        &["render", &dup, "--blocks", &blocks],
+        None,
+    );
+}
+
+#[test]
+fn a_trace_written_as_a_list_is_refused_at_every_depth() {
+    let blocks = example("blocks.json");
+    let out = Path::new(env!("CARGO_TARGET_TMPDIR"))
+        .join("refused.json")
+        .to_string_lossy()
+        .into_owned();
+    let step = r#"{"tick": 1, "junction": 0,
+                   "predicates": {"unexplored_branch_exists": true},
+                   "raw": {}, "action": "take_branch"}"#;
+    let cases = [
+        (
+            "a trace as a positional array",
+            format!(r#"[1, [], [], {{}}, [{step}], null]"#),
+        ),
+        (
+            "a stop as a positional array",
+            r#"{"seed": 1, "steps": [[1, 0, {"unexplored_branch_exists": true}, {},
+                "take_branch"]]}"#
+                .to_string(),
+        ),
+        (
+            "an outcome as a positional array",
+            format!(r#"{{"seed": 1, "steps": [{step}], "outcome": [true, 9, false]}}"#),
+        ),
+        (
+            "a field the contract does not have",
+            format!(r#"{{"seed": 1, "steps": [{step}], "bogus": 1}}"#),
+        ),
+        (
+            "a repeated key inside a stop",
+            r#"{"seed": 1, "steps": [{"tick": 1, "junction": 0,
+                "predicates": {"unexplored_branch_exists": true, "unexplored_branch_exists": false},
+                "raw": {}, "action": "take_branch"}]}"#
+                .to_string(),
+        ),
+    ];
+    for (what, text) in cases {
+        let path = scratch("refused-trace.json", &text);
+        refuses(
+            what,
+            &["induce", "--blocks", &blocks, "--out", &out, &path],
+            None,
+        );
+    }
+    assert!(
+        !Path::new(&out).exists(),
+        "a refused induction must not write a tree"
+    );
+}
+
+#[test]
+fn a_block_list_and_a_choice_list_are_read_as_strictly() {
+    let out = Path::new(env!("CARGO_TARGET_TMPDIR"))
+        .join("refused-blocks.json")
+        .to_string_lossy()
+        .into_owned();
+    let demo = example("demo-1.json");
+    let positional = scratch(
+        "positional-blocks.json",
+        r#"{"predicates": [["carrying_cargo", "carrying"]], "actions": []}"#,
+    );
+    refuses(
+        "a block written as a positional array",
+        &["induce", "--blocks", &positional, "--out", &out, &demo],
+        None,
+    );
+
+    let blocks = example("blocks.json");
+    let choices = scratch(
+        "extra-choices.json",
+        r#"{"choices": ["take_branch"], "extra": 1}"#,
+    );
+    let other = example("choices-b.json");
+    refuses(
+        "a field the contract does not have",
+        &["diff", "--blocks", &blocks, &choices, &other],
+        None,
+    );
+}
+
+/// The one Python-side field the contract does allow, since `deny_unknown_fields` would
+/// otherwise reject the block list Phase 2 actually writes.
+#[test]
+fn the_block_lists_stage_field_is_still_accepted() {
+    let blocks = std::fs::read_to_string(examples().join("blocks.json")).unwrap();
+    assert!(blocks.contains("\"stage\""), "the example must exercise it");
+    let out = Path::new(env!("CARGO_TARGET_TMPDIR"))
+        .join("staged.json")
+        .to_string_lossy()
+        .into_owned();
+    let (code, json, stderr) = induct(
+        &[
+            "induce",
+            "--blocks",
+            &example("blocks.json"),
+            "--out",
+            &out,
+            &example("demo-2.json"),
+        ],
+        None,
+    );
+    assert_eq!(code, 0, "{stderr}");
+    assert_eq!(json["consistent"], Value::Bool(true));
 }
