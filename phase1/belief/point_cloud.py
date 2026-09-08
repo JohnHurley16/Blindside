@@ -107,12 +107,24 @@ class PointCloud:
 
     def clearance(self, x: float, y: float, angle: float, max_range: float,
                   step: float = 0.7) -> float:
-        """How far the believed map is open along a heading, up to max_range."""
+        """How far the believed map is open along a heading, up to max_range.
+
+        The bin the query point stands in is skipped. A near-field return two cells
+        away lands in the querier's own two-cell bin, so an agent anywhere near rock
+        had all thirty-six candidate headings come back at 0.7 -- the map term went
+        flat exactly when it was the only thing that could find the door. Measured
+        over eight seeds, sampled every 10 s: flat in 23-54% of a match, and flat for
+        the whole of every terminal freeze.
+        """
+        ox, oy = self._bin(x, y)
         r = 0.0
         cos_a, sin_a = np.cos(angle), np.sin(angle)
         while r < max_range:
             r += step
-            if self.blocked(x + cos_a * r, y + sin_a * r):
+            px, py = x + cos_a * r, y + sin_a * r
+            if self._bin(px, py) == (ox, oy):
+                continue                      # standing in it, so it is walkable
+            if self.blocked(px, py):
                 return r
         return max_range
 

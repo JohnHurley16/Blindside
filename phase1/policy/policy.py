@@ -46,6 +46,12 @@ class Policy:
         self.escapes: int = 0
         self.escape_until: float = 0.0
         self.escape_heading: float | None = None
+        # headings already tried and already failed, for this waypoint only
+        self.failed_escapes: list[float] = []
+        # jam detection, from odometry alone: not moving is a different failure from
+        # not getting closer, and until now the policy could only see the second
+        self.jam_since: float = 0.0
+        self.jam_mark: float = 0.0
         # search
         self.search_t0: float = 0.0
         self.search_x: float = 0.0
@@ -59,6 +65,7 @@ class Policy:
         self.i = 0
         self.best_dist = 1e9
         self.best_t = t
+        self.failed_escapes.clear()
         self.mode = PolicyMode.TRAVEL
 
     def set_beacon_chain_home(self, t: float) -> None:
@@ -70,6 +77,7 @@ class Policy:
         self.i = 0
         self.best_dist = 1e9
         self.best_t = t
+        self.failed_escapes.clear()
         self.mode = PolicyMode.HOME
 
     def recall(self, t: float) -> None:
@@ -91,6 +99,7 @@ class Policy:
         self.i = 0
         self.best_dist = 1e9
         self.best_t = t
+        self.failed_escapes.clear()
         self.escapes = 0
         self.mode = PolicyMode.HOME
 
@@ -208,14 +217,55 @@ class Policy:
         """Has the survey-placed transponder actually answered? Belief knows this."""
         return any(f.beacon_id == self.shaft_beacon_id for f in self.b.fixes[-4:])
 
+    # ---- jam: not moving, which is not the same as not arriving -----------------------
+    def _note_motion(self, t: float) -> None:
+        """Mark the last time it covered ground. Odometry alone; Belief knows this.
+
+        Measured: a machine pressed against rock reports zero forward motion, so
+        belief freezes exactly as hard as truth and the only signal is the odometry
+        integral standing still. The longest unbroken pin in a match was 59.3 s, and
+        `_track_progress` cannot see it: "no closer to the waypoint" is also what a
+        long detour looks like.
+        """
+        if self.b.dist_total - self.jam_mark > T.JAM_MOVE_CELLS:
+            self.jam_mark = self.b.dist_total
+            self.jam_since = t
+
+    def _jammed(self, t: float) -> bool:
+        return t - self.jam_since > T.JAM_SECONDS
+
+    def _break_jam(self, t: float) -> None:
+        """Pressed against rock: throw away the heading doing it and re-pick, now.
+
+        It must not push `escape_until` out. `_track_progress` escalates only outside
+        an escape window, so a jam every 2.5 s that renewed the window pinned the
+        agent to one unreachable waypoint for the rest of the match -- measured that
+        way, terminal freezes of 195 and 221 s, worse than doing nothing at all.
+        """
+        self._blame_escape()
+        self.escape_heading = None
+        if t >= self.escape_until:
+            self.escape_until = t + T.ESCAPE_SECONDS
+        self.jam_since = t
+        self.jam_mark = self.b.dist_total
+
+    def _blame_escape(self) -> None:
+        """Record the heading that has just failed, so the next pick is a new idea."""
+        if self.escape_heading is None:
+            return
+        self.failed_escapes.append(self.escape_heading)
+        del self.failed_escapes[:-T.ESCAPES_REMEMBERED]
+
     # ---- per tick -------------------------------------------------------------------
     def step(self, t: float) -> MotorCommand:
         b = self.b
         cmd = MotorCommand(heading=b.theta)
+        self._note_motion(t)
         if self.done:
             return cmd
         if self.mode is PolicyMode.LOAD:
             cmd.load = not self.interfacing   # a dwell at the machinery is not a load
+            self.jam_since = t                # standing still on purpose is not a jam
             if t >= self.load_until:
                 self._after_load(t)
             return cmd
@@ -266,6 +316,15 @@ class Policy:
             self._arrived(goal_wp, t)
             return cmd
         self._track_progress(dist, goal_wp, t)
+        # Not while it is going to look at the machinery. The carve-out was already here
+        # for `interfacing` -- the last eighty seconds of that approach -- and it belongs
+        # to the whole approach for the same reason: an agent driving at a bearing it
+        # chose has a decision in hand, and "throw the heading away and take the longest
+        # open line on the map" is precisely the wrong answer to being briefly stopped on
+        # the way. Only the aggressive temperament investigates, so this cannot touch the
+        # cautious agent's freeze -- measured, and it does not.
+        if self._jammed(t) and not self.hold and not investigating:
+            self._break_jam(t)
 
         goal = math.atan2(goal_wp.y - b.y, goal_wp.x - b.x)
         if investigating and self.investigate_bearing is not None:
@@ -278,6 +337,7 @@ class Policy:
         base = T.AGENT_SPEED if self.cautious else T.RIVAL_SPEED
         if self.hold:
             cmd.speed = 0.0
+            self.jam_since = t               # freezing for the machinery is not a jam
         elif interfacing:
             cmd.speed = T.INTERFACE_SPEED        # creeping the last few cells toward it
         else:
@@ -333,6 +393,11 @@ class Policy:
         In a chamber whose exits are not where the target says they are, the only
         long open line is an exit. Weighting alignment weakly here is deliberate --
         a strong pull toward the goal is what kept it grinding the same wall.
+
+        A heading that has already been tried and already failed is not a new idea.
+        Measured before this: seven consecutive escapes on one seed all chose 170-180
+        degrees into two cells of rock while 290 stayed open at forty, because the
+        inputs had not changed and neither had the answer.
         """
         if self.escape_heading is not None:
             return self.escape_heading
@@ -348,6 +413,9 @@ class Policy:
             score -= 0.5 * max(0.0, -math.cos(G.wrap(cand - b.theta)))
             if near < 0.9:
                 score -= 2.0
+            if any(G.angle_between(cand, bad) < math.radians(T.ESCAPE_REPEAT_ARC_DEG)
+                   for bad in self.failed_escapes):
+                score -= 1.5
             if score > best_score:
                 best, best_score = cand, score
         self.escape_heading = best
@@ -358,17 +426,18 @@ class Policy:
             self.best_dist = dist
             self.best_t = t
             self.escapes = 0
+            self.failed_escapes.clear()      # it is moving again; nothing is ruled out
         elif t - self.best_t > T.STUCK_SECONDS and t >= self.escape_until:
+            self._blame_escape()             # that one did not work either
             self.escapes += 1
             if self.escapes > T.ESCAPES_BEFORE_SKIP:
-                if self.recalled:
-                    # Keep pushing for the shaft. Starting the spiral here instead
-                    # began it wherever the agent had got stuck -- in one trace fifty
-                    # cells short of the shaft it was aiming for -- so it circled
-                    # empty cave for five minutes. The search is only meaningful once
-                    # it is standing where it believes the shaft to be.
-                    self.escapes = 0
-                    return
+                # Abandoned whatever the mode. The recalled case used to reset the
+                # counter and keep pushing, and since Recall's route is a single HOME
+                # waypoint that was an unbounded fourteen-second loop for the rest of
+                # the match -- measured, six to thirty-six repeats per recalled run,
+                # every one of fifty-six. Running off the end of a recall route
+                # already starts the search, and a search from the wrong place still
+                # widens and can still find the shaft, which a wall cannot.
                 self.b.log.append((t, f"cannot reach {wp.label}; skipping"))
                 self.escapes = 0
                 self._advance(t)
@@ -420,17 +489,34 @@ class Policy:
             self.best_dist = 1e9
             self.best_t = t
             self.escapes = 0
+            self.failed_escapes.clear()
             self.mode = PolicyMode.HOME
             return cmd
-        # An Archimedean spiral sized so each loop steps outward by less than the
-        # width it can detect the shaft across -- otherwise it can circle straight
-        # past the thing it is looking for. Radius is driven by angle, and angle by
-        # walking speed, so the whole search is something the agent can actually walk.
+        # An Archimedean spiral sized so each loop steps outward by less than the width
+        # it can detect the shaft across -- otherwise it can circle straight past the
+        # thing it is looking for. The angle advances with ground actually covered, so
+        # the whole search really is something the agent can walk. On a clock, which is
+        # what it used to be, the target walked the spiral at nominal speed whether or
+        # not the agent could follow, and in a cave it cannot: measured, the target ran
+        # 20-47 cells ahead and the "search" was a point orbiting forty cells away being
+        # chased. `search_dist0` was already being recorded for this and never read.
         radius = 4.0 + T.RECALL_SEARCH_PITCH * self.search_angle
-        self.search_angle += (T.AGENT_SPEED / radius) * T.DT
+        self.search_angle += (b.dist_total - self.search_dist0) / radius
+        self.search_dist0 = b.dist_total
         target_x = self.search_x + math.cos(self.search_angle) * radius
         target_y = self.search_y + math.sin(self.search_angle) * radius
         goal = math.atan2(target_y - b.y, target_x - b.x)
+        # The search gets the same way out of a jam that travelling does. Without it the
+        # spiral had no escape at all: measured on seed 7, a recalled agent stood at one
+        # spot from 6:00 to 7:30 with the target rotating in front of it, because
+        # `_steer` only looks 150 degrees either side of the goal and the way out was
+        # behind it.
+        if self._jammed(t):
+            self._break_jam(t)
+        elif t >= self.escape_until and self.failed_escapes:
+            self.failed_escapes.clear()      # moving again; nothing is ruled out
+        if t < self.escape_until:
+            goal = self._escape_heading(goal)
         heading, free_ahead = self._steer(goal)
         cmd.heading = heading
         cmd.speed = T.AGENT_SPEED * (0.5 if free_ahead < 1.3 else 1.0)
@@ -490,6 +576,7 @@ class Policy:
             self.mode = PolicyMode.TRAVEL
             self.best_dist = 1e9
             self.best_t = t
+            self.failed_escapes.clear()
             return
         b.log.append((t, f"giving up on {wp.label}"))
         self.load_attempts = 0
@@ -506,6 +593,7 @@ class Policy:
         self.i += 1
         self.best_dist = 1e9
         self.best_t = t
+        self.failed_escapes.clear()
         self.escapes = 0
         if self.i < len(self.route):
             return
@@ -519,14 +607,29 @@ class Policy:
             self._plan(t)
 
     def _begin_search(self, t: float) -> None:
+        """Start the widening circle, and say honestly which of the two reasons it is.
+
+        Arriving where the shaft should be and hearing nothing is one story. Giving up
+        on ever getting there and searching from wherever the rock stopped it is a
+        different one, and the feed should not report the second as the first.
+        """
         if self.mode is PolicyMode.SEARCH:
             return
-        self.b.log.append((t, "at the shaft, but nothing is answering"))
+        hx, hy = self.b.known_places["HOME"]
+        arrived = G.dist(self.b.x, self.b.y, hx, hy) < T.HOME_REACHED
+        self.b.log.append((t, "at the shaft, but nothing is answering" if arrived
+                           else "cannot get to the shaft; searching from here"))
         self.mode = PolicyMode.SEARCH
         self.search_t0 = t
         self.search_angle = 0.0
         self.search_dist0 = self.b.dist_total
-        self.search_x, self.search_y = self.b.x, self.b.y
+        # The circle to widen is the one around the place it believes home to be, even
+        # -- especially -- when it never got there. Centred on wherever the rock
+        # stopped it, the spiral swept empty cave fifty-six cells off target and the
+        # shaft stayed 55-80 true cells away for the rest of the match, in all eight
+        # seeds. The true shaft is exactly one pose error from the believed one, so
+        # that is the only centre from which widening can ever reach it.
+        self.search_x, self.search_y = (self.b.x, self.b.y) if arrived else (hx, hy)
 
     def _plan(self, t: float) -> None:
         b = self.b
