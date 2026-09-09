@@ -1,0 +1,34 @@
+=== Blindside surface spike ===
+adapter        : NVIDIA GeForce RTX 3080 Laptop GPU
+api            : 1.4.312 (NVIDIA)
+godot          : 4.7.2-stable (official)
+seed           : 20260908
+layout hash    : 1889570882374975
+layout ms      : 0.97
+ground ms      : 427.24  (66608 tris, 33687 verts)
+inherited ms   : 62.67
+brought ms     : 23.95
+scatter ms     : 610.99
+flush ms       : 50.38
+TOTAL GEN ms   : 1176.20
+prop instances : 85144
+multimeshes    : 1453
+mm triangles   : 3360718
+decals         : 89
+mode           : shots   light: overcast
+shot 01_site_wide  overcast  fps=1.0 draws=604 prims=871420
+shot 02_headframe_sky  overcast  fps=1.0 draws=303 prims=583764
+shot 03_yard_working  overcast  fps=31.0 draws=442 prims=1152964
+shot 04_service_bay  overcast  fps=31.0 draws=225 prims=769136
+shot 05_course  overcast  fps=24.0 draws=217 prims=688612
+shot 06_shaft_mouth  overcast  fps=24.0 draws=425 prims=1064804
+shot 07_underfoot  overcast  fps=28.0 draws=608 prims=1678598
+shot 08_dusk_yard  dusk  fps=18.0 draws=446 prims=1183912
+shot 09_sceptic_bench  overcast  fps=18.0 draws=314 prims=886261
+shot 10_sceptic_charge  overcast  fps=24.0 draws=450 prims=1231084
+shot 11_rain_collar  rain  fps=24.0 draws=721 prims=1856117
+shot 12_yard_deep  overcast  fps=28.0 draws=344 prims=1086269
+shot 13_dusk_wide  dusk  fps=28.0 draws=946 prims=2001352
+shot 15_course_high  overcast  fps=28.0 draws=237 prims=839319
+shot 16_collar_close  overcast  fps=28.0 draws=680 prims=1727367
+shot 14_gate_road  overcast  fps=28.0 draws=978 prims=2257746
