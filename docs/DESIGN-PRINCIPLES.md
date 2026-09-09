@@ -74,3 +74,56 @@ discovery is a Phase 3+ content question.
 **What it does not settle.** What the surface looks like, what the teaching interface is in the
 world, and whether anything is at stake up there. Proposed, marked as proposals, in the vision
 board under `docs/art/vision/`.
+
+## 4. Dense, and futuristic enough to justify the robots — 2026-09-08
+
+> This is a very solid start, but in the real game it's going to need way more detail. It
+> can't just look like an empty hellscape, it has to be kinda a hellscape, but also
+> futuristic enough where they have advanced robots. Way more detail needed in both the
+> cave and above ground.
+
+**What it binds.**
+- **Density is a requirement, not a finish pass.** Every environment carries detail at three
+  scales at once: what reads in silhouette, what reads at lamp distance, and what reads when
+  a machine is standing on it. An empty corridor with good lighting is a failure even if the
+  lighting is right. This applies to the surface as much as the cave — the pit-head is a
+  working yard, not a clearing with a headframe in it.
+- **Two technological registers, and the world is the collision of them.** The mine and the
+  ancients' works are the hellscape: cast iron, water power, riveted plate, drowned and
+  still running. The machines, their instruments and the pit-head's working equipment are
+  the future: the player's side is manufactured, modular, powered and clean-edged by
+  contrast. Neither register alone is the look. A frame that shows only ancient iron reads
+  as a period piece; a frame that shows only the players' kit reads as any science-fiction
+  game. The image the game is after is the new bolted onto, lowered into and dwarfed by the
+  old.
+- **Advanced robots must be plausible in the frame.** If the world contains autonomous
+  walkers, something in the world has to have built and serviced them. That evidence is the
+  surface's job and it must be visible: the yard, the bench, the power, the handling gear.
+
+**What it does not settle.** How far forward the players' register sits, and whether anyone
+still lives here.
+
+## 5. Procedural, and playable in Godot — 2026-09-08
+
+> Don't do that in Blender though. We need to figure out how we are going to do all this
+> procedurally and then have it playable in Godot.
+
+**What it binds.**
+- **Blender renders are targets, not the pipeline.** Everything in `docs/art/vision/` is
+  concept art: a picture of what a frame should contain. Nothing in it ships. Any art
+  decision is only real once a rule produces it procedurally at frame rate.
+- **The density in §4 has to come from rules, not from modelling.** A hand-built cave cannot
+  be generated per match, and the game generates a cave per match. So every piece of dressing
+  named in §4 must be reachable as a placement rule, a material rule or an instanced kit
+  part, and the art direction has to be written in those terms.
+- **The target is Godot 4, at frame rate, on the dev machine.** `ARCHITECTURE.md` already
+  fixes Godot 4 via GDExtension with Rust. A look is not approved until it has been seen
+  running there.
+- **The generation seam.** `blindside-gen` is a constrained crate: no floats, no `HashMap`
+  iteration, and its output is hashed into the replay. So generation splits in two. The
+  deterministic layer produces the cave the simulation plays on — which cells are open,
+  width class, where the deposits, the machinery and the water are — and every client agrees
+  on it bit for bit. The dressing layer turns that into geometry and props from the same
+  seed, is allowed floats, and lives on the client side. Nothing the dressing layer decides
+  may ever reach the simulation, and the invariant stands unchanged: dressing is drawn from
+  world truth for a spectator, never handed to a policy.
