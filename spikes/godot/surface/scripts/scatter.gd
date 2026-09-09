@@ -31,6 +31,26 @@ func gh(x: float, z: float) -> float:
 func on_pad(x: float, z: float) -> bool:
 	return L.on_pad(int(x * 1000.0), int(z * 1000.0))
 
+## LAYOUT queries. DESIGN-PRINCIPLES 7: the ground a machine walks is kept clear
+## and swept, and its emptiness is what reads as use. `swept` is the lanes, the
+## turning circle and the working aprons; `in_stand` is ground an arrangement
+## occupies. Nothing in this file drops anything on either.
+func swept(x: float, z: float) -> bool:
+	return L.swept(int(x * 1000.0), int(z * 1000.0))
+
+func in_stand(x: float, z: float) -> bool:
+	return L.in_stand(int(x * 1000.0), int(z * 1000.0))
+
+## MARGIN. Where debris, weeds and standing water are allowed: off the concrete,
+## or within 2.6 m of the pad edge where the sweeper turns round.
+func margin(x: float, z: float) -> bool:
+	if not on_pad(x, z):
+		return true
+	var p: Dictionary = L.plan["pads"][0]
+	var d := minf(minf(x - float(p["x0"]) / 1000.0, float(p["x1"]) / 1000.0 - x),
+		minf(z - float(p["z0"]) / 1000.0, float(p["z1"]) / 1000.0 - z))
+	return d < 2.6
+
 func kcol(lo: float = 0.7, hi: float = 1.5) -> Color:
 	var v := r.randf_range(lo, hi)
 	return Color(v, v * r.randf_range(0.94, 1.0), v * r.randf_range(0.86, 0.98))
@@ -73,50 +93,107 @@ func _gravel() -> void:
 			Vector3(s, s * r.randf_range(0.35, 0.7), s * r.randf_range(0.7, 1.4)),
 			r.randf() * TAU, r.randf_range(-0.25, 0.25), r.randf_range(-0.25, 0.25)), kcol(0.50, 1.05))
 
-## RULE. On the hardstanding: chippings tracked in, at 0.35 per m^2, plus a dense
-## band 1.2 m either side of every slab joint where the sweeper never reaches.
+## RULE, REWRITTEN FOR DESIGN-PRINCIPLES 7. The old rule put 9 chippings per
+## square metre over all 3 224 m2 of hardstanding - 29 000 of them - including
+## the lanes, the turning circle and the apron a machine is walked across. Even
+## cover is exactly how abandonment is drawn.
+##
+## Loose stock on concrete now collects in the three places a broom leaves it and
+## nowhere else:
+##   1. the slab joints, which no sweeper reaches;
+##   2. the LEE of an arrangement, in a 0.8 m band outside the stand it hides
+##      behind, because that is where the brush stops;
+##   3. the margin, the outer 2.6 m of the pad where nothing turns.
+## Swept ground gets none. That deletion is the single largest change in the pass
+## and it is worth more than everything added.
 func _pad_chippings() -> void:
 	var p: Dictionary = L.plan["pads"][0]
 	var x0 := float(p["x0"]) / 1000.0
 	var z0 := float(p["z0"]) / 1000.0
 	var x1 := float(p["x1"]) / 1000.0
 	var z1 := float(p["z1"]) / 1000.0
-	var n := int((x1 - x0) * (z1 - z0) * 9.0)
-	for i in n:
-		var x := r.randf_range(x0, x1)
-		var z := r.randf_range(z0, z1)
-		var s := r.randf_range(0.025, 0.105)
-		var m2: String = ["chip", "chip", "rock", "rock2", "rock3"][r.randi() % 5]
-		B.detail(m2, "gravel", Batcher.xf(Vector3(x, gh(x, z) - s * 0.06, z),
-			Vector3(s, s * r.randf_range(0.55, 0.95), s * r.randf_range(0.7, 1.3)),
-			r.randf() * TAU, r.randf_range(-0.3, 0.3), r.randf_range(-0.3, 0.3)), kcol(0.7, 1.5))
-	# joint lines, on the 3.6 m module (the same module the shader draws)
 	var mod := float(L.plan["slab_module"]) / 1000.0
+	# 1. the joint lines, on the 3.6 m module the shader draws
 	var jx := ceilf(x0 / mod) * mod
 	while jx < x1:
-		var m := int((z1 - z0) * 2.4)
+		var m := int((z1 - z0) * 2.2)
 		for k in m:
 			var z2 := r.randf_range(z0, z1)
-			var off := r.randf_range(-0.35, 0.35)
+			var off := r.randf_range(-0.30, 0.30)
+			if swept(jx + off, z2) or in_stand(jx + off, z2):
+				continue
 			var s2 := r.randf_range(0.02, 0.075)
 			B.detail("chip", "gravel", Batcher.xf(Vector3(jx + off, gh(jx + off, z2) - 0.004, z2),
 				Vector3(s2, s2 * 0.35, s2), r.randf() * TAU), kcol(0.5, 1.0))
 		jx += mod
 	var jz := ceilf(z0 / mod) * mod
 	while jz < z1:
-		var m2 := int((x1 - x0) * 2.4)
+		var m2 := int((x1 - x0) * 2.2)
 		for k2 in m2:
 			var x3 := r.randf_range(x0, x1)
-			var off2 := r.randf_range(-0.35, 0.35)
+			var off2 := r.randf_range(-0.30, 0.30)
+			if swept(x3, jz + off2) or in_stand(x3, jz + off2):
+				continue
 			var s3 := r.randf_range(0.02, 0.075)
 			B.detail("chip", "gravel", Batcher.xf(Vector3(x3, gh(x3, jz + off2) - 0.004, jz + off2),
 				Vector3(s3, s3 * 0.35, s3), r.randf() * TAU), kcol(0.5, 1.0))
 		jz += mod
+	# 2. the lee of every arrangement: a 0.8 m band outside the stand
+	for st in L.plan["stands"]:
+		var sx0 := float(st["x0"]) / 1000.0
+		var sz0 := float(st["z0"]) / 1000.0
+		var sx1 := float(st["x1"]) / 1000.0
+		var sz1 := float(st["z1"]) / 1000.0
+		var per := 2.0 * ((sx1 - sx0) + (sz1 - sz0))
+		for k3 in int(per * 3.0):
+			var t := r.randf() * per
+			var e := r.randf_range(0.06, 0.8)
+			var q := _perimeter(sx0, sz0, sx1, sz1, t, e)
+			if swept(q.x, q.y) or in_stand(q.x, q.y):
+				continue
+			var s4 := r.randf_range(0.02, 0.09)
+			B.detail(["chip", "chip", "rock"][r.randi() % 3], "gravel",
+				Batcher.xf(Vector3(q.x, gh(q.x, q.y) - s4 * 0.06, q.y),
+					Vector3(s4, s4 * r.randf_range(0.5, 0.9), s4 * r.randf_range(0.7, 1.3)),
+					r.randf() * TAU, r.randf_range(-0.3, 0.3), r.randf_range(-0.3, 0.3)), kcol(0.6, 1.3))
+	# 3. the margin, the outer band of the pad
+	var nm := int((x1 - x0) * (z1 - z0) * 0.9)
+	for i in nm:
+		var x := r.randf_range(x0, x1)
+		var z := r.randf_range(z0, z1)
+		if not margin(x, z) or swept(x, z) or in_stand(x, z):
+			continue
+		var s5 := r.randf_range(0.025, 0.105)
+		B.detail(["chip", "chip", "rock", "rock2", "rock3"][r.randi() % 5], "gravel",
+			Batcher.xf(Vector3(x, gh(x, z) - s5 * 0.06, z),
+				Vector3(s5, s5 * r.randf_range(0.55, 0.95), s5 * r.randf_range(0.7, 1.3)),
+				r.randf() * TAU, r.randf_range(-0.3, 0.3), r.randf_range(-0.3, 0.3)), kcol(0.7, 1.5))
+
+## a point at arc length t round a rectangle, pushed e metres outward
+func _perimeter(x0: float, z0: float, x1: float, z1: float, t: float, e: float) -> Vector2:
+	var w := x1 - x0
+	var d := z1 - z0
+	if t < w:
+		return Vector2(x0 + t, z0 - e)
+	t -= w
+	if t < d:
+		return Vector2(x1 + e, z0 + t)
+	t -= d
+	if t < w:
+		return Vector2(x1 - t, z1 + e)
+	t -= d
+	return Vector2(x0 - e, clampf(z1 - t, z0, z1))
 
 # =================================================================== weeds
-## RULE. Weeds grow where nothing drives: in the slab joints, at the foot of
-## every wall and fence, and over the unpaved ground at 0.22 per m^2, thinning
-## toward the collar because that ground is worked daily.
+## RULE, REWRITTEN FOR DESIGN-PRINCIPLES 7: "weeds ... belong in the margins only
+## - behind buildings, along fences, in corners nothing crosses. Growing through
+## the middle of a working apron says nobody has walked there in a year."
+##
+## The old rule seeded 2.2 tufts per metre of EVERY slab joint across all 3 224
+## m2 of hardstanding, so the yard grew grass through the ground its machines are
+## walked over. It now grows in three places: the outer 2.6 m of the pad, the
+## unpaved ground beyond it, and an unbroken line at the foot of the fence.
+## Somebody swept this yard this week.
 func _weeds() -> void:
 	var p: Dictionary = L.plan["pads"][0]
 	var x0 := float(p["x0"]) / 1000.0
@@ -124,32 +201,32 @@ func _weeds() -> void:
 	var x1 := float(p["x1"]) / 1000.0
 	var z1 := float(p["z1"]) / 1000.0
 	var mod := float(L.plan["slab_module"]) / 1000.0
-	# in the joints
+	# joints, but only in the margin band and only where nothing crosses
 	var jx := ceilf(x0 / mod) * mod
 	while jx < x1:
-		var m := int((z1 - z0) * 2.2)
+		var m := int((z1 - z0) * 1.4)
 		for k in m:
-			if r.randf() < 0.25:
-				continue
 			var z := r.randf_range(z0, z1)
-			var s := r.randf_range(0.10, 0.34)
 			var jjx := jx + r.randf_range(-0.06, 0.06)
+			if not margin(jjx, z) or swept(jjx, z) or in_stand(jjx, z):
+				continue
+			var s := r.randf_range(0.10, 0.30)
 			B.detail("weed", "weed", Batcher.xf(Vector3(jjx, gh(jjx, z) + s * 0.36, z),
 				Vector3(s * 1.4, s, s * 1.4), r.randf() * TAU), kcol(0.55, 1.25))
 		jx += mod
 	var jz := ceilf(z0 / mod) * mod
 	while jz < z1:
-		var m2 := int((x1 - x0) * 2.2)
+		var m2 := int((x1 - x0) * 1.4)
 		for k2 in m2:
-			if r.randf() < 0.45:
-				continue
 			var x2 := r.randf_range(x0, x1)
-			var s2 := r.randf_range(0.10, 0.34)
 			var jjz := jz + r.randf_range(-0.06, 0.06)
+			if not margin(x2, jjz) or swept(x2, jjz) or in_stand(x2, jjz):
+				continue
+			var s2 := r.randf_range(0.10, 0.30)
 			B.detail("weed", "weed", Batcher.xf(Vector3(x2, gh(x2, jjz) + s2 * 0.36, jjz),
 				Vector3(s2 * 1.4, s2, s2 * 1.4), r.randf() * TAU), kcol(0.55, 1.25))
 		jz += mod
-	# open ground
+	# open ground: off the concrete only, and thinned hard near the collar
 	var rad := 70.0
 	var n := int(PI * rad * rad * 0.22)
 	for i in n:
@@ -157,27 +234,44 @@ func _weeds() -> void:
 		var d := sqrt(r.randf()) * rad
 		var x3 := cos(a) * d
 		var z3 := sin(a) * d
-		if on_pad(x3, z3):
+		if on_pad(x3, z3) or swept(x3, z3):
 			continue
-		if d < 14.0 and r.randf() < 0.75:
+		if d < 16.0 and r.randf() < 0.82:
 			continue
 		var s3 := r.randf_range(0.14, 0.55)
 		B.detail("weed", "weed", Batcher.xf(Vector3(x3, gh(x3, z3) + s3 * 0.36, z3),
 			Vector3(s3 * 1.3, s3, s3 * 1.3), r.randf() * TAU), kcol(0.5, 1.3))
-	# at the foot of the perimeter fence: an unbroken line of it
+	# at the foot of the perimeter fence: an unbroken line of it. This is the
+	# margin the frame is meant to notice.
 	var pts: Array = L.plan["fence"]
-	for i in range(pts.size() - 1):
-		var a2 := Vector2(float(pts[i][0]) / 1000.0, float(pts[i][1]) / 1000.0)
-		var b2 := Vector2(float(pts[i + 1][0]) / 1000.0, float(pts[i + 1][1]) / 1000.0)
-		var n2 := int(a2.distance_to(b2) * 2.2)
+	for i2 in range(pts.size() - 1):
+		var a2 := Vector2(float(pts[i2][0]) / 1000.0, float(pts[i2][1]) / 1000.0)
+		var b2 := Vector2(float(pts[i2 + 1][0]) / 1000.0, float(pts[i2 + 1][1]) / 1000.0)
+		var n2 := int(a2.distance_to(b2) * 2.6)
 		for k3 in n2:
 			var t := (float(k3) + 0.5) / float(n2)
 			var pp: Vector2 = a2.lerp(b2, t)
-			var s4 := r.randf_range(0.16, 0.5)
-			var ox := r.randf_range(-0.5, 0.5)
-			var oz := r.randf_range(-0.5, 0.5)
+			var s4 := r.randf_range(0.18, 0.62)
+			var ox := r.randf_range(-0.55, 0.55)
+			var oz := r.randf_range(-0.55, 0.55)
+			if swept(pp.x + ox, pp.y + oz):
+				continue
 			B.detail("weed", "weed", Batcher.xf(Vector3(pp.x + ox, gh(pp.x + ox, pp.y + oz) + s4 * 0.36, pp.y + oz),
 				Vector3(s4 * 1.3, s4, s4 * 1.3), r.randf() * TAU), kcol(0.5, 1.25))
+	# and behind the buildings, where nothing crosses
+	for b in L.plan["buildings"]:
+		var bx0 := float(b["x0"]) / 1000.0
+		var bz0 := float(b["z0"]) / 1000.0
+		var bx1 := float(b["x1"]) / 1000.0
+		var bz1 := float(b["z1"]) / 1000.0
+		var per := 2.0 * ((bx1 - bx0) + (bz1 - bz0))
+		for k4 in int(per * 1.6):
+			var q := _perimeter(bx0, bz0, bx1, bz1, r.randf() * per, r.randf_range(0.15, 1.1))
+			if swept(q.x, q.y) or in_stand(q.x, q.y):
+				continue
+			var s5 := r.randf_range(0.12, 0.42)
+			B.detail("weed", "weed", Batcher.xf(Vector3(q.x, gh(q.x, q.y) + s5 * 0.36, q.y),
+				Vector3(s5 * 1.3, s5, s5 * 1.3), r.randf() * TAU), kcol(0.5, 1.25))
 
 # ================================================================= fixings
 ## RULE. Where something was bolted, something was dropped. Nuts, washers,
@@ -197,12 +291,15 @@ func _fixings() -> void:
 	spots.append(Vector2(-22.0, -1.5))
 	spots.append(Vector2(0.0, 0.0))
 	for s2 in spots:
-		var n := r.randi_range(26, 60)
+		var n := r.randi_range(10, 24)
 		for i in n:
 			var a := r.randf() * TAU
-			var d := sqrt(r.randf()) * 4.0
+			var d := sqrt(r.randf()) * 2.4
 			var x: float = s2.x + cos(a) * d
 			var z: float = s2.y + sin(a) * d
+			# a dropped bolt on a lane gets swept up with everything else
+			if swept(x, z):
+				continue
 			var y := gh(x, z)
 			var kind := r.randi() % 5
 			match kind:
@@ -213,21 +310,35 @@ func _fixings() -> void:
 				4: B.detail("chip", "iron", Batcher.xf(Vector3(x, y + 0.003, z), Vector3(0.07, 0.02, 0.05), r.randf() * TAU), kcol(0.5, 1.2))
 
 # ================================================================== litter
-## RULE. Cable ties, tape, offcut plastic, glove, sheet, banding strap: 0.05 per
-## m^2 over the pad and double that in the lee of anything that stops the wind.
+## RULE, REWRITTEN FOR DESIGN-PRINCIPLES 7: "if the answer to who put it there
+## is nobody, it is litter, and litter belongs only in the margins." It used to
+## be spread at 0.16 per m2 over the whole pad. It now blows into the lee of the
+## fence and the backs of the buildings, which is where wind actually puts it.
 func _litter() -> void:
-	var p: Dictionary = L.plan["pads"][0]
-	var x0 := float(p["x0"]) / 1000.0
-	var z0 := float(p["z0"]) / 1000.0
-	var x1 := float(p["x1"]) / 1000.0
-	var z1 := float(p["z1"]) / 1000.0
-	var n := int((x1 - x0) * (z1 - z0) * 0.16)
-	for i in n:
-		var x := r.randf_range(x0, x1)
-		var z := r.randf_range(z0, z1)
+	var spots: Array = []
+	var pts: Array = L.plan["fence"]
+	for i in range(pts.size() - 1):
+		var a2 := Vector2(float(pts[i][0]) / 1000.0, float(pts[i][1]) / 1000.0)
+		var b2 := Vector2(float(pts[i + 1][0]) / 1000.0, float(pts[i + 1][1]) / 1000.0)
+		var n2 := int(a2.distance_to(b2) * 0.55)
+		for k in n2:
+			var pp: Vector2 = a2.lerp(b2, (float(k) + 0.5) / float(maxi(n2, 1)))
+			spots.append(pp + Vector2(r.randf_range(-1.1, 1.1), r.randf_range(-1.1, 1.1)))
+	for b in L.plan["buildings"]:
+		var bx0 := float(b["x0"]) / 1000.0
+		var bz0 := float(b["z0"]) / 1000.0
+		var bx1 := float(b["x1"]) / 1000.0
+		var bz1 := float(b["z1"]) / 1000.0
+		var per := 2.0 * ((bx1 - bx0) + (bz1 - bz0))
+		for k2 in int(per * 0.5):
+			spots.append(_perimeter(bx0, bz0, bx1, bz1, r.randf() * per, r.randf_range(0.2, 1.4)))
+	for q in spots:
+		var x: float = q.x
+		var z: float = q.y
+		if swept(x, z) or in_stand(x, z):
+			continue
 		var y := gh(x, z)
-		var kind := r.randi() % 6
-		match kind:
+		match r.randi() % 6:
 			0: B.detail("cyl6", "plastic", Batcher.xf(Vector3(x, y + 0.004, z), Vector3(0.006, 0.16, 0.006), r.randf() * TAU, PI * 0.5, r.randf() * TAU), Color(1.4, 1.4, 1.4))
 			1: B.detail("ring", "plastic", Batcher.xf(Vector3(x, y + 0.004, z), Vector3(0.07, 0.008, 0.07), r.randf() * TAU), Color(1.2, 1.2, 1.2))
 			2: B.detail("box", "litter", Batcher.xf(Vector3(x, y + 0.004, z), Vector3(r.randf_range(0.08, 0.3), 0.004, r.randf_range(0.08, 0.24)), r.randf() * TAU, r.randf_range(-0.2, 0.2), r.randf_range(-0.2, 0.2)), Color(1.1, 1.1, 1.05))
@@ -238,9 +349,11 @@ func _litter() -> void:
 ## RULE. Temporary power and data does not go in a trench: it snakes across the
 ## pad in a straight-ish line from a source to a load, held down by sandbags.
 func _ground_cables() -> void:
-	var runs := [[Vector2(-24.0, 4.0), Vector2(-4.0, 2.0)], [Vector2(-12.0, 1.0), Vector2(-1.0, -2.5)],
-		[Vector2(-6.0, -20.0), Vector2(-6.0, -2.0)], [Vector2(14.0, 8.0), Vector2(3.0, 3.0)],
-		[Vector2(-20.0, -6.0), Vector2(-20.0, 8.0)], [Vector2(0.0, 3.0), Vector2(30.0, 1.0)]]
+	# ORDER PASS. Six runs snaking across the middle of the pad became two that go
+	# where a person would run them: the transformer pen to the service bay, and
+	# the bay to the charge line. Straight, along the edge of a lane rather than
+	# across it, because a cable somebody laid is straight.
+	var runs := [[Vector2(-4.0, -18.5), Vector2(-4.0, -9.0)], [Vector2(-28.6, 3.4), Vector2(-28.6, 6.2)]]
 	for run in runs:
 		var a: Vector2 = run[0]
 		var b: Vector2 = run[1]
@@ -248,7 +361,7 @@ func _ground_cables() -> void:
 		var prev := Vector3(a.x, gh(a.x, a.y) + 0.03, a.y)
 		for i in range(1, n + 1):
 			var t := float(i) / float(n)
-			var pp: Vector2 = a.lerp(b, t) + Vector2(sin(t * 9.0) * 0.5, cos(t * 7.0) * 0.5)
+			var pp: Vector2 = a.lerp(b, t) + Vector2(sin(t * 5.0) * 0.10, cos(t * 4.0) * 0.10)
 			var q := Vector3(pp.x, gh(pp.x, pp.y) + 0.03, pp.y)
 			B.detail("cyl6", "rubber", Batcher.beam_xf(prev, q, 0.032, 0.032), Color(0.9, 0.9, 0.9))
 			if i % 5 == 0:
@@ -267,13 +380,16 @@ func _build_decals(parent: Node3D) -> void:
 	parent.add_child(pool)
 	var made := 0
 	# oil and drip stains: the yard, the bay, the drum store, the charge row
-	var clusters := [Vector3(-19.0, 0, -3.0), Vector3(-22.0, 0, -1.5), Vector3(-20.0, 0, 7.0),
-		Vector3(-17.0, 0, 20.0), Vector3(0.0, 0, 0.0), Vector3(11.5, 0, -15.0),
-		Vector3(-4.0, 0, -20.0), Vector3(-26.0, 0, -17.0), Vector3(15.0, 0, 10.0)]
+	# ORDER PASS. A stain says WORK HAPPENED HERE, so every cluster is now on a
+	# thing that is worked: the bench, the service stand, the dock line, the
+	# drum bund, the scrap bay, the muster square, the collar.
+	var clusters := [Vector3(-20.4, 0, -7.2), Vector3(-13.6, 0, -1.5), Vector3(-10.8, 0, -2.1),
+		Vector3(-21.0, 0, 7.0), Vector3(-6.5, 0, 4.0), Vector3(-17.0, 0, 20.0),
+		Vector3(23.5, 0, -3.0), Vector3(0.0, 0, 0.0), Vector3(-4.0, 0, -20.0)]
 	for c in clusters:
-		for i in r.randi_range(4, 9):
-			var x: float = c.x + r.randf_range(-3.5, 3.5)
-			var z: float = c.z + r.randf_range(-3.5, 3.5)
+		for i in r.randi_range(3, 7):
+			var x: float = c.x + r.randf_range(-2.4, 2.4)
+			var z: float = c.z + r.randf_range(-2.4, 2.4)
 			var d := Decal.new()
 			d.texture_albedo = stain
 			var s := r.randf_range(0.9, 3.4)

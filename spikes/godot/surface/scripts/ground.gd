@@ -184,6 +184,13 @@ static func build(L: SurfaceLayout, parent: Node3D) -> Dictionary:
 			var pond := clampf(maxf(low, (1.0 - dish(x, z)) * (0.95 if hard > 0.5 else 0.42)), 0.0, 1.0)
 			pond = maxf(pond, traffic * 0.55)     # ruts hold water
 			pond *= clampf(1.0 - (h - 0.30) / 0.85, 0.0, 1.0)
+			# ORDER PASS (DESIGN-PRINCIPLES 7): "standing water belongs in the
+			# margins only". Ground the LAYOUT keeps clear is ground that is
+			# driven, swept and drained, so it damps to a wet film rather than
+			# holding pools. A lake across the apron in front of the service bay
+			# says nobody has crossed it in a year.
+			if L.swept(int(x * 1000.0), int(z * 1000.0)):
+				pond *= 0.28
 			if x < x0 or x > x1 or z < z0 or z > z1:
 				traffic = 0.0
 				hard = 0.0

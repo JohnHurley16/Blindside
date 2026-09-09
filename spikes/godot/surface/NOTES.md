@@ -16,6 +16,13 @@ photoreal"), and it rewrote both shaders, the ground mesh and the lighting. Read
 exposure or a frame time, PHOTOREAL is the current one.** §6 and §7 below are the
 weaknesses that pass was aimed at.
 
+**A third pass ran the same day against `DESIGN-PRINCIPLES` §7 ("density is order, not
+scatter"), after the designer said the yard read as an abandoned scrap yard. It deleted
+33 247 props and replaced weighted random scatter with a vocabulary of aligned
+arrangements placed against new LAYOUT fields. Read `ORDER.md`: where it disagrees with
+anything below about how an object gets its POSITION - §2.2's yard fill, §2.4's underfoot
+rules, §2.3's charge row, and the layout/dressing table in §1 - ORDER is the current one.**
+
 Everything below is a **pipeline**, not a picture. The Blender vision board under
 `docs/art/vision/surface/` is the target; nothing from it ships and nothing from it is
 imported here.

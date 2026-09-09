@@ -741,6 +741,12 @@ static func get_mat(id: String) -> ShaderMaterial:
 		"plastic":  [Vector3(0.132, 0.138, 0.130), 0.32, 0.64, 0.0, 0.32, 0.0, 6.0, 0.28, 0.35, 0.0],
 		"amber":    [Vector3(0.480, 0.302, 0.108), 0.34, 0.64, 0.0, 0.26, 0.0, 6.0, 0.18, 0.40, 0.0],
 		"screen":   [Vector3(0.032, 0.036, 0.041), 0.06, 0.18, 0.0, 0.10, 0.0, 8.0, 0.05, 0.10, 0.0],
+		# ORDER PASS (DESIGN-PRINCIPLES 7). Line paint on concrete: high albedo but
+		# NOT white - a lane marking that has been driven over for a season is
+		# 0.45-0.55 linear and it is dirtiest where the wheels run, which is what
+		# the wide dirt term is for. It is the cheapest object on the site that
+		# answers "who put it there and why".
+		"paint":    [Vector3(0.690, 0.640, 0.455), 0.50, 0.84, 0.0, 0.40, 0.0, 7.0, 0.30, 0.22, 0.0],
 		"glass":    [Vector3(0.050, 0.053, 0.058), 0.04, 0.14, 0.0, 0.08, 0.0, 8.0, 0.05, 0.10, 0.0],
 		# ---------------- scatter and growth
 		"weed":     [Vector3(0.072, 0.086, 0.038), 0.62, 0.96, 0.0, 0.60, 0.0, 3.0, 0.10, 0.70, 0.0],

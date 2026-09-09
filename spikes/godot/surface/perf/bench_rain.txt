@@ -4,30 +4,30 @@ api            : 1.4.312 (NVIDIA)
 godot          : 4.7.2-stable (official)
 seed           : 20260908
 layout hash    : 1889570882374975
-layout ms      : 0.93
-ground ms      : 1461.66  (129072 tris, 65095 verts)
-inherited ms   : 74.74
-brought ms     : 30.38
-scatter ms     : 1763.22
-flush ms       : 65.00
-TOTAL GEN ms   : 3395.93
+layout ms      : 1.32
+ground ms      : 1277.39  (129072 tris, 65095 verts)
+inherited ms   : 63.98
+brought ms     : 24.25
+scatter ms     : 1622.94
+flush ms       : 62.55
+TOTAL GEN ms   : 3052.44
 prop instances : 84864
 multimeshes    : 1464
 mm triangles   : 3351932
 decals         : 89
 mode           : bench   light: rain
-pom            : 1.0   sky: realtime   ssao: true
+pom            : 1.0   sky: realtime   ssao: false
 
 --- sustained, rain light, 1920x1080, camera moving ---
-frames         : 2035 over 40.0 s
-mean frame     : 19.16 ms   (52.2 fps)
-median frame   : 20.00 ms   (50.0 fps)
-p95 frame      : 23.50 ms   (42.5 fps)
-p99 frame      : 24.47 ms   (40.9 fps)
-worst frame    : 26.84 ms   (37.3 fps)
+frames         : 3394 over 40.0 s
+mean frame     : 11.49 ms   (87.0 fps)
+median frame   : 11.67 ms   (85.7 fps)
+p95 frame      : 16.67 ms   (60.0 fps)
+p99 frame      : 18.06 ms   (55.4 fps)
+worst frame    : 21.36 ms   (46.8 fps)
 draw calls max : 891
-primitives max : 2464835
+primitives max : 2462919
 objects max    : 891
-video mem      : 283.5 MB
-gen ms         : 3395.93
+video mem      : 246.4 MB
+gen ms         : 3052.44
 instances      : 84864

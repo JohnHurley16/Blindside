@@ -180,6 +180,47 @@ func _build() -> Dictionary:
 		[[0, 0], [14 * MM, 9 * MM]]]
 	P["walkway_w"] = 3400
 
+	# ---- KEEP-CLEAR. DESIGN-PRINCIPLES 7: "clear ground is a feature ... their
+	#      emptiness reads as use". These are the pieces of ground that are driven,
+	#      turned on or worked daily and are therefore SWEPT: nothing stands on
+	#      them and nothing collects on them, not even litter. LAYOUT owns them for
+	#      the same reason it owns the walkways - they are where a machine goes -
+	#      and dressing is forbidden to place anything inside one.
+	P["clear_r"] = [{"cx": 0, "cz": 0, "r": 11000}]           # collar turning circle
+	P["clear_rects"] = [
+		{"x0": -26 * MM, "z0": 2 * MM,   "x1": -11 * MM, "z1": 5 * MM},    # service bay apron
+		{"x0": -28 * MM, "z0": 9 * MM,   "x1": -13 * MM, "z1": 12 * MM},   # charge row frontage
+		{"x0": -11 * MM, "z0": 1 * MM,   "x1": -2 * MM,  "z1": 7 * MM},    # muster square
+		{"x0": 28 * MM,  "z0": -5 * MM,  "x1": 38 * MM,  "z1": 5 * MM}]    # course start apron
+
+	# ---- RANKS and STANDS. DESIGN-PRINCIPLES 7: placement is arrangements, not
+	#      scatter. A RANK is a hand-listed strip of ground - against a wall, along
+	#      a pad edge, in a corner - along which stores are laid out in line. A
+	#      STAND is one bay cut out of a rank by an integer rule: a rectangle, a
+	#      yaw square to the site grid, and a class.
+	#
+	#      The line: LAYOUT decides WHERE a stand is, HOW BIG it is and WHICH WAY
+	#      it faces, because a stand is occupied ground - a machine cannot walk
+	#      through a rack, so a stand is exactly as much layout as a zone is.
+	#      DRESSING decides WHAT stands in it. Randomness in this file never
+	#      touches the position or angle of an individual object; it sets bay
+	#      lengths and the gaps between them, and nothing finer.
+	#
+	#      rank = [x, z, run, depth, axis, class]   axis 0 = bays march along +x
+	#      class 0 stores   1 lay-down   2 consumables   3 marshalling
+	P["ranks"] = [
+		[-32 * MM, -12200,   10000, 3400, 0, 0],  # west stores, in the 5 m between the pallet yard and the bay
+		[-32 * MM,  16 * MM,  9500, 3000, 1, 1],  # NW lay-down, outer run
+		[-28400,    16 * MM,  9500, 3000, 1, 0],  # NW stores, inner run - the two make an aisle
+		[-21 * MM, -25500,   12000, 4000, 1, 0],  # SW stores, off the pallet yard
+		[    900,  -25500,   14000, 3600, 1, 2],  # south consumables, between the pen and the winding house
+		[ 17 * MM, -26 * MM, 12000, 3200, 0, 1],  # SE lay-down, along the south edge
+		[ 18 * MM,   2800,   11000, 3400, 0, 0],  # east stores, between the scrap bay and the containers
+		[-12 * MM, -16 * MM,  8000, 4000, 0, 2],  # bunded store, south of the collar
+		[-32 * MM, -11 * MM,  6200, 4500, 1, 3],  # west marshalling bays, south of the haul road
+		[-32 * MM,     800,   6400, 4500, 1, 3]]  # west marshalling bays, north of it - the road divides them
+	P["stands"] = _stands(P)
+
 	# ---- lighting columns. Position is layout (they are posts, and after dark
 	#      they decide where a player can see). Fitting and lumens are dressing.
 	var rl := IntRng.new(seed_v, 4)
@@ -217,6 +258,85 @@ func _build() -> Dictionary:
 
 	P["hash"] = _hash(P)
 	return P
+
+# ------------------------------------------------------------------ stands
+## Cut a rank into bays. Walk the run placing a bay of a seeded length on the
+## 1200 mm module, then a seeded gap, and reject any bay that would sit on a
+## building, a stocked zone, a walkway or a swept apron. Integer throughout: the
+## walkway test walks the centreline in ~300 mm steps and asks whether the point
+## is inside the bay grown by the walkway half-width, which needs no sqrt.
+func _stands(P: Dictionary) -> Array:
+	var r := IntRng.new(seed_v, 5)
+	var out: Array = []
+	var ranks: Array = P["ranks"]
+	for ri in ranks.size():
+		var rk: Array = ranks[ri]
+		var ax: int = rk[4]
+		var run: int = rk[2]
+		var dep: int = rk[3]
+		var t := 1200 * r.rng(0, 2)
+		while t < run - 3600:
+			var blen := 1200 * r.rng(3, 7)
+			if t + blen > run:
+				blen = ((run - t) / 1200) * 1200
+			if blen < 3600:
+				break
+			var x0: int = rk[0] + (t if ax == 0 else 0)
+			var z0: int = rk[1] + (0 if ax == 0 else t)
+			var x1: int = x0 + (blen if ax == 0 else dep)
+			var z1: int = z0 + (dep if ax == 0 else blen)
+			if _stand_ok(P, x0, z0, x1, z1):
+				out.append({"x0": x0, "z0": z0, "x1": x1, "z1": z1,
+					"yaw": (0 if ax == 0 else 90000), "cls": rk[5], "rank": ri})
+			t += blen + 1200 * r.rng(1, 3)
+	return out
+
+const STAND_PAD := 700          # a stand keeps this much off anything it is not
+
+func _stand_ok(P: Dictionary, x0: int, z0: int, x1: int, z1: int) -> bool:
+	# stores stand on concrete, never on spoil
+	if not (on_pad_raw(P, x0, z0) and on_pad_raw(P, x1, z1)):
+		return false
+	for b in P["buildings"]:
+		if _overlap(x0, z0, x1, z1, b["x0"], b["z0"], b["x1"], b["z1"], STAND_PAD):
+			return false
+	for zz in P["zones"]:
+		if _overlap(x0, z0, x1, z1, zz["x0"], zz["z0"], zz["x1"], zz["z1"], STAND_PAD):
+			return false
+	for cr in P["clear_rects"]:
+		if _overlap(x0, z0, x1, z1, cr["x0"], cr["z0"], cr["x1"], cr["z1"], STAND_PAD):
+			return false
+	for cc in P["clear_r"]:
+		var dx: int = maxi(maxi(x0 - cc["cx"], 0), cc["cx"] - x1)
+		var dz: int = maxi(maxi(z0 - cc["cz"], 0), cc["cz"] - z1)
+		var rr: int = cc["r"]
+		if dx * dx + dz * dz < rr * rr:
+			return false
+	var hw: int = P["walkway_w"] / 2 + STAND_PAD
+	for w in P["walkways"]:
+		var ax0: int = w[0][0]
+		var az0: int = w[0][1]
+		var bx0: int = w[1][0]
+		var bz0: int = w[1][1]
+		var dx2: int = bx0 - ax0
+		var dz2: int = bz0 - az0
+		var steps: int = (absi(dx2) + absi(dz2)) / 300 + 1
+		for k in range(steps + 1):
+			var px: int = ax0 + (dx2 * k) / steps
+			var pz: int = az0 + (dz2 * k) / steps
+			if px > x0 - hw and px < x1 + hw and pz > z0 - hw and pz < z1 + hw:
+				return false
+	return true
+
+static func _overlap(ax0: int, az0: int, ax1: int, az1: int,
+		bx0: int, bz0: int, bx1: int, bz1: int, pad: int) -> bool:
+	return ax0 < bx1 + pad and ax1 > bx0 - pad and az0 < bz1 + pad and az1 > bz0 - pad
+
+static func on_pad_raw(P: Dictionary, x: int, z: int) -> bool:
+	for p in P["pads"]:
+		if x >= p["x0"] and x <= p["x1"] and z >= p["z0"] and z <= p["z1"]:
+			return true
+	return false
 
 # ------------------------------------------------------------------ course
 ## A branching corridor grown eastward from the root on an 1800 mm module.
@@ -285,7 +405,8 @@ func _hash(P: Dictionary) -> int:
 	var h := 146959810393466560
 	var keys: Array = ["seed", "site", "shaft", "headframe", "pads", "buildings",
 		"zones", "course", "spoil", "road", "fence", "columns", "poles",
-		"masts", "stations", "gantry", "walkways"]
+		"masts", "stations", "gantry", "walkways", "clear_r", "clear_rects",
+		"ranks", "stands"]
 	for k in keys:
 		h = _mix(h, str(P[k]).hash())
 	return h
@@ -345,6 +466,49 @@ func on_pad(x: int, z: int) -> bool:
 
 func pad_h() -> int:
 	return _pad_h
+
+## Is this ground SWEPT - a lane, a turning circle or a working apron? Layout
+## query, integer in. Dressing asks it before it drops anything on the floor.
+func swept(x: int, z: int) -> bool:
+	for cc in plan["clear_r"]:
+		var dx: int = x - cc["cx"]
+		var dz: int = z - cc["cz"]
+		var rr: int = cc["r"]
+		if dx * dx + dz * dz < rr * rr:
+			return true
+	for cr in plan["clear_rects"]:
+		if x > cr["x0"] and x < cr["x1"] and z > cr["z0"] and z < cr["z1"]:
+			return true
+	var hw: int = plan["walkway_w"] / 2
+	for w in plan["walkways"]:
+		var ax: int = w[0][0]
+		var az: int = w[0][1]
+		var bx: int = w[1][0]
+		var bz: int = w[1][1]
+		var abx: int = bx - ax
+		var abz: int = bz - az
+		var den: int = abx * abx + abz * abz
+		if den == 0:
+			continue
+		var num: int = (x - ax) * abx + (z - az) * abz
+		if num < 0:
+			num = 0
+		elif num > den:
+			num = den
+		var cx: int = ax + (abx * num) / den
+		var cz: int = az + (abz * num) / den
+		var dx2: int = x - cx
+		var dz2: int = z - cz
+		if dx2 * dx2 + dz2 * dz2 < hw * hw:
+			return true
+	return false
+
+## Is this ground inside a stand - i.e. does an arrangement occupy it?
+func in_stand(x: int, z: int) -> bool:
+	for st in plan["stands"]:
+		if x > st["x0"] and x < st["x1"] and z > st["z0"] and z < st["z1"]:
+			return true
+	return false
 
 ## Deterministic integer value noise, roughly [-amp, amp].
 func _vnoise(x: int, z: int, period: int, amp: int) -> int:

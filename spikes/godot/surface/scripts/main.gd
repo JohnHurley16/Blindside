@@ -81,6 +81,23 @@ var PSHOTS := [
 	{"n": "p12_dusk_yard",       "p": Vector3(-13.5, 1.75, 8.5), "t": Vector3(-22.5, 1.0, 4.0), "fov": 55, "l": "dusk"},
 ]
 
+## ---------------------------------------------------------------- ORDER
+## DESIGN-PRINCIPLES 7 ("density is order, not scatter"). Frozen poses, captured
+## from the SAME camera before and after the placement rewrite, to shots/order/.
+##   --mode=oshots --tag=before|after
+## The list is chosen to make the claim falsifiable: two frames of the yard, one
+## of the ground a machine walks, the two frames a sceptic is shown, one lane
+## that is deliberately empty, and one of the margin the litter moved to.
+var OSHOTS := [
+	{"n": "o01_yard_working", "p": Vector3(-1.2, 1.88, 6.8),  "t": Vector3(-26.0, 1.15, 6.6), "fov": 64, "l": "overcast"},
+	{"n": "o02_site_wide",    "p": Vector3(-52, 15.5, 41),   "t": Vector3(2, 6, -2),         "fov": 58, "l": "overcast"},
+	{"n": "o03_underfoot_45", "p": Vector3(-11.0, 1.40, 6.2),"t": Vector3(-9.6, 0.00, 4.8),  "fov": 46, "l": "overcast"},
+	{"n": "o04_service_bay",  "p": Vector3(-12.2, 1.52, 0.9),"t": Vector3(-24.0, 1.02, -4.4),"fov": 62, "l": "overcast"},
+	{"n": "o05_charge_line",  "p": Vector3(-12.6, 1.10, 11.0),"t": Vector3(-25.0, 0.72, 6.4),"fov": 52, "l": "overcast"},
+	{"n": "o06_lane_clear",   "p": Vector3(9.0, 1.70, 0.9),  "t": Vector3(33.0, 1.20, 0.2),  "fov": 55, "l": "overcast"},
+	{"n": "o07_margins",      "p": Vector3(14.0, 1.60, -30.5),"t": Vector3(24.0, 0.80, -26.0),"fov": 56, "l": "overcast"},
+]
+
 ## the camera path used by --mode=bench, chosen to hit every density regime
 var PATH := [
 	Vector3(-56, 14, 44), Vector3(-30, 4, 22), Vector3(-14, 1.7, 9),
@@ -206,7 +223,7 @@ func _ready() -> void:
 	if solid < 0.5:
 		for mid in ["iron", "iron_pale", "steel", "stone", "timber", "rock", "brick",
 				"bone", "kitgrey", "galv", "alu", "ember", "rubber", "plastic",
-				"amber", "screen", "glass", "weed", "gravel", "litter", "water"]:
+				"amber", "screen", "glass", "weed", "gravel", "litter", "water", "paint"]:
 			Mats.get_mat(mid).set_shader_parameter("detail_on", 0.0)
 	W = Weather.new()
 	W.setup(self, P.lights, skymode, ssao)
@@ -246,6 +263,8 @@ func _ready() -> void:
 		_run_shots()
 	elif mode == "pshots":
 		_run_pshots()
+	elif mode == "oshots":
+		_run_oshots()
 	elif mode == "bench":
 		set_process(true)
 
@@ -343,6 +362,28 @@ func _run_pshots() -> void:
 			int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),
 			int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME))])
 	_write_log("pshots_%s.txt" % tag)
+	get_tree().quit()
+
+func _run_oshots() -> void:
+	var dir := ProjectSettings.globalize_path("res://shots/order/%s/" % tag)
+	DirAccess.make_dir_recursive_absolute(dir)
+	for s in OSHOTS:
+		if only_shot != "" and s["n"] != only_shot:
+			continue
+		W.apply(s["l"])
+		cam.fov = s["fov"]
+		cam.position = s["p"]
+		cam.look_at(s["t"])
+		W.rain.global_position = cam.position + Vector3(0, 6, 0)
+		for i in 72:
+			await RenderingServer.frame_post_draw
+		var img := get_viewport().get_texture().get_image()
+		img.save_png(dir + str(s["n"]) + ".png")
+		_log("oshot %s  %s  fps=%.1f draws=%d prims=%d" % [s["n"], s["l"],
+			Performance.get_monitor(Performance.TIME_FPS),
+			int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),
+			int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME))])
+	_write_log("oshots_%s.txt" % tag)
 	get_tree().quit()
 
 # ---------------------------------------------------------------- bench
