@@ -1,0 +1,5 @@
+00:52.609  render           | Saved: 'C:\Users\jackh\documents\programming\Blindside\docs\art\vision\found\deposit\04_clear_swatch_unlit.png'
+WROTE C:/Users/jackh/documents/programming/Blindside/docs/art/vision/found/deposit/04_clear_swatch_unlit.png
+Blender 5.2.0 LTS (hash fbe6228777e7 built 2026-07-14 01:35:40)
+
+Blender quit

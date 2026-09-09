@@ -17,3 +17,13 @@ target/
 __pycache__/
 *.pyc
 docs/phase1-playtests/cold-read/*.png
+# The vision board (docs/art/vision/). The full-resolution renders are 157 MB; the board
+# and index.html point at docs/art/vision/web/, a 900 px JPEG mirror of about 7 MB that is
+# tracked. Every probe script is tracked too, so the PNGs can be re-rendered.
+docs/art/vision/**/*.png
+!docs/art/vision/web/**
+docs/art/vision/**/_logs/
+docs/art/vision/**/_probes/data/
+docs/art/vision/**/__pycache__/
+docs/art/vision/**/_bbox/
+docs/art/vision/**/*.log

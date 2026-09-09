@@ -1,0 +1,6 @@
+08:20.672  render           | Saved: 'C:\Users\jackh\documents\programming\Blindside\docs\art\vision\found\beacon\07_situ_sump.png'
+clear_near: removed 0 lumps within 2.0 m of (1.9, 0.1, 0.0)
+WROTE C:/Users/jackh/documents/programming/Blindside/docs/art/vision/found/beacon/07_situ_sump.png
+Blender 5.2.0 LTS (hash fbe6228777e7 built 2026-07-14 01:35:40)
+
+Blender quit
