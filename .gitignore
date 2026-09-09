@@ -27,3 +27,5 @@ docs/art/vision/**/_probes/data/
 docs/art/vision/**/__pycache__/
 docs/art/vision/**/_bbox/
 docs/art/vision/**/*.log
+# Godot's per-project import and shader cache. Regenerated on first open.
+spikes/godot/*/.godot/
