@@ -1,5 +1,15 @@
 # The agent's own view, as a 3D point cloud
 
+> **Superseded in part, 2026-09-09.** The designer looked at these frames and said they look
+> nothing like a real point cloud, and they were right. **`LIDAR.md` is the current record for
+> what the cloud should be**: a scanning sensor raycast against real geometry, with rings,
+> occlusion shadows, intensity and opaque depth-tested points, replacing the additive oriented
+> disc. What still stands here is section 1 (a point is moved by at most one fix), section 2's
+> MultiMesh data path and its cost model, section 5's account of what drift / the fix / the
+> spoof are, and section 6 on the exposure problem. Section 4's reading of ART-DIRECTION 8.2 is
+> superseded by `LIDAR.md` section 7, and section 7 item 1 ("the toy cloud is too sparse") is
+> now measured rather than asserted (`LIDAR.md` section 6). This build runs with `-- --old`.
+
 Godot 4.7.2, Forward+, NVIDIA GeForce RTX 3080 Laptop GPU (Vulkan 1.4.312). Every number
 below was taken on that adapter with no other Godot process running; the thermal state is
 quoted where it matters, because this machine throttles to 780–1275 MHz against a 2100 MHz
