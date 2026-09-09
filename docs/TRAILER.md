@@ -148,7 +148,50 @@ Typeface: the game's own. No animation beyond a slow fade. Never over a bright f
 
 ## 5. Sound
 
-There is no score. The trailer is built from the game's own audio, which already exists in
+**Revised 2026-09-09.** The first version of this section said there was no score at all. The
+designer challenged it — *"you don't think we need any backing track at all?"* — and then proposed
+the structure below, which is better than either the original plan or my first concession, and is
+now the plan.
+
+**The hole in the no-score version.** This section's own rule is that every loud moment is followed
+by a longer quiet one, and the descent's held silence is the emotional centre of the cut. But
+**silence only reads as silence if something stopped.** With no score anywhere, the descent is not
+a change of register, it is more of the same. You cannot drop out of nothing. The original plan
+required loud moments and removed them.
+
+**The structure, in the designer's words: score on the surface only, and cut it hard at the shaft
+— high contrast on purpose.**
+
+That is not a compromise between music and no music. It makes the score itself the narrative
+device, because **the music is the sound of having control.** It plays for exactly as long as the
+player's hands are on the machine — the yard, the bench, the teaching, the course — and it stops
+at the moment control leaves, which is the reversal the entire trailer is built on. The cut at
+0:50 then lands in three registers at once: the picture goes from daylight to dark, the player
+goes from operator to spectator, and the score goes to nothing. Nothing else in the piece needs to
+carry that beat, and no card has to explain it.
+
+**What the score is made of, and it comes out of the world rather than over it.** The machinery
+supplies a tempo for free: a 75-second cycle and nine ratchet clicks that accelerate. Struck iron,
+water, and long tails down passages are the same material as the sound design rather than a
+competing layer. It can be synthesised in `phase1/audio/`, which already has voices, waveforms,
+envelopes and a mixer, so this is buildable now rather than a commission.
+
+**Where it goes, precisely.**
+
+| | | |
+|---|---|---|
+| 0:00–0:05 | nothing, then the unexplained ratchet | the score has not started; the world has |
+| 0:05–0:26 | the score enters under the headframe, low and slow | Act I |
+| 0:26–0:50 | it tightens through the teaching, rhythm arriving as the stops build | Act II |
+| 0:50–0:54 | it holds through the machine stepping onto the plate | the last moment of control |
+| **0:54** | **it stops, not fades** | the descent begins |
+| 0:54–2:00 | nothing but the game's own audio, for sixty-six seconds | Acts III to VI |
+
+**It does not come back.** Not for the machinery, not for the lie, not under the title. Bringing it
+back at the end would say that the viewer is safe again, and they are not. The last sound of the
+trailer is rain on an empty shaft.
+
+The rest of the trailer is built from the game's own audio, which already exists in
 `phase1/audio/` and is a real mixer rather than a library of samples.
 
 - **Act I** — rain on steel, water in a pipe, the yard's own hum, one unexplained distant ratchet
@@ -195,7 +238,7 @@ Recorded here rather than discovered in the edit.
 | The teaching panel is a 2D Python view | Shot over the shoulder at an angle, treated as a screen in the world rather than as the game's UI | The Godot teaching interface |
 | Underfoot detail is the weakest scale | No macro floor shots except the wet rail in shot 16, which is the strongest one | The displacement work in `PHOTOREAL.md` |
 | The Assayer has never been modelled in Godot | Shots 23–25 are the hardest in the trailer and may have to be built for it | A real Assayer in the cave spike |
-| No music | Deliberate, and defensible, but it is a choice and not an accident | A composer |
+| The score exists only in Act I–II | Deliberate; see section 5. Synthesised in `phase1/audio/` from the machinery's own cycle | A composer, if the synthesised version is thin |
 
 If shots 23 to 25 cannot be built in time, Act V drops to the fold alone and the trailer runs
 1:52. The lie is the stronger beat of the two and the machinery can wait for the next one.
