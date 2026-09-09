@@ -1,0 +1,31 @@
+=== Blindside surface spike ===
+adapter        : NVIDIA GeForce RTX 3080 Laptop GPU
+api            : 1.4.312 (NVIDIA)
+godot          : 4.7.2-stable (official)
+seed           : 20260908
+layout hash    : 1889570882374975
+layout ms      : 1.11
+ground ms      : 1360.35  (129072 tris, 65095 verts)
+inherited ms   : 73.35
+brought ms     : 29.48
+scatter ms     : 1814.15
+flush ms       : 67.05
+TOTAL GEN ms   : 3345.49
+prop instances : 84864
+multimeshes    : 1464
+mm triangles   : 3351932
+decals         : 89
+mode           : pshots   light: overcast
+pom            : 1.0   sky: realtime   ssao: true
+pshot p01_underfoot_macro  overcast  fps=58.0 draws=561 prims=1843721
+pshot p02_underfoot_45  overcast  fps=32.0 draws=349 prims=1217843
+pshot p03_yard_working  overcast  fps=49.0 draws=439 prims=1438860
+pshot p04_hardstanding  overcast  fps=49.0 draws=852 prims=2339085
+pshot p05_rain_underfoot  rain  fps=51.0 draws=370 prims=1239879
+pshot p06_rain_collar  rain  fps=63.0 draws=675 prims=2015402
+pshot p07_rusted_iron  overcast  fps=27.0 draws=482 prims=1693493
+pshot p08_shaft_collar  overcast  fps=44.0 draws=658 prims=1908518
+pshot p09_shaft_mouth  overcast  fps=46.0 draws=360 prims=1300432
+pshot p10_site_wide  overcast  fps=64.0 draws=784 prims=1766117
+pshot p11_road_kerb  overcast  fps=45.0 draws=805 prims=2138040
+pshot p12_dusk_yard  dusk  fps=37.0 draws=415 prims=1434776

@@ -21,7 +21,14 @@ var seedv := 20260908
 var light_name := "overcast"
 var bench_secs := 45.0
 var only_shot := ""
+var tag := "before"
 var dbg := 0
+## measurement switches, so the cost of each technique can be priced separately
+var pom := 1.0
+var skymode := "realtime"
+var nrm := 1.0
+var solid := 1.0
+var ssao := true
 
 var stats := {}
 var frame_times: Array[float] = []
@@ -45,14 +52,33 @@ var SHOTS := [
 	{"n": "06_shaft_mouth",    "p": Vector3(-1.5, 3.1, 2.6),  "t": Vector3(0.1, -1.6, 0.0), "fov": 62, "l": "overcast"},
 	{"n": "07_underfoot",      "p": Vector3(-8.6, 0.38, 5.6), "t": Vector3(-6.9, -0.30, 3.9), "fov": 44, "l": "overcast"},
 	{"n": "08_dusk_yard",      "p": Vector3(-13.5, 1.75, 8.5), "t": Vector3(-22.5, 1.0, 4.0), "fov": 55, "l": "dusk"},
-	{"n": "09_sceptic_bench",  "p": Vector3(-19.0, 1.34, -4.4), "t": Vector3(-20.6, 1.02, -6.9), "fov": 48, "l": "overcast"},
-	{"n": "10_sceptic_charge", "p": Vector3(-15.2, 0.95, 9.9), "t": Vector3(-22.0, 0.55, 6.3), "fov": 54, "l": "overcast"},
+	{"n": "09_sceptic_bench",  "p": Vector3(-18.2, 1.28, -4.2), "t": Vector3(-21.4, 0.98, -6.6), "fov": 46, "l": "overcast"},
+	{"n": "10_sceptic_charge", "p": Vector3(-14.9, 1.02, 7.7), "t": Vector3(-24.2, 0.62, 5.9), "fov": 50, "l": "overcast"},
 	{"n": "11_rain_collar",    "p": Vector3(-9.2, 1.52, 3.0),  "t": Vector3(0.8, 0.55, -0.4), "fov": 60, "l": "rain"},
 	{"n": "12_yard_deep",      "p": Vector3(2.6, 1.85, 7.4), "t": Vector3(19.0, 3.2, 15.5), "fov": 62, "l": "overcast"},
 	{"n": "13_dusk_wide",      "p": Vector3(-40, 11.0, 33),   "t": Vector3(0, 6, 0),  "fov": 58, "l": "dusk"},
 	{"n": "15_course_high",    "p": Vector3(30.0, 17.0, 26.0), "t": Vector3(58.0, 0.0, -2.0), "fov": 55, "l": "overcast"},
 	{"n": "16_collar_close",   "p": Vector3(-5.6, 1.55, 4.6),  "t": Vector3(0.6, 0.35, -0.4), "fov": 56, "l": "overcast"},
 	{"n": "14_gate_road",      "p": Vector3(-40.0, 2.2, 6.5), "t": Vector3(-14.0, 3.0, 0.5), "fov": 58, "l": "overcast"},
+]
+
+## ---------------------------------------------------------------- PHOTOREAL
+## The before/after pairs. Frozen poses: every one of these is captured from the
+## SAME camera before and after the material work, so the pair is a fair test.
+## Captured to shots/photoreal/<tag>/ by --mode=pshots --tag=before|after.
+var PSHOTS := [
+	{"n": "p01_underfoot_macro", "p": Vector3(-8.6, 0.38, 5.6), "t": Vector3(-6.9, -0.30, 3.9), "fov": 44, "l": "overcast"},
+	{"n": "p02_underfoot_45",    "p": Vector3(-11.0, 1.40, 6.2), "t": Vector3(-9.6, 0.00, 4.8), "fov": 46, "l": "overcast"},
+	{"n": "p03_yard_working",    "p": Vector3(-13.5, 1.75, 8.5), "t": Vector3(-22.5, 1.0, 4.0), "fov": 55, "l": "overcast"},
+	{"n": "p04_hardstanding",    "p": Vector3(-25.0, 1.55, 14.0), "t": Vector3(-16.0, 0.10, 6.0), "fov": 52, "l": "overcast"},
+	{"n": "p05_rain_underfoot",  "p": Vector3(-11.0, 1.40, 6.2), "t": Vector3(-9.6, 0.00, 4.8), "fov": 46, "l": "rain"},
+	{"n": "p06_rain_collar",     "p": Vector3(-9.2, 1.52, 3.0),  "t": Vector3(0.8, 0.55, -0.4), "fov": 60, "l": "rain"},
+	{"n": "p07_rusted_iron",     "p": Vector3(-5.10, 1.05, -4.60), "t": Vector3(-3.65, 1.55, -3.25), "fov": 42, "l": "overcast"},
+	{"n": "p08_shaft_collar",    "p": Vector3(-5.6, 1.55, 4.6),  "t": Vector3(0.6, 0.35, -0.4), "fov": 56, "l": "overcast"},
+	{"n": "p09_shaft_mouth",     "p": Vector3(-1.5, 3.1, 2.6),   "t": Vector3(0.1, -1.6, 0.0), "fov": 62, "l": "overcast"},
+	{"n": "p10_site_wide",       "p": Vector3(-52, 15.5, 41),    "t": Vector3(2, 6, -2), "fov": 58, "l": "overcast"},
+	{"n": "p11_road_kerb",       "p": Vector3(-34.0, 1.45, 4.2), "t": Vector3(-24.0, 0.05, 1.0), "fov": 50, "l": "overcast"},
+	{"n": "p12_dusk_yard",       "p": Vector3(-13.5, 1.75, 8.5), "t": Vector3(-22.5, 1.0, 4.0), "fov": 55, "l": "dusk"},
 ]
 
 ## the camera path used by --mode=bench, chosen to hit every density regime
@@ -174,8 +200,16 @@ func _ready() -> void:
 	_occluders()
 
 	# ---------------- light and weather
+	for gm in Mats.grounds():
+		gm.set_shader_parameter("pom_lod", pom)
+		gm.set_shader_parameter("nrm_lod", nrm)
+	if solid < 0.5:
+		for mid in ["iron", "iron_pale", "steel", "stone", "timber", "rock", "brick",
+				"bone", "kitgrey", "galv", "alu", "ember", "rubber", "plastic",
+				"amber", "screen", "glass", "weed", "gravel", "litter", "water"]:
+			Mats.get_mat(mid).set_shader_parameter("detail_on", 0.0)
 	W = Weather.new()
-	W.setup(self, P.lights)
+	W.setup(self, P.lights, skymode, ssao)
 	for c in get_children():
 		if c is MeshInstance3D and c.name == "Ground":
 			W.ground_mat = c.material_override
@@ -204,11 +238,14 @@ func _ready() -> void:
 	_log("mm triangles   : %d" % fstats["tris"])
 	_log("decals         : %d" % (S.decals[0] if S.decals.size() > 0 else 0))
 	_log("mode           : %s   light: %s" % [mode, light_name])
+	_log("pom            : %.1f   sky: %s   ssao: %s" % [pom, skymode, str(ssao)])
 	stats = {"gen_ms": total, "instances": fstats["instances"], "mm": fstats["multimeshes"],
 		"tris": fstats["tris"], "ground_tris": gstats["tris"]}
 
 	if mode == "shots":
 		_run_shots()
+	elif mode == "pshots":
+		_run_pshots()
 	elif mode == "bench":
 		set_process(true)
 
@@ -239,6 +276,18 @@ func _parse_args() -> void:
 			bench_secs = float(a.substr(7))
 		elif a.begins_with("--shot="):
 			only_shot = a.substr(7)
+		elif a.begins_with("--tag="):
+			tag = a.substr(6)
+		elif a.begins_with("--pom="):
+			pom = float(a.substr(6))
+		elif a.begins_with("--nrm="):
+			nrm = float(a.substr(6))
+		elif a.begins_with("--solid="):
+			solid = float(a.substr(8))
+		elif a.begins_with("--sky="):
+			skymode = a.substr(6)
+		elif a.begins_with("--ssao="):
+			ssao = int(a.substr(7)) != 0
 		elif a.begins_with("--dbg="):
 			dbg = int(a.substr(6))
 
@@ -257,8 +306,12 @@ func _run_shots() -> void:
 		cam.fov = s["fov"]
 		cam.position = s["p"]
 		cam.look_at(s["t"])
-		# let culling, visibility ranges and particles settle
-		for i in 14:
+		# let culling, visibility ranges, particles AND THE SKY settle. The sky's
+		# radiance map is PROCESS_MODE_INCREMENTAL - it converges to the quality
+		# result over several dozen frames and costs nothing once it has, which
+		# is worth 6 ms a frame - so a capture has to wait for it or the ambient
+		# is still the unfiltered, far too bright, early pass.
+		for i in 72:
 			await RenderingServer.frame_post_draw
 		var img := get_viewport().get_texture().get_image()
 		var path: String = dir + str(s["n"]) + ".png"
@@ -268,6 +321,28 @@ func _run_shots() -> void:
 			int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),
 			int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME))])
 	_write_log("shots.txt")
+	get_tree().quit()
+
+func _run_pshots() -> void:
+	var dir := ProjectSettings.globalize_path("res://shots/photoreal/%s/" % tag)
+	DirAccess.make_dir_recursive_absolute(dir)
+	for s in PSHOTS:
+		if only_shot != "" and s["n"] != only_shot:
+			continue
+		W.apply(s["l"])
+		cam.fov = s["fov"]
+		cam.position = s["p"]
+		cam.look_at(s["t"])
+		W.rain.global_position = cam.position + Vector3(0, 6, 0)
+		for i in 72:
+			await RenderingServer.frame_post_draw
+		var img := get_viewport().get_texture().get_image()
+		img.save_png(dir + str(s["n"]) + ".png")
+		_log("pshot %s  %s  fps=%.1f draws=%d prims=%d" % [s["n"], s["l"],
+			Performance.get_monitor(Performance.TIME_FPS),
+			int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),
+			int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME))])
+	_write_log("pshots_%s.txt" % tag)
 	get_tree().quit()
 
 # ---------------------------------------------------------------- bench

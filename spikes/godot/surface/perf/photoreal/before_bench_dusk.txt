@@ -1,0 +1,32 @@
+=== Blindside surface spike ===
+adapter        : NVIDIA GeForce RTX 3080 Laptop GPU
+api            : 1.4.312 (NVIDIA)
+godot          : 4.7.2-stable (official)
+seed           : 20260908
+layout hash    : 226758356576122
+layout ms      : 0.98
+ground ms      : 350.88  (66608 tris, 33687 verts)
+inherited ms   : 91.12
+brought ms     : 27.15
+scatter ms     : 641.91
+flush ms       : 53.62
+TOTAL GEN ms   : 1165.66
+prop instances : 85381
+multimeshes    : 1479
+mm triangles   : 3367704
+decals         : 89
+mode           : bench   light: dusk
+
+--- sustained, dusk light, 1920x1080, camera moving ---
+frames         : 5390 over 40.0 s
+mean frame     : 7.24 ms   (138.2 fps)
+median frame   : 6.25 ms   (160.0 fps)
+p95 frame      : 11.90 ms   (84.0 fps)
+p99 frame      : 12.96 ms   (77.1 fps)
+worst frame    : 15.14 ms   (66.1 fps)
+draw calls max : 1140
+primitives max : 2258251
+objects max    : 1140
+video mem      : 287.9 MB
+gen ms         : 1165.66
+instances      : 85381

@@ -10,6 +10,12 @@ This exists to answer one question the designer asked on 2026-09-08:
 > dont do that in blender though. we need to figure out how we are going to do all this
 > procedurley and than have it playable in godot"*
 
+**A second pass ran on 2026-09-09 against `DESIGN-PRINCIPLES` §6 ("it needs to look
+photoreal"), and it rewrote both shaders, the ground mesh and the lighting. Read
+`PHOTOREAL.md` alongside this: where the two disagree on a material number, a shader, an
+exposure or a frame time, PHOTOREAL is the current one.** §6 and §7 below are the
+weaknesses that pass was aimed at.
+
 Everything below is a **pipeline**, not a picture. The Blender vision board under
 `docs/art/vision/surface/` is the target; nothing from it ships and nothing from it is
 imported here.

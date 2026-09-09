@@ -334,12 +334,25 @@ func _service_bay() -> void:
 		var zz := z0 + (z1 - z0) * t
 		var yy := y + h + 0.55 * (1.0 - absf(t - 0.5) * 2.0)
 		B.beam("channel", "kitgrey", Vector3(x0, yy + 0.12, zz), Vector3(x1, yy + 0.12, zz), 0.10, 0.14, kcol())
+	# RULE. Every fourth sheet, both slopes, is a translucent ROOFLIGHT rather
+	# than steel - which is what a real workshop does, and it is the fix for
+	# NOTES 7.8: the bay was the dimmest of the frames that argue the case.
 	for i in int((x1 - x0) / 1.0):
 		var x2 := x0 + 1.0 * (float(i) + 0.5)
+		var lit := (i % 4) == 2
 		for side in [-1.0, 1.0]:
 			var zc: float = (z0 + z1) * 0.5 + side * (z1 - z0) * 0.25
-			B.add("box", "alu", Batcher.xf(Vector3(x2, y + h + 0.55 - absf(side) * 0.14, zc),
-				Vector3(0.98, 0.035, (z1 - z0) * 0.53), 0.0, atan2(0.55, (z1 - z0) * 0.5) * side, 0.0), kcol(0.75, 1.0))
+			var xf := Batcher.xf(Vector3(x2, y + h + 0.55 - absf(side) * 0.14, zc),
+				Vector3(0.98, 0.035, (z1 - z0) * 0.53), 0.0, atan2(0.55, (z1 - z0) * 0.5) * side, 0.0)
+			if lit:
+				B.add("box", "bone", xf, Color(1, 1, 1), Batcher.SITE, true)
+			else:
+				B.add("box", "alu", xf, kcol(0.75, 1.0))
+		if lit:
+			# the daylight that comes through it. Shadowless and distance faded,
+			# because positional shadows are what cost 142 ms in the first pass.
+			lights.append([Vector3(x2, y + h - 0.15, (z0 + z1) * 0.5),
+				Color(0.86, 0.90, 1.0), 5.5, 9.5, true])
 	# back cladding (north), on the z0 side
 	for i in int((x1 - x0) / 0.9):
 		var x3 := x0 + 0.9 * (float(i) + 0.5)

@@ -23,8 +23,10 @@ func _init(p_L: SurfaceLayout, p_B: Batcher) -> void:
 	r = RandomNumberGenerator.new()
 	r.seed = L.seed_v * 2654435761 + 999
 
+## The surface, INCLUDING the dressing relief. Every underfoot prop has to agree
+## with the ground mesh about where the ground is, or the whole layer floats.
 func gh(x: float, z: float) -> float:
-	return float(L.ground_mm(int(x * 1000.0), int(z * 1000.0))) / 1000.0
+	return Ground.height(L, x, z)
 
 func on_pad(x: float, z: float) -> bool:
 	return L.on_pad(int(x * 1000.0), int(z * 1000.0))
@@ -56,11 +58,20 @@ func _gravel() -> void:
 		var z := sin(a) * d
 		if on_pad(x, z):
 			continue
-		var s := r.randf_range(0.03, 0.14)
+		var s := r.randf_range(0.03, 0.16)
 		var mesh: String = ["chip", "chip", "rock", "rock2", "rock3"][r.randi() % 5]
-		B.detail(mesh, "gravel", Batcher.xf(Vector3(x, gh(x, z) + s * 0.12, z),
+		# HALF BURIED. A stone whose centre sits above the surface is a stone
+		# lying on a picture of ground; a stone whose centre sits below it is
+		# embedded in the ground, and its own body draws the contact shadow that
+		# 55 000 shadowless DETAIL instances cannot cast for themselves.
+		# VALUE, and it is the reason the spoil tips read as snow at 30 m: a
+		# scattered stone whose albedo is four times the ground it lies on stops
+		# being a stone and becomes a speckle, and at distance the speckle
+		# aggregates into pale patches. Loose stock is drawn from the same value
+		# range as the ground it is loose on.
+		B.detail(mesh, "gravel", Batcher.xf(Vector3(x, gh(x, z) - s * 0.13, z),
 			Vector3(s, s * r.randf_range(0.35, 0.7), s * r.randf_range(0.7, 1.4)),
-			r.randf() * TAU, r.randf_range(-0.25, 0.25), r.randf_range(-0.25, 0.25)), kcol())
+			r.randf() * TAU, r.randf_range(-0.25, 0.25), r.randf_range(-0.25, 0.25)), kcol(0.50, 1.05))
 
 ## RULE. On the hardstanding: chippings tracked in, at 0.35 per m^2, plus a dense
 ## band 1.2 m either side of every slab joint where the sweeper never reaches.
@@ -70,14 +81,13 @@ func _pad_chippings() -> void:
 	var z0 := float(p["z0"]) / 1000.0
 	var x1 := float(p["x1"]) / 1000.0
 	var z1 := float(p["z1"]) / 1000.0
-	var y := L.pad_h() / 1000.0
 	var n := int((x1 - x0) * (z1 - z0) * 9.0)
 	for i in n:
 		var x := r.randf_range(x0, x1)
 		var z := r.randf_range(z0, z1)
 		var s := r.randf_range(0.025, 0.105)
 		var m2: String = ["chip", "chip", "rock", "rock2", "rock3"][r.randi() % 5]
-		B.detail(m2, "gravel", Batcher.xf(Vector3(x, y + s * 0.24, z),
+		B.detail(m2, "gravel", Batcher.xf(Vector3(x, gh(x, z) - s * 0.06, z),
 			Vector3(s, s * r.randf_range(0.55, 0.95), s * r.randf_range(0.7, 1.3)),
 			r.randf() * TAU, r.randf_range(-0.3, 0.3), r.randf_range(-0.3, 0.3)), kcol(0.7, 1.5))
 	# joint lines, on the 3.6 m module (the same module the shader draws)
@@ -89,7 +99,7 @@ func _pad_chippings() -> void:
 			var z2 := r.randf_range(z0, z1)
 			var off := r.randf_range(-0.35, 0.35)
 			var s2 := r.randf_range(0.02, 0.075)
-			B.detail("chip", "gravel", Batcher.xf(Vector3(jx + off, y + 0.006, z2),
+			B.detail("chip", "gravel", Batcher.xf(Vector3(jx + off, gh(jx + off, z2) - 0.004, z2),
 				Vector3(s2, s2 * 0.35, s2), r.randf() * TAU), kcol(0.5, 1.0))
 		jx += mod
 	var jz := ceilf(z0 / mod) * mod
@@ -99,7 +109,7 @@ func _pad_chippings() -> void:
 			var x3 := r.randf_range(x0, x1)
 			var off2 := r.randf_range(-0.35, 0.35)
 			var s3 := r.randf_range(0.02, 0.075)
-			B.detail("chip", "gravel", Batcher.xf(Vector3(x3, y + 0.006, jz + off2),
+			B.detail("chip", "gravel", Batcher.xf(Vector3(x3, gh(x3, jz + off2) - 0.004, jz + off2),
 				Vector3(s3, s3 * 0.35, s3), r.randf() * TAU), kcol(0.5, 1.0))
 		jz += mod
 
@@ -113,7 +123,6 @@ func _weeds() -> void:
 	var z0 := float(p["z0"]) / 1000.0
 	var x1 := float(p["x1"]) / 1000.0
 	var z1 := float(p["z1"]) / 1000.0
-	var y := L.pad_h() / 1000.0
 	var mod := float(L.plan["slab_module"]) / 1000.0
 	# in the joints
 	var jx := ceilf(x0 / mod) * mod
@@ -124,7 +133,8 @@ func _weeds() -> void:
 				continue
 			var z := r.randf_range(z0, z1)
 			var s := r.randf_range(0.10, 0.34)
-			B.detail("weed", "weed", Batcher.xf(Vector3(jx + r.randf_range(-0.06, 0.06), y + s * 0.42, z),
+			var jjx := jx + r.randf_range(-0.06, 0.06)
+			B.detail("weed", "weed", Batcher.xf(Vector3(jjx, gh(jjx, z) + s * 0.36, z),
 				Vector3(s * 1.4, s, s * 1.4), r.randf() * TAU), kcol(0.55, 1.25))
 		jx += mod
 	var jz := ceilf(z0 / mod) * mod
@@ -135,7 +145,8 @@ func _weeds() -> void:
 				continue
 			var x2 := r.randf_range(x0, x1)
 			var s2 := r.randf_range(0.10, 0.34)
-			B.detail("weed", "weed", Batcher.xf(Vector3(x2, y + s2 * 0.42, jz + r.randf_range(-0.06, 0.06)),
+			var jjz := jz + r.randf_range(-0.06, 0.06)
+			B.detail("weed", "weed", Batcher.xf(Vector3(x2, gh(x2, jjz) + s2 * 0.36, jjz),
 				Vector3(s2 * 1.4, s2, s2 * 1.4), r.randf() * TAU), kcol(0.55, 1.25))
 		jz += mod
 	# open ground
@@ -151,7 +162,7 @@ func _weeds() -> void:
 		if d < 14.0 and r.randf() < 0.75:
 			continue
 		var s3 := r.randf_range(0.14, 0.55)
-		B.detail("weed", "weed", Batcher.xf(Vector3(x3, gh(x3, z3) + s3 * 0.42, z3),
+		B.detail("weed", "weed", Batcher.xf(Vector3(x3, gh(x3, z3) + s3 * 0.36, z3),
 			Vector3(s3 * 1.3, s3, s3 * 1.3), r.randf() * TAU), kcol(0.5, 1.3))
 	# at the foot of the perimeter fence: an unbroken line of it
 	var pts: Array = L.plan["fence"]
@@ -165,7 +176,7 @@ func _weeds() -> void:
 			var s4 := r.randf_range(0.16, 0.5)
 			var ox := r.randf_range(-0.5, 0.5)
 			var oz := r.randf_range(-0.5, 0.5)
-			B.detail("weed", "weed", Batcher.xf(Vector3(pp.x + ox, gh(pp.x + ox, pp.y + oz) + s4 * 0.42, pp.y + oz),
+			B.detail("weed", "weed", Batcher.xf(Vector3(pp.x + ox, gh(pp.x + ox, pp.y + oz) + s4 * 0.36, pp.y + oz),
 				Vector3(s4 * 1.3, s4, s4 * 1.3), r.randf() * TAU), kcol(0.5, 1.25))
 
 # ================================================================= fixings
@@ -195,11 +206,11 @@ func _fixings() -> void:
 			var y := gh(x, z)
 			var kind := r.randi() % 5
 			match kind:
-				0: B.detail("hex", "steel", Batcher.xf(Vector3(x, y + 0.012, z), Vector3(0.028, 0.02, 0.028), r.randf() * TAU), kcol(0.5, 1.0))
-				1: B.detail("ring", "steel", Batcher.xf(Vector3(x, y + 0.004, z), Vector3(0.045, 0.006, 0.045), r.randf() * TAU), kcol(0.5, 1.0))
-				2: B.detail("cyl6", "steel", Batcher.xf(Vector3(x, y + 0.01, z), Vector3(0.018, 0.11, 0.018), r.randf() * TAU, PI * 0.5, r.randf() * TAU), kcol(0.5, 1.0))
-				3: B.detail("box", "timber", Batcher.xf(Vector3(x, y + 0.015, z), Vector3(0.09, 0.025, 0.22), r.randf() * TAU), kcol(0.5, 1.1))
-				4: B.detail("chip", "iron", Batcher.xf(Vector3(x, y + 0.008, z), Vector3(0.07, 0.02, 0.05), r.randf() * TAU), kcol(0.5, 1.2))
+				0: B.detail("hex", "steel", Batcher.xf(Vector3(x, y + 0.007, z), Vector3(0.028, 0.02, 0.028), r.randf() * TAU), kcol(0.5, 1.0))
+				1: B.detail("ring", "steel", Batcher.xf(Vector3(x, y + 0.001, z), Vector3(0.045, 0.006, 0.045), r.randf() * TAU), kcol(0.5, 1.0))
+				2: B.detail("cyl6", "steel", Batcher.xf(Vector3(x, y + 0.006, z), Vector3(0.018, 0.11, 0.018), r.randf() * TAU, PI * 0.5, r.randf() * TAU), kcol(0.5, 1.0))
+				3: B.detail("box", "timber", Batcher.xf(Vector3(x, y + 0.009, z), Vector3(0.09, 0.025, 0.22), r.randf() * TAU), kcol(0.5, 1.1))
+				4: B.detail("chip", "iron", Batcher.xf(Vector3(x, y + 0.003, z), Vector3(0.07, 0.02, 0.05), r.randf() * TAU), kcol(0.5, 1.2))
 
 # ================================================================== litter
 ## RULE. Cable ties, tape, offcut plastic, glove, sheet, banding strap: 0.05 per
