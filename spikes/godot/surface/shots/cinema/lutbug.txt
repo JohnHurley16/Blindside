@@ -1,0 +1,2 @@
+=== CINEMA LUT lookup check: t05_charge_line at t=0.55 ===
+three frames written; run paircheck-style measurement in CINEMA.md 6.9

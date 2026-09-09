@@ -1,0 +1,25 @@
+=== CINEMA sequences, fx = all ===
+t02_headframe_sky  24 frames, per-frame step in mm:
+    1.0 6.2 15.4 27.2 40.4 54.0 67.0 78.7 88.4 95.7 100.2 101.8 100.2 95.7 88.4 78.7 67.0 54.0 40.4 27.2 15.4 6.2 1.0
+t03_yard_drift  24 frames, per-frame step in mm:
+    1.2 8.0 19.7 34.8 51.7 69.1 85.7 100.7 113.2 122.5 128.3 130.3 128.3 122.5 113.2 100.7 85.7 69.1 51.7 34.8 19.7 8.0 1.2
+t04_rain_macro  24 frames, per-frame step in mm:
+    0.2 1.6 4.0 7.0 10.5 14.0 17.4 20.4 23.0 24.9 26.1 26.5 26.1 25.0 23.1 20.5 17.5 14.1 10.5 7.1 4.0 1.6 0.2
+t05_charge_line  24 frames, per-frame step in mm:
+    1.0 6.2 15.2 26.9 40.0 53.4 66.3 77.8 87.5 94.7 99.2 100.7 99.2 94.7 87.5 77.8 66.3 53.4 40.0 26.9 15.2 6.2 1.0
+t06_bench_machine  24 frames, per-frame step in mm:
+    0.6 3.6 8.8 15.6 23.2 30.9 38.4 45.1 50.7 54.8 57.4 58.3 57.4 54.8 50.6 45.0 38.3 30.8 23.1 15.5 8.8 3.6 0.6
+t07_course_posts  24 frames, per-frame step in mm:
+    1.1 7.0 17.3 30.5 45.3 60.5 75.1 88.2 99.1 107.3 112.4 114.1 112.4 107.3 99.1 88.2 75.1 60.5 45.3 30.5 17.3 7.0 1.1
+t12_course_alone  24 frames, per-frame step in mm:
+    1.0 6.5 16.0 28.3 42.0 56.1 69.7 81.8 92.0 99.6 104.3 105.9 104.3 99.6 92.0 81.8 69.7 56.1 42.0 28.3 16.0 6.5 1.0
+t13_collar_above  24 frames, per-frame step in mm:
+    0.8 5.5 13.5 23.9 35.5 47.4 58.8 69.1 77.6 84.1 88.0 89.4 88.0 84.1 77.6 69.1 58.8 47.4 35.5 23.9 13.5 5.5 0.8
+t14_descending  REJECTED, not rendered:
+    FAIL: body intersects geometry at t=0.00 (the 0.35 m sphere overlaps)
+    FAIL: frustum clearance falls to 0.01 m at t=0.19 (needs 0.40)
+    FAIL: height 'machine' wants 0.28-0.56 m; the move runs 0.05-1.33 m above the ground
+    FAIL: travels 8.00 m; a shot that must go further is two shots (max 2.5)
+    FAIL: peak speed 3.00 m/s exceeds 1.20
+t28_extraction_window  24 frames, per-frame step in mm:
+    0.9 5.6 14.0 24.7 36.7 49.0 60.8 71.4 80.2 86.9 91.0 92.4 91.0 86.9 80.2 71.4 60.8 49.0 36.7 24.7 14.0 5.6 0.9

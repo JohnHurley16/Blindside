@@ -1,0 +1,73 @@
+=== CINEMA probe: t04_rain_macro ===
+t=0.00  pos   -9.50    0.53   -1.50   ground   0.16  floor_under   0.02  buried 0
+      contact   -9.50    0.16   -1.50   dy  -0.36   ground
+      contact   -9.50    0.16   -1.50   dy  -0.36   ground
+      contact   -9.50    0.16   -1.50   dy  -0.36   ground
+      contact   -9.50    0.16   -1.50   dy  -0.36   ground
+      contact   -9.50    0.16   -1.50   dy  -0.36   ground
+      contact   -9.50    0.16   -1.50   dy  -0.36   ground
+      contact   -9.30    0.51   -1.78   dy  -0.02   BREACH
+      contact   -9.50    0.51   -1.50   dy  -0.02   BREACH
+      contact   -9.51    0.53   -1.50   dy  +0.00   BREACH
+      contact   -9.50    0.53   -1.50   dy  +0.00   BREACH
+      contact   -9.43    0.53   -1.50   dy  +0.00   BREACH
+      overlaps shape 0 -> Ground
+      overlaps shape 2 -> box_stone_s
+      overlaps shape 37 -> casebox_kitgrey_s
+t=0.25  pos   -9.53    0.52   -1.51   ground   0.16  floor_under   0.01  buried 0
+      contact   -9.53    0.16   -1.51   dy  -0.36   ground
+      contact   -9.53    0.16   -1.50   dy  -0.36   ground
+      contact   -9.51    0.16   -1.49   dy  -0.36   ground
+      contact   -9.50    0.16   -1.51   dy  -0.36   ground
+      contact   -9.50    0.16   -1.50   dy  -0.36   ground
+      contact   -9.50    0.16   -1.50   dy  -0.36   ground
+      contact   -9.33    0.51   -1.80   dy  -0.01   BREACH
+      contact   -9.53    0.51   -1.51   dy  -0.01   BREACH
+      contact   -9.53    0.53   -1.51   dy  +0.01   BREACH
+      contact   -9.50    0.53   -1.51   dy  +0.01   BREACH
+      contact   -9.43    0.53   -1.51   dy  +0.01   BREACH
+      overlaps shape 0 -> Ground
+      overlaps shape 2 -> box_stone_s
+      overlaps shape 37 -> casebox_kitgrey_s
+t=0.50  pos   -9.65    0.51   -1.55   ground   0.17  floor_under   0.00  buried 0
+      contact   -9.65    0.16   -1.55   dy  -0.35   ground
+      contact   -9.65    0.17   -1.50   dy  -0.35   ground
+      contact   -9.55    0.16   -1.45   dy  -0.35   ground
+      contact   -9.50    0.16   -1.55   dy  -0.35   ground
+      contact   -9.50    0.16   -1.50   dy  -0.35   ground
+      contact   -9.50    0.16   -1.50   dy  -0.35   ground
+      contact   -9.43    0.51   -1.87   dy  -0.00   BREACH
+      contact   -9.65    0.51   -1.55   dy  -0.00   BREACH
+      contact   -9.66    0.53   -1.55   dy  +0.02   BREACH
+      contact   -9.85    0.58   -1.51   dy  +0.06   BREACH
+      contact   -9.65    0.53   -1.55   dy  +0.02   BREACH
+      contact   -9.50    0.53   -1.53   dy  +0.02   BREACH
+      contact   -9.43    0.53   -1.55   dy  +0.02   BREACH
+      overlaps shape 0 -> Ground
+      overlaps shape 2 -> box_stone_s
+      overlaps shape 37 -> casebox_kitgrey_s
+t=0.75  pos   -9.78    0.51   -1.60   ground   0.17  floor_under  -0.00  buried 0
+      contact   -9.84    0.16   -1.66   dy  -0.34   ground
+      contact   -9.78    0.16   -1.60   dy  -0.34   ground
+      contact   -9.78    0.17   -1.50   dy  -0.34   ground
+      contact   -9.76    0.55   -1.60   dy  +0.05   BREACH
+      contact   -9.87    0.58   -1.57   dy  +0.07   BREACH
+      contact   -9.66    0.53   -1.60   dy  +0.02   BREACH
+      contact   -9.50    0.53   -1.55   dy  +0.02   BREACH
+      contact   -9.43    0.53   -1.60   dy  +0.02   BREACH
+      overlaps shape 0 -> Ground
+      overlaps shape 37 -> casebox_kitgrey_s
+t=1.00  pos   -9.81    0.51   -1.61   ground   0.17  floor_under  -0.00  buried 0
+      contact  -10.00    0.17   -1.61   dy  -0.34   ground
+      contact   -9.85    0.16   -1.65   dy  -0.34   ground
+      contact   -9.81    0.16   -1.61   dy  -0.34   ground
+      contact   -9.81    0.17   -1.50   dy  -0.34   ground
+      contact   -9.69    0.54   -1.82   dy  +0.03   BREACH
+      contact   -9.79    0.56   -1.61   dy  +0.06   BREACH
+      contact   -9.87    0.58   -1.59   dy  +0.07   BREACH
+      contact   -9.66    0.53   -1.81   dy  +0.02   BREACH
+      contact   -9.66    0.53   -1.61   dy  +0.02   BREACH
+      contact   -9.50    0.53   -1.56   dy  +0.02   BREACH
+      contact   -9.43    0.53   -1.61   dy  +0.02   BREACH
+      overlaps shape 0 -> Ground
+      overlaps shape 37 -> casebox_kitgrey_s

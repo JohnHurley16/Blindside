@@ -1,0 +1,21 @@
+=== CINEMA tuning sweeps ===
+bloom threshold 0.30 knee 0.15 written
+bloom threshold 0.30 knee 0.35 written
+bloom threshold 0.30 knee 2.00 written
+bloom threshold 0.40 knee 0.15 written
+bloom threshold 0.40 knee 0.35 written
+bloom threshold 0.40 knee 2.00 written
+bloom threshold 0.55 knee 0.15 written
+bloom threshold 0.55 knee 0.35 written
+bloom threshold 0.55 knee 2.00 written
+vignette k 0.35 written
+vignette k 0.55 written
+vignette k 0.80 written
+motion blur showcase t02_headframe_sky written
+dirt threshold 0.10 gain 0.10 -> lens.flags 128 lens.dirt_gain 0.100 wet 1.00
+dirt threshold 0.25 gain 0.10 -> lens.flags 128 lens.dirt_gain 0.100 wet 1.00
+dirt threshold 0.50 gain 0.10 -> lens.flags 128 lens.dirt_gain 0.100 wet 1.00
+dirt threshold 1.00 gain 0.10 -> lens.flags 128 lens.dirt_gain 0.100 wet 1.00
+dirt gain 0.04 at threshold 0.25 written (t04_rain_macro)
+dirt gain 0.12 at threshold 0.25 written (t04_rain_macro)
+dirt gain 0.30 at threshold 0.25 written (t04_rain_macro)

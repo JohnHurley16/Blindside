@@ -1,0 +1,19 @@
+=== CINEMA contract frames ===
+t02_headframe_sky off written
+t03_yard_drift off written
+t04_rain_macro off written
+t05_charge_line off written
+t06_bench_machine off written
+t07_course_posts off written
+t12_course_alone off written
+t13_collar_above off written
+t28_extraction_window off written
+t02_headframe_sky on written
+t03_yard_drift on written
+t04_rain_macro on written
+t05_charge_line on written
+t06_bench_machine on written
+t07_course_posts on written
+t12_course_alone on written
+t13_collar_above on written
+t28_extraction_window on written

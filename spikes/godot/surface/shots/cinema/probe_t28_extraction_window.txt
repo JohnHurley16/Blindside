@@ -1,0 +1,20 @@
+=== CINEMA probe: t28_extraction_window ===
+t=0.00  pos   -2.40    2.51    3.80   ground   0.16  floor_under   2.35  buried 0
+t=0.25  pos   -2.32    2.51    3.72   ground   0.16  floor_under   2.34  buried 0
+t=0.50  pos   -2.00    2.49    3.40   ground   0.16  floor_under   2.33  buried 0
+t=0.75  pos   -1.68    2.47    3.08   ground   0.16  floor_under   0.97  buried 0
+      contact   -1.70    2.46    2.81   dy  -0.00   BREACH
+      contact   -1.69    2.43    2.81   dy  -0.03   BREACH
+      contact   -1.68    2.40    2.90   dy  -0.06   BREACH
+      contact   -1.67    2.40    2.94   dy  -0.06   BREACH
+      contact   -1.67    2.40    2.94   dy  -0.06   BREACH
+      contact   -1.67    2.39    2.94   dy  -0.08   BREACH
+      overlaps shape 7 -> angle_iron_s
+t=1.00  pos   -1.60    2.46    3.00   ground   0.16  floor_under   0.56  buried 0
+      contact   -1.61    2.46    2.81   dy  -0.00   BREACH
+      contact   -1.61    2.46    2.81   dy  -0.00   BREACH
+      contact   -1.60    2.42    2.90   dy  -0.04   BREACH
+      contact   -1.59    2.43    2.93   dy  -0.03   BREACH
+      contact   -1.59    2.43    2.93   dy  -0.03   BREACH
+      contact   -1.59    2.41    2.93   dy  -0.05   BREACH
+      overlaps shape 7 -> angle_iron_s

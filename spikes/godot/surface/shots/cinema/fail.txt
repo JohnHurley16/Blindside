@@ -1,0 +1,12 @@
+=== CINEMA rejected shots ===
+t14_descending  REJECTED
+    FAIL: body intersects geometry at t=0.00 (the 0.35 m sphere overlaps)
+    FAIL: frustum clearance falls to 0.01 m at t=0.19 (needs 0.40)
+    FAIL: height 'machine' wants 0.28-0.56 m; the move runs 0.05-1.33 m above the ground
+    FAIL: travels 8.00 m; a shot that must go further is two shots (max 2.5)
+    FAIL: peak speed 3.00 m/s exceeds 1.20
+    last legal t = -1.000, first rejected t = 0.000   (and it reports CLEAR again after that: the shell is a triangle soup, so a camera fully inside a solid touches nothing)
+xfail_through_the_shed  REJECTED
+    FAIL: body intersects geometry at t=0.28 (the 0.35 m sphere overlaps)
+    FAIL: frustum clearance falls to 0.01 m at t=0.47 (needs 0.40)
+    last legal t = 0.250, first rejected t = 0.281   (and it reports CLEAR again after that: the shell is a triangle soup, so a camera fully inside a solid touches nothing)

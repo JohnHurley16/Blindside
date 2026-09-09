@@ -89,6 +89,10 @@ var rain: GPUParticles3D
 var yard_lights: Array = []
 var always_lights: Array = []
 var preset := "overcast"
+## the last value pushed to `g_wet`. RenderingServer.global_shader_parameter_get
+## is editor-only and returns null in a game build, so anything downstream that
+## needs to know whether it is raining reads this instead.
+var wet := 0.3
 
 func setup(root: Node3D, light_data: Array, skymode: String = "realtime", ssao_on: bool = true) -> void:
 	world_env = WorldEnvironment.new()
@@ -322,6 +326,7 @@ func apply(name: String) -> void:
 var ground_mat: ShaderMaterial
 
 func _wet(v: float) -> void:
+	wet = v
 	RenderingServer.global_shader_parameter_set("g_wet", v)
 
 ## Hand the ground shader the sky it has to mirror. The ground writes its own

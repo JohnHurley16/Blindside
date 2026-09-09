@@ -1,0 +1,10 @@
+=== CINEMA HDR probe (frame holds scene luminance / 16, LINEAR tonemap) ===
+t02_headframe_sky        light overcast  tonemap_exposure 0.700
+t03_yard_drift           light overcast  tonemap_exposure 0.700
+t04_rain_macro           light rain      tonemap_exposure 1.450
+t05_charge_line          light overcast  tonemap_exposure 0.700
+t06_bench_machine        light overcast  tonemap_exposure 0.700
+t07_course_posts         light overcast  tonemap_exposure 0.700
+t12_course_alone         light overcast  tonemap_exposure 0.700
+t13_collar_above         light overcast  tonemap_exposure 0.700
+t28_extraction_window    light rain      tonemap_exposure 1.450

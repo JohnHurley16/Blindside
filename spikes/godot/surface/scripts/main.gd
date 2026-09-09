@@ -29,6 +29,11 @@ var skymode := "realtime"
 var nrm := 1.0
 var solid := 1.0
 var ssao := true
+## the cinematic layer (TRAILER 8 and 9). See scripts/cinema.gd, postfx.gd, shoot.gd.
+var cinema := ""
+var fx := "all"
+var rig: CameraRig
+var grade: CinemaGrade
 
 var stats := {}
 var frame_times: Array[float] = []
@@ -259,7 +264,9 @@ func _ready() -> void:
 	stats = {"gen_ms": total, "instances": fstats["instances"], "mm": fstats["multimeshes"],
 		"tris": fstats["tris"], "ground_tris": gstats["tris"]}
 
-	if mode == "shots":
+	if mode == "cinema":
+		_run_cinema()
+	elif mode == "shots":
 		_run_shots()
 	elif mode == "pshots":
 		_run_pshots()
@@ -267,6 +274,52 @@ func _ready() -> void:
 		_run_oshots()
 	elif mode == "bench":
 		set_process(true)
+
+# ---------------------------------------------------------------- cinema
+## TRAILER 8 and 9. The camera rig and the post stack, ported from the cave
+## spike. Everything here is offline capture: it builds a collision layer for
+## the camera body, hangs the lens/sensor CompositorEffect on the camera and
+## runs one of the sub-modes in scripts/shoot.gd.
+func _run_cinema() -> void:
+	# physics needs a frame before a space query returns anything
+	await RenderingServer.frame_post_draw
+	rig = CameraRig.new()
+	rig.build_collision(self, L)
+	rig.ready_space(self)
+	_log("cinema collis : %d ground tris + %d instances / %d tris in %.0f ms"
+		% [rig.collision_ground_tris, rig.collision_props, rig.collision_tris, rig.build_ms])
+	grade = CinemaGrade.new()
+	grade.setup(W.env, cam)
+	grade.capture_base()
+	await get_tree().physics_frame
+	await RenderingServer.frame_post_draw
+	var sh := Shoot.new(self, cam, W, rig, grade)
+	sh.load_shots(ProjectSettings.globalize_path("res://shots_cinema.json"))
+	var m := CinemaGrade.parse(fx)
+	match cinema:
+		"places":   sh.run_places()
+		"validate": sh.run_validate()
+		"probe":    sh.run_probe(only_shot)
+		"scout":    sh.run_scout(only_shot, 5.0, 1.0)
+		"scoutf":   sh.run_scout(only_shot, 2.0, 0.4)
+		"seq":      await sh.run_seq(only_shot, m)
+		"pairs":    await sh.run_pairs(only_shot)
+		"stack":    await sh.run_stack(_stack_names())
+		"tune":     await sh.run_tune(only_shot)
+		"hdr":      await sh.run_hdr()
+		"lutbug":   await sh.run_lutbug(only_shot)
+		"fail":     await sh.run_fail()
+		"contract": await sh.run_contract()
+		"cost":     await sh.run_cost(only_shot)
+		_:
+			push_error("CINEMA: unknown --cinema=%s" % cinema)
+	_write_log("cinema_%s.txt" % cinema)
+	get_tree().quit()
+
+## three frames for the stack on/off comparison, chosen to be three different
+## registers: iron against sky, the brought kit at working distance, and rain
+func _stack_names() -> Array:
+	return ["t02_headframe_sky", "t05_charge_line", "t28_extraction_window"]
 
 func _occluders() -> void:
 	# The winding house and the container row hide most of the site from most of
@@ -309,6 +362,11 @@ func _parse_args() -> void:
 			ssao = int(a.substr(7)) != 0
 		elif a.begins_with("--dbg="):
 			dbg = int(a.substr(6))
+		elif a.begins_with("--cinema="):
+			cinema = a.substr(9)
+			mode = "cinema"
+		elif a.begins_with("--fx="):
+			fx = a.substr(5)
 
 func _log(s: String) -> void:
 	print(s)

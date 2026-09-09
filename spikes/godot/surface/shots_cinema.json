@@ -1,0 +1,484 @@
+[
+  {
+    "name": "t02_headframe_sky",
+    "trailer": "2",
+    "light": "overcast",
+    "len_s": 5.0,
+    "lens_mm": 21.0,
+    "tstop": 2.8,
+    "ease": "inout",
+    "handheld_deg": 0.0,
+    "height": "machine",
+    "seed": 2,
+    "move": {
+      "from": {
+        "at": "collar",
+        "a": -9.4,
+        "o": 1.4,
+        "u": 0.42
+      },
+      "to": {
+        "at": "collar",
+        "a": -8.15,
+        "o": 1.4,
+        "u": 0.42
+      }
+    },
+    "look": {
+      "from": {
+        "at": "collar",
+        "a": 3.0,
+        "o": 0.0,
+        "u": 9.0
+      },
+      "to": {
+        "at": "collar",
+        "a": 3.0,
+        "o": 0.0,
+        "u": 11.4
+      }
+    },
+    "focus": {
+      "from": 15.5,
+      "to": 14.4
+    }
+  },
+  {
+    "name": "t03_yard_drift",
+    "trailer": "3",
+    "light": "overcast",
+    "len_s": 4.0,
+    "lens_mm": 21.0,
+    "tstop": 4.0,
+    "ease": "inout",
+    "handheld_deg": 0.0,
+    "height": "eye",
+    "seed": 3,
+    "move": {
+      "from": {
+        "at": "collar",
+        "a": -1.2,
+        "o": 4.6,
+        "u": 1.72
+      },
+      "to": {
+        "at": "collar",
+        "a": -1.2,
+        "o": 6.2,
+        "u": 1.72
+      }
+    },
+    "look": {
+      "from": {
+        "at": "collar",
+        "a": -25.0,
+        "o": 3.2,
+        "u": 1.05
+      },
+      "to": {
+        "at": "collar",
+        "a": -25.0,
+        "o": 3.7,
+        "u": 1.05
+      }
+    },
+    "focus": {
+      "from": 12.0,
+      "to": 12.0
+    }
+  },
+  {
+    "name": "t04_rain_macro",
+    "trailer": "4",
+    "light": "rain",
+    "len_s": 4.0,
+    "lens_mm": 50.0,
+    "tstop": 4.0,
+    "ease": "inout",
+    "handheld_deg": 0.18,
+    "height": "floor",
+    "seed": 4,
+    "move": {
+      "from": {
+        "at": "z:muster",
+        "a": -1.95,
+        "o": -1.05,
+        "u": 0.34
+      },
+      "to": {
+        "at": "z:muster",
+        "a": -1.63,
+        "o": -0.99,
+        "u": 0.32
+      }
+    },
+    "look": {
+      "from": {
+        "at": "z:muster",
+        "a": -2.45,
+        "o": -0.25,
+        "u": 0.02
+      },
+      "to": {
+        "at": "z:muster",
+        "a": -2.2,
+        "o": -0.15,
+        "u": 0.02
+      }
+    },
+    "focus": {
+      "from": 1.0,
+      "to": 0.94
+    }
+  },
+  {
+    "name": "t05_charge_line",
+    "trailer": "5",
+    "light": "overcast",
+    "len_s": 4.0,
+    "lens_mm": 35.0,
+    "tstop": 2.8,
+    "ease": "inout",
+    "handheld_deg": 0.0,
+    "height": "eye",
+    "seed": 5,
+    "move": {
+      "from": {
+        "at": "z:charge_row",
+        "a": 7.5,
+        "o": 3.2,
+        "u": 1.6
+      },
+      "to": {
+        "at": "z:charge_row",
+        "a": 6.3,
+        "o": 2.9,
+        "u": 1.6
+      }
+    },
+    "look": {
+      "from": {
+        "at": "z:charge_row",
+        "a": -3.0,
+        "o": -0.8,
+        "u": 0.95
+      },
+      "to": {
+        "at": "z:charge_row",
+        "a": -4.2,
+        "o": -0.8,
+        "u": 0.95
+      }
+    },
+    "focus": {
+      "from": 7.0,
+      "to": 8.4
+    }
+  },
+  {
+    "name": "t06_bench_machine",
+    "trailer": "6",
+    "light": "overcast",
+    "len_s": 4.0,
+    "lens_mm": 50.0,
+    "tstop": 2.8,
+    "ease": "inout",
+    "handheld_deg": 0.24,
+    "height": "eye",
+    "seed": 6,
+    "move": {
+      "from": {
+        "at": "b:service_bay",
+        "a": 1.9,
+        "o": -0.5,
+        "u": 1.55
+      },
+      "to": {
+        "at": "b:service_bay",
+        "a": 1.25,
+        "o": -0.8,
+        "u": 1.55
+      }
+    },
+    "look": {
+      "from": {
+        "at": "b:service_bay",
+        "a": 0.0,
+        "o": -1.9,
+        "u": 0.88
+      },
+      "to": {
+        "at": "b:service_bay",
+        "a": -0.1,
+        "o": -1.9,
+        "u": 0.86
+      }
+    },
+    "focus": {
+      "from": 2.45,
+      "to": 1.95
+    }
+  },
+  {
+    "name": "t07_course_posts",
+    "trailer": "7",
+    "light": "overcast",
+    "len_s": 4.0,
+    "lens_mm": 35.0,
+    "tstop": 2.8,
+    "ease": "inout",
+    "handheld_deg": 0.22,
+    "height": "machine",
+    "seed": 7,
+    "move": {
+      "from": {
+        "at": "course:3",
+        "a": -4.2,
+        "o": 0.0,
+        "u": 0.45
+      },
+      "to": {
+        "at": "course:3",
+        "a": -2.8,
+        "o": 0.0,
+        "u": 0.45
+      }
+    },
+    "look": {
+      "from": {
+        "at": "course:3",
+        "a": -0.4,
+        "o": 0.0,
+        "u": 0.35
+      },
+      "to": {
+        "at": "course:3",
+        "a": 0.3,
+        "o": 0.0,
+        "u": 0.35
+      }
+    },
+    "focus": {
+      "from": 3.9,
+      "to": 3.2
+    }
+  },
+  {
+    "name": "t12_course_alone",
+    "trailer": "12",
+    "light": "overcast",
+    "len_s": 4.0,
+    "lens_mm": 21.0,
+    "tstop": 4.0,
+    "ease": "inout",
+    "handheld_deg": 0.0,
+    "height": "crane",
+    "seed": 12,
+    "move": {
+      "from": {
+        "at": "course:2",
+        "a": 1.2,
+        "o": 3.4,
+        "u": 5.5
+      },
+      "to": {
+        "at": "course:2",
+        "a": 1.2,
+        "o": 2.1,
+        "u": 5.5
+      }
+    },
+    "look": {
+      "from": {
+        "at": "course:3",
+        "a": 0.0,
+        "o": 0.2,
+        "u": 0.45
+      },
+      "to": {
+        "at": "course:3",
+        "a": 0.0,
+        "o": -0.2,
+        "u": 0.45
+      }
+    },
+    "focus": {
+      "from": 10.5,
+      "to": 10.5
+    }
+  },
+  {
+    "name": "t13_collar_above",
+    "trailer": "13",
+    "light": "overcast",
+    "len_s": 4.0,
+    "lens_mm": 21.0,
+    "tstop": 4.0,
+    "ease": "inout",
+    "handheld_deg": 0.0,
+    "height": "crane",
+    "seed": 13,
+    "move": {
+      "from": {
+        "at": "collar",
+        "a": -7.4,
+        "o": 5.4,
+        "u": 4.6
+      },
+      "to": {
+        "at": "collar",
+        "a": -6.6,
+        "o": 4.65,
+        "u": 4.55
+      }
+    },
+    "look": {
+      "from": {
+        "at": "collar",
+        "a": -1.3,
+        "o": -0.3,
+        "u": 0.35
+      },
+      "to": {
+        "at": "collar",
+        "a": -0.9,
+        "o": -0.1,
+        "u": 0.3
+      }
+    },
+    "focus": {
+      "from": 9.6,
+      "to": 9.0
+    }
+  },
+  {
+    "name": "t14_descending",
+    "trailer": "14",
+    "light": "overcast",
+    "_why": "authored as TRAILER 3 writes it: the camera rides the cage down the shaft. It is REJECTED; see CINEMA.md 7.2 for why that is the correct answer and what would have to change.",
+    "len_s": 5.0,
+    "lens_mm": 21.0,
+    "tstop": 2.8,
+    "ease": "inout",
+    "handheld_deg": 0.0,
+    "height": "machine",
+    "seed": 14,
+    "move": {
+      "from": [
+        0.0,
+        -0.8,
+        0.0
+      ],
+      "to": [
+        0.0,
+        -8.8,
+        0.0
+      ]
+    },
+    "look": {
+      "from": [
+        0.0,
+        6.0,
+        0.0
+      ],
+      "to": [
+        0.0,
+        6.0,
+        0.0
+      ]
+    },
+    "focus": {
+      "from": 6.8,
+      "to": 14.8
+    }
+  },
+  {
+    "name": "t28_extraction_window",
+    "trailer": "28",
+    "light": "rain",
+    "len_s": 3.0,
+    "lens_mm": 21.0,
+    "tstop": 4.0,
+    "ease": "inout",
+    "handheld_deg": 0.0,
+    "height": "crane",
+    "seed": 28,
+    "move": {
+      "from": {
+        "at": "collar",
+        "a": -4.3,
+        "o": 5.2,
+        "u": 3.2
+      },
+      "to": {
+        "at": "collar",
+        "a": -3.55,
+        "o": 4.35,
+        "u": 3.15
+      }
+    },
+    "look": {
+      "from": {
+        "at": "collar",
+        "a": 0.4,
+        "o": 0.9,
+        "u": 0.3
+      },
+      "to": {
+        "at": "collar",
+        "a": 0.2,
+        "o": 0.7,
+        "u": 0.25
+      }
+    },
+    "focus": {
+      "from": 7.0,
+      "to": 6.4
+    }
+  },
+  {
+    "name": "xfail_through_the_shed",
+    "trailer": "",
+    "light": "overcast",
+    "_why": "authored to fail: a 2.2 m push straight into the winding house's west wall, which is the move a hand-flown camera makes when nobody is checking",
+    "len_s": 4.5,
+    "lens_mm": 21.0,
+    "tstop": 2.8,
+    "ease": "inout",
+    "handheld_deg": 0.0,
+    "height": "eye",
+    "seed": 99,
+    "move": {
+      "from": {
+        "at": "b:winding_house",
+        "a": -6.5,
+        "o": 0.0,
+        "u": 1.6
+      },
+      "to": {
+        "at": "b:winding_house",
+        "a": -4.3,
+        "o": 0.0,
+        "u": 1.6
+      }
+    },
+    "look": {
+      "from": {
+        "at": "b:winding_house",
+        "a": 2.0,
+        "o": 0.0,
+        "u": 3.0
+      },
+      "to": {
+        "at": "b:winding_house",
+        "a": 2.0,
+        "o": 0.0,
+        "u": 3.0
+      }
+    },
+    "focus": {
+      "from": 8.0,
+      "to": 6.0
+    }
+  }
+]

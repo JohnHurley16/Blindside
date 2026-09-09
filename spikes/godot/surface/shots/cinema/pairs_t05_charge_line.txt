@@ -1,0 +1,10 @@
+=== CINEMA pairs, cumulative, t05_charge_line at t=0.55, overcast light ===
+01 bloom     off -> on   (tonemap+bloom)
+02 dof       off -> on   (tonemap+bloom+dof)
+03 mblur     off -> on   (tonemap+bloom+dof+mblur)
+04 grain     off -> on   (tonemap+bloom+dof+mblur+grain)
+05 vignette  off -> on   (tonemap+bloom+dof+mblur+grain+vignette)
+06 ca        off -> on   (tonemap+bloom+dof+mblur+grain+vignette+ca)
+07 distort   off -> on   (tonemap+bloom+dof+mblur+grain+vignette+ca+distort)
+08 grade     off -> on   (tonemap+bloom+dof+mblur+grain+vignette+ca+distort+grade)
+09 dirt      off -> on   (all)

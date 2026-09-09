@@ -49,3 +49,7 @@ spikes/godot/machines/models/*.glb
 spikes/godot/cloud/shots/cinema/seq/
 spikes/godot/cloud/shots/cinema/fx/
 spikes/godot/cloud/shots/cinema/fail/
+# Surface cinema evidence: 889 MB of sequences and sweeps. The measurements, the code and a
+# few key frames under shots/cinema/key/ are tracked; regenerate the rest with --mode=cinema.
+spikes/godot/surface/shots/cinema/*/
+!spikes/godot/surface/shots/cinema/key/

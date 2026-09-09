@@ -1,0 +1,18 @@
+=== CINEMA cost, leave-one-out from the full stack ===
+pose: t05_charge_line at t=0.55, overcast, 1920x1080, 56 frames a block, 3 blocks
+READ THE MACHINE STATE NOTE IN CINEMA.md BEFORE READING ANY OF THIS.
+
+full stack    23.61 ms
+tonemap only    18.79 ms   -> the whole stack costs 4.82 ms
+
+bloom          1.05 ms  (full 24.28, without 23.23)
+dof            2.77 ms  (full 24.18, without 21.41)
+mblur          0.03 ms  (full 24.14, without 24.11)
+grain          0.17 ms  (full 24.24, without 24.07)
+vignette       0.13 ms  (full 24.36, without 24.24)
+ca             0.46 ms  (full 24.26, without 23.80)
+distort        0.26 ms  (full 24.35, without 24.09)
+grade         -0.00 ms  (full 24.15, without 24.15)
+dirt           0.10 ms  (full 55.91, without 55.80)
+
+sum of leave-one-out deltas: 4.97 ms   whole stack: 4.82 ms

@@ -1,0 +1,4 @@
+=== CINEMA stack on/off ===
+t02_headframe_sky  off/on written
+t05_charge_line  off/on written
+t28_extraction_window  off/on written
