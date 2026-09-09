@@ -47,6 +47,11 @@ def parse(argv):
     ap.add_argument("--samples", type=int, default=96)
     ap.add_argument("--res", default="1600x1000")
     ap.add_argument("--save", default=None, help="write a .blend to open on your machine")
+    ap.add_argument("--export", default=None, help="write a .glb: armature, one skinned mesh, the motion baked to FK")
+    ap.add_argument("--export-clip", default="clip", help="name of the animation in the .glb")
+    ap.add_argument("--export-in-place", type=int, default=1, help="1 strips the world travel so the clip loops in place")
+    ap.add_argument("--export-frames", default=None, help="first,last -- trim the clip to a whole number of gait cycles")
+    ap.add_argument("--fps", type=int, default=24)
     ap.add_argument("--no-cave", action="store_true")
     ap.add_argument("--cam", default="-42,9,1.75", help="azimuth_deg,elevation_deg,distance")
     ap.add_argument("--chase", action="store_true", help="camera follows the body (default on for --video / --anim)")
@@ -68,8 +73,20 @@ def main(argv=None):
         skin.light = tuple(float(v) for v in a.light.split(","))
     cfg.skin = skin
     built = build_agent(cfg)
-    mover = Mover(built)
+    mover = Mover(built, fps=a.fps)
     last = script(mover, a.move)
+    # --export writes the model out and stops: there is nothing to render, and
+    # the export mutates the rig (constraints baked away, meshes joined), so it
+    # must not be followed by anything that expects the rig it was built with.
+    if a.export:
+        from agent_model.export_gltf import export_glb
+        ef0, ef1 = 1, last
+        if a.export_frames:
+            ef0, ef1 = (int(v) for v in a.export_frames.split(","))
+        st = export_glb(built, a.export, clip=a.export_clip, f0=ef0, f1=ef1,
+                        in_place=bool(a.export_in_place), fps=a.fps)
+        print("EXPORT " + repr(st))
+        return
     if not a.no_cave:
         R.cave(path=mover.path)
     az, el, dist = (float(v) for v in a.cam.split(","))
