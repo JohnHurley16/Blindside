@@ -127,3 +127,37 @@ still lives here.
   seed, is allowed floats, and lives on the client side. Nothing the dressing layer decides
   may ever reach the simulation, and the invariant stands unchanged: dressing is drawn from
   world truth for a spectator, never handed to a policy.
+
+## 6. It has to look photoreal — 2026-09-09
+
+> Yeah, I agree the materials and underfoot stuff sucks right now. Start working on that. It
+> needs to look photoreal.
+
+Said after walking the first two Godot spikes, which held frame rate with tens of thousands
+of props but whose surfaces read as flat shaded blocks.
+
+**What it binds.**
+- **Photoreal is a material and surface problem, not a geometry-count problem.** The spikes
+  already proved the budget: the cave runs faster dense than empty. What is missing is what a
+  surface does with light — layered roughness, real normals at several scales, apparent depth
+  underfoot, and the wetness that a drowned mine should have everywhere.
+- **Underfoot is the hardest scale and the one that decides it.** A ground plane with a shader
+  on it reads as a plane however good the shader is. The last metre and a half needs apparent
+  or real displacement, half-buried aggregate, and wear that responds to what happened there.
+- **Still procedural.** §5 stands: no hand-modelled assets, no photographic textures. Detail
+  comes from generated noise, layered material rules and instanced geometry. Whether generated
+  noise textures count as bitmaps is question 5 in `docs/spikes/PROCEDURAL-AND-GODOT.md`, whose
+  default is yes, allowed, and photorealism depends on that default holding.
+- **Frame rate is a constraint, not an afterthought.** Every material change is measured
+  against the recorded baselines in the spikes. A look that costs the 60 is not a look.
+
+**Two rules in `ART-DIRECTION.md` that this contradicts, and neither is resolved here.**
+1. §3.1 fixes *one rock material, four scalars, no hue axis* and §9 forbids any hue axis
+   anywhere. Real rock varies in hue as well as value, and mineral staining in a wet iron mine
+   is strongly coloured. Photorealism and the no-hue rule cannot both hold literally.
+2. §9 forbids *no image texture, UV map or bitmap*. The intent was that a generated cave cannot
+   be unwrapped, which remains true; the letter also forbids the generated noise textures that
+   physically based materials need.
+Both need a designer ruling. Until then the spikes treat the *intent* as binding — one rock
+family, world-space mapping, nothing unwrapped, nothing photographic — and the letter as
+amendable.
