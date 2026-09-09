@@ -270,6 +270,16 @@ invariant at all. The only costs are determinism, budget and legibility.
   The curated layer is what stops that, and the substrate needs to be discoverable by someone
   looking for it rather than dumped in front of someone who is not.
 
+**The one edge on "enriching belief cannot break the invariant", found while cataloguing.** A
+quantity derived from belief *plus one truth-side constant* is a truth leak wearing a belief
+costume. The example that will keep being asked for is *how much of the cave have I explored*:
+the numerator is belief, the denominator is the size of the cave, and the size of the cave is
+ground truth. There is no legal way for a machine to know it. So the test for a proposed signal is
+not "is it derived from belief" but **"could a machine compute this from what it has actually
+sensed, with no constant it was never told"**. Publish the numerator and let the player decide what
+enough means.
+
 **What it does not settle.** Which signals exist, what each costs, which are base blocks on day
 one, and whether the substrate is reachable in the node editor at all or only through blocks. The
-catalogue is `docs/BELIEF-CATALOGUE.md`.
+catalogue is `docs/BELIEF-CATALOGUE.md`: 100 signals in ten families, of which 85 need no new
+sensing, 35 are computed today and read by no policy, and one is refused outright.
