@@ -225,3 +225,51 @@ against the actual world.
 than an automotive unit because underground you need the near floor and the crown. Also
 unsettled: dust and water as multi-return failure modes, which underground is not a detail but a
 sensor failure with gameplay in it.
+
+## 9. Belief should be rich, so that technique can differ - 2026-09-09
+
+> We also need to make as much data available (in the vehicle belief) as possible so players
+> can experiment with different techniques that utilize different data inputs.
+
+**Why this is safe, and it is the one place in this design where "more" costs nothing.** The
+invariant is that a policy may never observe ground truth. Belief is by definition what the
+machine's own sensors and estimator produced, so anything derived from it is already legal for a
+policy to read. Enriching `World` would be a catastrophe; enriching `Belief` cannot break the
+invariant at all. The only costs are determinism, budget and legibility.
+
+**What it binds.**
+- **The estimator publishes everything it already knows.** Today `Belief` exposes a pose, an
+  uncertainty scalar and a point cloud, and throws away most of what it computed on the way:
+  the full covariance rather than one sigma, the size and time of the last correction, returns
+  per sweep, how much of the last sweep came back at all, how far it has walked since a fix, how
+  long since it saw a given place. None of that is new sensing. It is refusing to discard.
+- **Derived structure counts as belief.** Frontiers between mapped and unmapped, clearance at a
+  point, passage width, whether the map disagrees with itself where two passes overlap, how long
+  since a region was last observed. These are computed from belief and are therefore belief.
+- **Two layers, not one.** The rich data is the substrate; the base blocks of §1 are curated,
+  named views over it that arrive progressively. Both exist at once. A beginner composes the
+  blocks they have been given; someone who wants to build a technique nobody has tried reaches
+  past them into the substrate. Discovery introduces the block, not the data - the data was
+  always there, which is what makes a discovery feel like a realisation rather than a permission.
+- **Different inputs are how techniques differ.** A game where everyone reads the same three
+  numbers has one solved strategy. A machine that turns back on uncertainty, one that turns back
+  on sensor health, and one that turns back on how long since it last recognised anything are
+  three different animals, and the difference lives in what they read, not in how the tree is
+  shaped.
+- **It changes what a module is worth.** §8 made the sensor a real instrument; this makes what
+  the instrument produces legible to a policy. A better sensor is then not just a longer range,
+  it is new signals to build on.
+
+**What it costs, and none of it is optional.**
+- **Determinism.** Everything published is hashed into the replay and must be fixed-point and
+  iteration-order stable, per `DETERMINISM.md`. A signal that cannot be computed deterministically
+  cannot be published.
+- **Budget.** Every published signal is computed every tick for every agent, so each needs a cost.
+  Some are free by-products; some, like map self-disagreement, are not.
+- **Legibility.** A vocabulary of two hundred signals is not a richer game, it is an unusable one.
+  The curated layer is what stops that, and the substrate needs to be discoverable by someone
+  looking for it rather than dumped in front of someone who is not.
+
+**What it does not settle.** Which signals exist, what each costs, which are base blocks on day
+one, and whether the substrate is reachable in the node editor at all or only through blocks. The
+catalogue is `docs/BELIEF-CATALOGUE.md`.
