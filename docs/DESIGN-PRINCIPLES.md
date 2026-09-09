@@ -194,3 +194,34 @@ random scatter is the fastest way to fill a frame. It is also exactly how you dr
 class and becomes a small number of *arrangements* — a rack, a row, a bay, a stack, a lay-down
 area, a queue — each with its own footprint, spacing and alignment, placed against the layout's
 zones. Randomness sets which arrangement and what it holds, never the position of each object.
+
+## 8. The sensor is simulated for real - 2026-09-09
+
+> The real simulated lidar sensor is wayyyy better.
+
+Said comparing the first belief render, which placed points from a sparse range/bearing model
+and looked like glowing mist, against one that models a spinning array of emitters raycast
+against the actual world.
+
+**What it binds.**
+- **Returns are produced by simulating the instrument, not by decorating a position.** A fixed
+  set of beam elevations, a spin rate, a firing rate, a range envelope, and a ray that stops at
+  the first thing it hits. Everything that makes the view read - ring structure, occlusion
+  shadows, density falling off with range, intensity varying with incidence - is a consequence
+  of that, and none of it can be faked convincingly on top of a cheaper model.
+- **Occlusion is the machine's ignorance made visible.** A sensor shadow is a region the machine
+  genuinely has no information about, which is this game's subject. `ART-DIRECTION.md` section
+  8.2 now forbids drawing anything into one.
+- **The sensor becomes a gameplay object.** If beam count, spin rate, range and noise are real
+  parameters, then a better sensor is a real advantage, a damaged one is a real loss, and what a
+  machine can perceive is something the player equips, upgrades and can be deprived of. That
+  connects the instrument straight to the extraction loop in section 2.
+- **It forces a data decision.** Ten hertz is on the order of a hundred million returns in a
+  match. The live sweep and the accumulated map must be different objects, and the map has to be
+  reduced at the source rather than stored raw.
+
+**What it does not settle.** The parameters. The measured recommendation is 32 rings over -30 to
++12 degrees, 1024 azimuth steps per revolution, 10 Hz, and 0.55 to 40 m, pointing further down
+than an automotive unit because underground you need the near floor and the crown. Also
+unsettled: dust and water as multi-return failure modes, which underground is not a detail but a
+sensor failure with gameplay in it.

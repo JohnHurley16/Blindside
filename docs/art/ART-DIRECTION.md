@@ -994,32 +994,50 @@ composes with it rather than replacing it:
 
 ### 8.2 What the point cloud should look like
 
+**Rewritten 2026-09-09**, after the designer looked at the first 3D build and said it looked
+nothing like the point clouds from self-driving cars, then looked at a real simulated scanning
+sensor and said it was far better. The previous text was written against a sparse range/bearing
+sensor and specified oriented discs; that mechanism does not survive a scanning sensor, though
+most of the intent does. What was measured is in `spikes/godot/cloud/LIDAR.md`.
+
 It should look like **a survey, not a fog.**
 
-- **Points are hits, not dots.** Each is a ~40–50 mm **world-space oriented disc, facing back
-  along the ray the return came from** — never a camera-facing sprite of fixed angular size.
-  A range/bearing return has no normal, but it does have a sensor→hit direction, and using it
-  is honest: it encodes *what the sensor saw from where it stood*. Two consequences, both
-  free: a bank of returns reads as a **surface** rather than as fuzz, from any angle, with no
-  mesh; and a wall mapped twice under drift draws as **two sheets at a slight angle to each
-  other** — the doubling artifact made visible as a shape the eye catches.
-  *(This resolves a silent disagreement between the earlier passes, one of which specified
-  fixed-angular-size screen-facing sprites. The two produce opposite images — a uniform fog
-  versus a readable surface — and only one can ship. Phase 5's replay is the screen ROADMAP
-  says gets the most polish, so it needs deciding before it is built.)*
-- **Two classes and nothing else** — sensed (at its scattered z) and walked (at z = 0).
-  `SPECTATOR-DISPLAY` already collapsed four channels to one; do not re-expand.
-- **One confidence channel: alpha**, with size as a weak second. No third colour.
-- **Age shows, and the map is not re-registered.** An old return is dimmer and stays *where
-  it was believed to be at the time*. That is what drift looks like in three dimensions: an
-  old corridor and a new corridor for the same passage, 8 cells apart, both drawn, no
-  annotation needed.
-- **The mapped silhouette becomes a floor decal at z = 0** — a dark-cyan wash where
-  `count > 0`, under everything. The only belief element with area, and what makes drift read
-  as a *shape* drifting rather than as scatter moving.
-- **The cloud is dimmer than the lamp's darkest legible surface** — emission ~0.03–0.06
-  linear against a blown near wall. `palette.py`'s `AMBIENT_MAX_LUMINANCE = 0.35` applied to
-  the world register.
+- **The cloud has ring structure, and the ring structure is the point.** The sensor is a spinning
+  array of emitters at fixed elevations, so returns lie on rings: concentric on the ground, banded
+  on a wall, evenly pitched along each ring. Nothing in the presentation may destroy it - not a
+  mark large enough to merge adjacent rings at working range, not randomised elevations, not a
+  camera-facing sprite of fixed angular size, not additive accumulation. A regular pattern is the
+  only thing whose misalignment a human reads instantly, and this is a game about a machine whose
+  estimate drifts and then jumps. Measured: at close range two passes' bands interleave and
+  visibly fail to line up, so sub-metre drift becomes legible where it previously needed metres.
+- **A return is a point.** A hard-edged mark of near-constant screen size, floor about 1.5 px and
+  cap about 4 px, opaque and depth-tested. The old 40-50 mm oriented disc was solving the problem
+  that a few thousand sparse returns do not add up to a surface; twenty-odd thousand returns per
+  revolution add up to a surface on their own. The 45 mm constant is deleted: it is not a length
+  that exists, and a real footprint is range x 3 mrad, 3 mm at one metre and 120 mm at forty.
+- **The cloud is opaque and depth-tested; a near return occludes a far one.** Belief still owns
+  the frame and is drawn over truth at low exposure, but it is drawn as data, not as light. The
+  additive treatment the first pass inferred is what made it read as mist.
+- **Colour carries exactly one channel at a time** - intensity or height - with ring index as a
+  diagnostic mode. The old sensed/walked split was an artefact of a simulation in which most of
+  the map was near-field proximity hits; a scanning sensor has no such split. The "no third
+  colour" discipline stands; the taxonomy does not.
+- **Intensity, not confidence, owns the visible channel.** It is real, it is measured, and it is
+  what anyone reading a scan looks at first. Confidence and age ride on brightness.
+- **Age shows, and the map is not re-registered.** Unchanged, and doing real work. An old return
+  is dimmer and stays where it was believed to be at the time: an old corridor and a new corridor
+  for the same passage, both drawn, no annotation needed.
+- **A sensor shadow is content.** Every object casts a clean wedge of *no data*, and those voids
+  are as characteristic as the points. Nothing may ever be drawn into a sensor shadow - no fill,
+  no interpolation, no decal, no smoothing.
+- **Beacons, survey plates and the machines' own bands are retroreflective.** They clip the
+  intensity channel and blaze from anywhere in range at any incidence, which makes the placed
+  things the brightest things in the machine's own view, automatically, with no overlay and no
+  art direction. It is physically true and it is the cheapest legibility win in this document.
+- **A crop box is part of the vocabulary.** An accumulated cloud of a tunnel cannot be read from
+  outside without one.
+- **The floor decal is demoted** to an option for the widest replay camera. It was the only belief
+  element with area; the ground rings are now a fabric with area of their own.
 - **Never smooth it into a mesh.** A mesh is a model, and the machine does not have one.
 
 That last constraint produces the answer to the whole art problem:
@@ -1028,13 +1046,11 @@ That last constraint produces the answer to the whole art problem:
 > lit tenth of the frame; the believed world occupies the black nine-tenths. They never
 > overlap in brightness and they never agree in shape.
 
-**And the height disagreement is preserved, because it is the game.** `SPECTATOR-DISPLAY`
-§6.7: the truth side is an 8-cell canyon, the belief side a 2.2-cell scatter, *"its map is a
-tracing, not a model."* In 3D, truth is a real cave with a real ceiling and belief is a
-~1.3 m fringe of discs at ankle-to-knee height. **The believed cave is a rug on the floor of
-the real one.** Say it exactly like that to whoever builds it. The shared datum is z = 0 on
-both sides, and nothing on either side is drawn at a z that claims a measurement it does not
-have.
+And it now has a second, sharper meaning: some of that darkness is darkness the machine *knows
+about*, because it is where its own sensor could not see.
+
+**The height disagreement is preserved, because it is the game.** The shared datum is z = 0 on
+both sides, and nothing on either side is drawn at a z that claims a measurement it does not have.
 
 ### 8.3 Three modes, and truth is the layer that gets turned down
 
