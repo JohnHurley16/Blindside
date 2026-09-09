@@ -497,3 +497,44 @@ a photograph, and the three things in §6 are what stand between.
    patch under the POM, and shadow casting restored to the DETAIL bucket inside the first
    shadow split. Both cost frame time this build does not currently have, which is why they
    come after a clean measurement on a quiet machine.
+
+---
+
+## Clean-machine re-measurement, 2026-09-09
+
+The pass above was measured while a second Godot process held the same GPU, so its absolute
+numbers were not usable. Re-run with nothing else running, 40 s per condition, 25 s of cooling
+between runs, RTX 3080 Laptop, 1920x1080, 84,864 instances.
+
+| condition | mean | p99 | worst |
+|---|---|---|---|
+| overcast | 13.72 ms — 72.9 fps | 18.06 ms — 55.4 fps | 18.06 ms — 55.4 fps |
+| rain | 16.02 ms — 62.4 fps | 23.33 ms — 42.9 fps | 24.10 ms — 41.5 fps |
+| dusk | 15.64 ms — 63.9 fps | 24.65 ms — 40.6 fps | 26.69 ms — 37.5 fps |
+
+**The photoreal pass cost the pit-head its frame-rate headroom.** Against the pre-pass figures
+(overcast 117–199 fps mean, worst 62–79), the mean roughly halved and the worst frame now sits
+below 60 in every condition. `NOTES.md` §4.1's "it never drops below 60" is false as built, and
+the honest reading is that the surface is a 40 fps worst case, not a 60 fps one.
+
+**Screen-space ambient occlusion is the whole of it, and parallax is free.**
+
+| overcast | mean | worst |
+|---|---|---|
+| as built | 72.9 fps | 55.4 fps |
+| `--ssao=0` | **105.0 fps** | **69.2 fps** |
+| `--ssao=0 --pom=0` | 104.5 fps | 70.1 fps |
+
+Ambient occlusion costs 4.2 ms of a 13.7 ms frame — 31% — and removing it restores a 60 fps
+worst case in overcast. Parallax occlusion mapping, the expensive-sounding technique that does
+most of the visible work on the ground, costs **0.05 ms, which is inside the noise**. That
+inverts the intuition the pass was budgeted on.
+
+Rain with occlusion off is 87.0 fps mean but still 46.8 worst, so rain does not hold 60 by this
+route alone; its cost is elsewhere (transparency and the wet-surface pass).
+
+**The trade, stated plainly.** Ambient occlusion is what stops 84,864 props hovering above the
+ground, and contact shading is half of what makes the underfoot work read. Turning it off buys
+the frame rate back and gives up part of the thing this pass was for. The options are to keep
+it and accept a 40–55 fps worst case, to cut it and lose contact, or to restrict it to the near
+field where the props that touch the camera are. Nobody chooses here; it is measured.
