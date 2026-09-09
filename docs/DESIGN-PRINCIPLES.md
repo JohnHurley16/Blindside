@@ -112,6 +112,16 @@ still lives here.
 - **Blender renders are targets, not the pipeline.** Everything in `docs/art/vision/` is
   concept art: a picture of what a frame should contain. Nothing in it ships. Any art
   decision is only real once a rule produces it procedurally at frame rate.
+- **This applies to GENERATED content, not to AUTHORED content, and the difference is not
+  subtle.** *(Scoped 2026-09-09, after I got it wrong.)* The cave is generated per match, so it
+  cannot be hand-modelled and cannot be unwrapped, which is what `ART-DIRECTION.md` §9's "no
+  hand-modelled asset" rule is actually about. A machine is not generated per match. It is
+  authored once, shipped as content, and instanced. **Machines, modules, the ancients' machinery
+  and the pit-head's fixed structures are modelled assets**, and `agent_model/` — a Blender rig
+  with all four chassis, their legs, slots, modules, skins and a working gait — is the model. It
+  gets exported and imported, not rebuilt in engine. Rebuilding an authored asset procedurally
+  because a rule about caves said "procedural" is a category error, and it cost a stream of work
+  before the designer caught it.
 - **The density in §4 has to come from rules, not from modelling.** A hand-built cave cannot
   be generated per match, and the game generates a cave per match. So every piece of dressing
   named in §4 must be reachable as a placement rule, a material rule or an instanced kit
