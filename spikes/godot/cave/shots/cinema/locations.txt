@@ -1,0 +1,8 @@
+st  58  PASS  sight-checked frame written
+st  68  PASS  sight-checked frame written
+st  70  PASS  sight-checked frame written
+st  74  PASS  sight-checked frame written
+st  86  PASS  sight-checked frame written
+st 102  PASS  sight-checked frame written
+st 196  PASS  sight-checked frame written
+st 200  PASS  sight-checked frame written

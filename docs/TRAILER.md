@@ -216,8 +216,16 @@ way to lose them. So the camera obeys physical rules, and they are not negotiabl
   camera is never pushed through and never pops.
 - **No shot passes through solid matter.** Not rock, not a prop, not a machine, not the ground.
 - **The camera stands somewhere a body could stand**, or hangs somewhere a rig could hang. Every
-  height is justifiable: floor level, machine height 0.4 m, eye height 1.6 m, or a crane. Nothing
-  hovers at 2.5 m in a passage for no reason.
+  height is justifiable: ground contact, machine height 0.4 m, eye height 1.6 m, or a crane.
+  Nothing hovers at 2.5 m in a passage for no reason.
+  *(Corrected 2026-09-09, after building it. As first written this rule contradicted the one above
+  it: a 0.35 m collision sphere whose centre is at 0.4 m has 0.05 m of clearance, and no real mine
+  floor is that flat, so every machine-height shot failed. The resolution is that a stated height
+  is the height of the LENS, and the rig's body rests on the ground beneath it rather than being
+  centred on that number — the camera is a thing standing on the floor, not a sphere floating at an
+  altitude. A consequence found while measuring: only 16 of about 170 stations along the cave
+  spike's main drive will accept a machine-height dolly at all, which is a fact about the
+  generator, not about the rig.)*
 - **Nothing clips the near plane.** Keep 0.4 m of clearance in front at all times; a wall
   dissolving into the lens is the same tell as flying through it.
 - **Moves are short and slow.** A dolly of a metre or two, a gentle arc, a slow push. No orbit

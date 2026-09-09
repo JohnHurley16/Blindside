@@ -1,0 +1,11 @@
+=== BEFORE / AFTER, cumulative, TRAILER 9 order ===
+pose: t16_lamp_comes_on at t=0.55, identical for every pair
+00 tonemap   off=none                         on=tonemap
+01 bloom     off=tonemap                      on=tonemap+bloom
+02 dof       off=tonemap+bloom                on=tonemap+bloom+dof
+03 mblur     off=tonemap+bloom+dof            on=tonemap+bloom+dof+mblur
+04 grain     off=tonemap+bloom+dof+mblur      on=tonemap+bloom+dof+mblur+grain
+05 vignette  off=tonemap+bloom+dof+mblur+grain on=tonemap+bloom+dof+mblur+grain+vignette
+06 ca        off=tonemap+bloom+dof+mblur+grain+vignette on=tonemap+bloom+dof+mblur+grain+vignette+ca
+07 distort   off=tonemap+bloom+dof+mblur+grain+vignette+ca on=tonemap+bloom+dof+mblur+grain+vignette+ca+distort
+08 grade     off=tonemap+bloom+dof+mblur+grain+vignette+ca+distort on=all

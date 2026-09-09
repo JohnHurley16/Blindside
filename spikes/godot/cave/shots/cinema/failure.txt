@@ -1,0 +1,14 @@
+=== THE DELIBERATE FAILURE ===
+xfail_through_the_wall: REJECTED
+  FAIL: no line of sight to the drive centreline at t=0.53: the camera is not in the passage
+  FAIL: body intersects geometry at t=0.41 (the 0.35 m sphere overlaps)
+  FAIL: frustum clearance falls to 0.01 m at t=0.50 (needs 0.40)
+last legal t = 0.391, first rejected t = 0.406
+  a_start            t=0.000  pos 47.40 1.44 24.00  overlaps=false  clearance=0.40 m
+  b_last_legal       t=0.391  pos 47.58 1.45 24.66  overlaps=false  clearance=0.40 m
+  c_rejected         t=0.406  pos 47.60 1.45 24.72  overlaps=true  clearance=0.40 m
+  d_end_inside_rock  t=1.000  pos 48.00 1.45 26.20  overlaps=false  clearance=0.40 m
+
+The rig does not move the camera to a legal place and it does not stop
+short. It rejects the shot and names the number that rejected it. The
+frames above are what would have been shipped if it had not.

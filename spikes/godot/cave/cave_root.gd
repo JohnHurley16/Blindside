@@ -25,12 +25,15 @@ var cfg := {
 	"vis": true, "walkonly": false, "stay": false, "shotsonly": false,
 	"speed": 1.7, "shotdir": "", "shotset": "legacy", "ssao": false,
 	"pom": true, "scales": true, "water": true,
+	"cinema": "", "fx": "all", "shot": "", "seqframes": 24, "capfps": 60.0,
+	"stations": "",
 }
 
 var sub: SubViewport
 var cam: Camera3D
 var lamp: SpotLight3D
 var world_root: Node3D
+var envr: Environment
 var topo: CaveTopology
 var dress: CaveDressing
 
@@ -51,6 +54,10 @@ var shot_list: Array = []
 var shot_i: int = 0
 var busy: bool = false
 var shot_dir: String = SHOT_DIR
+var rig: CameraRig
+var grade: CinemaGrade
+var geo_root: Node3D
+var cin_shots: Array = []
 
 func _parse_args() -> void:
 	var args: PackedStringArray = OS.get_cmdline_user_args()
@@ -90,6 +97,16 @@ func _parse_args() -> void:
 			cfg["shotdir"] = a.substr(10)
 		elif a.begins_with("--shotset="):
 			cfg["shotset"] = a.substr(10)
+		elif a.begins_with("--cinema="):
+			cfg["cinema"] = a.substr(9)
+		elif a.begins_with("--fx="):
+			cfg["fx"] = a.substr(5)
+		elif a.begins_with("--shot="):
+			cfg["shot"] = a.substr(7)
+		elif a.begins_with("--stations="):
+			cfg["stations"] = a.substr(11)
+		elif a.begins_with("--seqframes="):
+			cfg["seqframes"] = int(a.substr(12))
 
 func _stage(msg: String) -> void:
 	# stdout is fully buffered when Godot's output is redirected, so progress
@@ -178,6 +195,7 @@ func _ready() -> void:
 		env.volumetric_fog_emission_energy = 0.0
 		env.volumetric_fog_length = 34.0
 		env.volumetric_fog_gi_inject = 0.0
+	envr = env
 	var wenv := WorldEnvironment.new()
 	wenv.environment = env
 	world_root.add_child(wenv)
@@ -192,6 +210,7 @@ func _ready() -> void:
 	dress.stage = _stage
 	var geo := Node3D.new()
 	world_root.add_child(geo)
+	geo_root = geo
 	dress.build(topo, cfg["seed"], geo)
 	var t2: int = Time.get_ticks_usec()
 	_stage("dressing done")
@@ -339,6 +358,8 @@ func _ready() -> void:
 		str((ar[Mesh.ARRAY_COLOR] as PackedColorArray)[0]) if ar[Mesh.ARRAY_COLOR] != null else "none"])
 	print("path length      : %.1f m" % total_len)
 	print("flags            : shadow=%s fog=%s props=%s vis=%s ssao=%s" % [cfg["shadow"], cfg["fog"], cfg["props"], cfg["vis"], cfg["ssao"]])
+	if String(cfg["cinema"]) != "":
+		_cinema_setup()
 
 func _add_particles() -> void:
 	# drips: where the works are wet. GPU particles, a handful of emitters,
@@ -527,6 +548,10 @@ func _process(delta: float) -> void:
 			if t > 2.0:
 				t = 0.0
 				walk_s = 0.0
+				if String(cfg["cinema"]) != "":
+					phase = 3
+					_cinema_run()
+					return
 				if cfg["shotsonly"]:
 					phase = 2
 					_do_shots()
@@ -671,3 +696,719 @@ func _do_shots() -> void:
 	if not cfg["stay"]:
 		await get_tree().create_timer(0.3).timeout
 		get_tree().quit()
+
+# ===========================================================================
+# THE CINEMATIC LAYER -- TRAILER.md 8 (the camera) and 9 (the lens and grade)
+# ===========================================================================
+const CIN_DIR := "res://shots/cinema/"
+const SETTLE: int = 8              # frames to let the fog and shadow atlas land
+var fx_mask: int = 0
+var cin_report: PackedStringArray = PackedStringArray()
+
+func _cin(msg: String) -> void:
+	print(msg)
+	cin_report.append(msg)
+
+func _cin_flush(fname: String) -> void:
+	var f := FileAccess.open(CIN_DIR + fname, FileAccess.WRITE)
+	if f:
+		for l in cin_report:
+			f.store_line(l)
+		f.close()
+	cin_report.clear()
+
+func _cinema_setup() -> void:
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(CIN_DIR))
+	for d in ["pairs", "seq", "stack", "fail", "diag"]:
+		DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(CIN_DIR + d))
+	cam.keep_aspect = Camera3D.KEEP_HEIGHT
+	rig = CameraRig.new()
+	rig.build_collision(geo_root, topo, dress, world_root)
+	grade = CinemaGrade.new()
+	grade.setup(envr, cam)
+	fx_mask = CinemaGrade.parse(String(cfg["fx"]))
+	print("cinema           : mode=%s fx=%s" % [cfg["cinema"], CinemaGrade.mask_str(fx_mask)])
+	print("collision        : %d shell triangles + %d prop boxes in %.0f ms" % [
+		rig.collision_tris, rig.collision_props, rig.build_ms])
+
+# --- the shot list, as data ------------------------------------------------
+func _cin_stations() -> Dictionary:
+	var ids: PackedInt32Array = topo.edges[0]
+	return {
+		"rail": _straight(0.30, 12, CaveTopology.WC_PASSAGE),
+		# Three passes to get this one, and the sequence is the lesson.
+		#   116  the first guess. Passes every rule in TRAILER 8 and is a bad
+		#        shot: the drive bends inside 3 m at 0.42 m and the dolly ends
+		#        with a blown near face filling the frame.
+		#   196  chosen for the longest machine-height SIGHTLINE, 8.9 m. Worse:
+		#        0.00% of the frame legible, 97% true black. A long sightline
+		#        down an unlit drive is a long look at nothing.
+		#   68   chosen by photographing the candidates (--cinema=locations,
+		#        shots/cinema/loc/). Rails running away, an arched drive, a
+		#        beacon pilot at the far end. 4.96% legible, 87.9% black -- in
+		#        contract, and it is a picture.
+		# Neither the rule set nor the sightline could have picked 68. Looking
+		# could. That is worth saying out loud: the rig makes a shot LEGAL and
+		# it cannot make one GOOD.
+		"dense": 68,
+		# Scouted for sightline, then CHOSEN BY LOOKING. Station 60 has the
+		# longest sightline that accepts an eye-height drift -- 23.8 m -- and
+		# makes a bad frame, because the sightline says the camera can see a
+		# long way and says nothing about what is in the first two metres (60
+		# has a launder and a spoil heap there). --cinema=locations photographs
+		# the candidates; 70 is the one that reads as a passage going away with
+		# a pilot at the end of it, which is what "wide, small in frame" needs.
+		# shots/cinema/loc/ is the comparison.
+		"long": 70,
+		"spoil": _find(func(s): return (s[CaveTopology.S_WORKS] & CaveTopology.WK_SPOIL) != 0, 0.35),
+		"junc": topo.junctions[mini(2, topo.junctions.size() - 1)] if topo.junctions.size() > 0 else int(ids.size() * 0.3),
+	}
+
+# The trailer's cave shots, written out as JSON so the list is data and the
+# rig executes it rather than anyone hand-flying it.
+func _cin_write_shots() -> void:
+	var st: Dictionary = _cin_stations()
+	var rail: int = int(st["rail"])
+	var dense: int = int(st["dense"])
+	var lng: int = int(st["long"])
+	var spoil: int = int(st["spoil"])
+	var list: Array = [
+		# 16 -- 1:04, 5s. "The lamp comes on. A passage resolves out of nothing:
+		# wet rock, sets, a rail underfoot." A patient push in on a wide lens,
+		# eye height, focus pulled off the rail underfoot and out down the drive.
+		{"name": "t16_lamp_comes_on", "trailer": "16", "len_s": 5.0,
+		 "lens_mm": 21.0, "tstop": 2.8, "ease": "inout", "handheld_deg": 0.0,
+		 "height": "eye", "seed": 16,
+		 "move": {"from": {"st": rail, "r": 0.0, "u": 1.60, "f": 0.0},
+				  "to":   {"st": rail, "r": 0.0, "u": 1.60, "f": 1.30}},
+		 "look": {"from": {"st": rail, "r": 0.0, "u": 0.70, "f": 6.0},
+				  "to":   {"st": rail, "r": 0.0, "u": 0.95, "f": 9.0}},
+		 "focus": {"from": {"st": rail, "r": 0.0, "u": 0.05, "f": 2.2},
+				   "to":   {"st": rail, "r": 0.0, "u": 0.60, "f": 7.0}}},
+
+		# 17 -- 1:09, 4s. "Following the machine from behind, its own pool of
+		# light moving over the floor." Machine height, a normal lens, a follow
+		# dolly. There is no machine in this spike: this executes as the plate.
+		{"name": "t17_follow_machine", "trailer": "17", "len_s": 4.0,
+		 "lens_mm": 35.0, "tstop": 2.8, "ease": "inout", "handheld_deg": 0.22,
+		 "height": "machine", "seed": 17,
+		 "move": {"from": {"st": dense, "r": 0.10, "u": 0.42, "f": 0.0},
+				  "to":   {"st": dense, "r": 0.02, "u": 0.42, "f": 1.60}},
+		 "look": {"from": {"st": dense, "r": 0.0, "u": 0.62, "f": 3.2},
+				  "to":   {"st": dense, "r": 0.0, "u": 0.70, "f": 4.6}},
+		 "focus": {"from": 2.4, "to": 3.2}},
+
+		# 18 -- 1:13, 4s. THE FIRST BELIEF CUT: "Hard cut, same passage, SAME
+		# CAMERA, as the machine believes it." So it is not a new move: it is
+		# shot 17's move, run again, with the cloud on instead of the lamp.
+		# Identical anchors, ease and seed, so the two cut frame on frame. Its
+		# sequence is not re-rendered here because it would be byte-identical
+		# to 17's; the cloud side belongs to the lidar spike.
+		{"name": "t18_belief_cut_plate", "trailer": "18", "len_s": 4.0,
+		 "lens_mm": 35.0, "tstop": 2.8, "ease": "inout", "handheld_deg": 0.22,
+		 "height": "machine", "seed": 17, "_same_camera_as": "t17_follow_machine",
+		 "move": {"from": {"st": dense, "r": 0.10, "u": 0.42, "f": 0.0},
+				  "to":   {"st": dense, "r": 0.02, "u": 0.42, "f": 1.60}},
+		 "look": {"from": {"st": dense, "r": 0.0, "u": 0.62, "f": 3.2},
+				  "to":   {"st": dense, "r": 0.0, "u": 0.70, "f": 4.6}},
+		 "focus": {"from": 2.4, "to": 3.2}},
+
+		# The other reading of shot 18 -- that the camera keeps going through the
+		# cut rather than repeating the move. PINNED TO STATION 116, the station
+		# the first draft of shot 17 used, where it is REJECTED: 0.96 m further
+		# down that drive the body finds geometry and the frustum finds the near
+		# wall. At station 196, where 17 now stands, the same continuation is
+		# legal. Kept in the list at 116 as the record of an authoring attempt
+		# that failed, rather than quietly moved until it passed.
+		{"name": "x18_continuation_at_116", "trailer": "18", "len_s": 4.0,
+		 "lens_mm": 35.0, "tstop": 2.8, "ease": "out", "handheld_deg": 0.22,
+		 "height": "machine", "seed": 17,
+		 "move": {"from": {"st": 116, "r": 0.02, "u": 0.42, "f": 1.60},
+				  "to":   {"st": 116, "r": 0.00, "u": 0.42, "f": 2.55}},
+		 "look": {"from": {"st": 116, "r": 0.0, "u": 0.30, "f": 6.2},
+				  "to":   {"st": 116, "r": 0.0, "u": 0.30, "f": 7.4}},
+		 "focus": {"from": 3.4, "to": 3.9}},
+
+		# 20 -- 1:24, 4s. "A sensor shadow: the clean wedge of no data behind a
+		# fallen block. Hold on the emptiness." Held, but not frozen: TRAILER 6
+		# forbids a still pretending to be footage, so it drifts 0.3 m and the
+		# operator is breathing. At sensor height, because the wedge is cast
+		# from the sensor and only reads from there.
+		{"name": "t20_sensor_shadow", "trailer": "20", "len_s": 4.0,
+		 "lens_mm": 35.0, "tstop": 2.0, "ease": "inout", "handheld_deg": 0.30,
+		 "height": "machine", "seed": 20,
+		 "move": {"from": {"st": spoil, "r": -0.20, "u": 0.40, "f": -1.20},
+				  "to":   {"st": spoil, "r": -0.05, "u": 0.40, "f": -0.95}},
+		 "look": {"from": {"st": spoil, "r": 0.40, "u": 0.35, "f": 0.6},
+				  "to":   {"st": spoil, "r": 0.45, "u": 0.35, "f": 0.9}},
+		 "focus": {"from": 1.9, "to": 1.9}},
+
+		# 27 -- 1:51, 3s. "The machine walking, confident, in completely the
+		# wrong direction. Wide, small in frame." The longest sightline in the
+		# cave, a wide lens, and a lateral drift so the frame is not a still.
+		{"name": "t27_wrong_direction", "trailer": "27", "len_s": 3.0,
+		 "lens_mm": 21.0, "tstop": 4.0, "ease": "inout", "handheld_deg": 0.0,
+		 "height": "eye", "seed": 27,
+		 "move": {"from": {"st": lng, "r": -0.45, "u": 1.55, "f": 0.0},
+				  "to":   {"st": lng, "r": 0.35, "u": 1.55, "f": 0.35}},
+		 "look": {"from": {"st": lng, "r": 0.0, "u": 1.10, "f": 11.0},
+				  "to":   {"st": lng, "r": 0.0, "u": 1.10, "f": 11.5}},
+		 "focus": {"from": 9.0, "to": 9.0}},
+
+		# THE DELIBERATE FAILURE. A push that leaves the centreline for the
+		# wall, which is exactly the move a hand-flown camera makes when nobody
+		# is checking. It must be rejected, not repaired.
+		{"name": "xfail_through_the_wall", "trailer": "", "len_s": 4.5,
+		 "lens_mm": 21.0, "tstop": 2.8, "ease": "inout", "handheld_deg": 0.0,
+		 "height": "eye", "seed": 99,
+		 "move": {"from": {"st": rail, "r": 0.0, "u": 1.60, "f": 0.0},
+				  "to":   {"st": rail, "r": 2.20, "u": 1.60, "f": 0.6}},
+		 "_why": "authored to fail: it leaves the centreline for the wall",
+		 "look": {"from": {"st": rail, "r": 0.0, "u": 1.20, "f": 6.0},
+				  "to":   {"st": rail, "r": 0.0, "u": 1.20, "f": 6.0}}},
+	]
+	var f := FileAccess.open("res://shots_cinema.json", FileAccess.WRITE)
+	f.store_string(JSON.stringify(list, "  "))
+	f.close()
+
+func _cin_load_shots() -> void:
+	if not FileAccess.file_exists("res://shots_cinema.json"):
+		_cin_write_shots()
+	var txt: String = FileAccess.get_file_as_string("res://shots_cinema.json")
+	var v = JSON.parse_string(txt)
+	cin_shots = v if v is Array else []
+	if String(cfg["shot"]) != "":
+		var only: Array = []
+		for s in cin_shots:
+			if String(s["name"]).contains(String(cfg["shot"])):
+				only.append(s)
+		cin_shots = only
+
+# --- posing ----------------------------------------------------------------
+func _cin_pose(shot: Dictionary, tn: float, fi: int) -> Dictionary:
+	var ps: Dictionary = rig.pose(shot, tn)
+	cam.global_transform = Transform3D(ps["basis"], ps["pos"])
+	cam.fov = CameraRig.fov_for(float(ps["lens"]))
+	grade.apply(fx_mask, cam, float(ps["lens"]), float(ps["tstop"]), float(ps["focus"]))
+	# The previous SHOT frame at the true capture rate. The sequence is
+	# decimated for disk, but the shutter is computed against 1/60 s, so the
+	# blur is the blur the finished 60 fps shot will have.
+	var dt: float = (1.0 / float(cfg["capfps"])) / maxf(float(shot["len_s"]), 0.01)
+	var pp: Dictionary = rig.pose(shot, maxf(tn - dt, 0.0))
+	grade.lens.use_external_prev = true
+	grade.lens.external_prev = Transform3D(pp["basis"], pp["pos"])
+	grade.lens.seedt = float(fi) * 7.31 + 0.5
+	return ps
+
+func _cin_grab(path: String) -> void:
+	for k in range(SETTLE):
+		await RenderingServer.frame_post_draw
+	var img: Image = sub.get_texture().get_image()
+	img.save_png(ProjectSettings.globalize_path(path))
+
+func _cin_gpu_median(n: int) -> float:
+	var v: Array = []
+	for i in range(n):
+		await RenderingServer.frame_post_draw
+		if i >= 8:
+			v.append(RenderingServer.viewport_get_measured_render_time_gpu(sub.get_viewport_rid()))
+	v.sort()
+	return v[v.size() / 2] if v.size() > 0 else 0.0
+
+# ===========================================================================
+func _cinema_run() -> void:
+	busy = true
+	_cin_load_shots()
+	match String(cfg["cinema"]):
+		"validate": await _cin_validate()
+		"pairs": await _cin_pairs()
+		"stack": await _cin_stack()
+		"seq": await _cin_seq()
+		"fail": await _cin_fail()
+		"cost": await _cin_cost()
+		"veldbg": await _cin_veldbg()
+		"probe": await _cin_probe()
+		"scout": await _cin_scout()
+		"tune": await _cin_tune()
+		"mvcost": await _cin_mvcost()
+		"contract": await _cin_contract()
+		"locations": await _cin_locations()
+		_:
+			print("cinema: unknown mode ", cfg["cinema"])
+	busy = false
+	phase = 3
+	if not cfg["stay"]:
+		await get_tree().create_timer(0.3).timeout
+		get_tree().quit()
+
+# --- 1. validation ---------------------------------------------------------
+func _cin_validate() -> void:
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	rig.ready_space(world_root)
+	_cin("=== SHOT VALIDATION -- TRAILER.md 8 ===")
+	_cin("body sphere %.2f m, near clearance %.2f m, query margin %.2f m" % [
+		CameraRig.BODY_R, CameraRig.NEAR_CLEAR, CameraRig.QUERY_MARGIN])
+	_cin("collision: %d shell triangles + %d prop boxes, built in %.0f ms" % [
+		rig.collision_tris, rig.collision_props, rig.build_ms])
+	_cin("")
+	var npass: int = 0
+	for s in cin_shots:
+		var r: Dictionary = rig.validate(s)
+		var st: Dictionary = r["stats"]
+		var dof: Array = st["dof"]
+		_cin("%-26s trailer %-3s  %s" % [r["name"], str(s.get("trailer", "-")),
+			"PASS" if r["ok"] else "REJECTED"])
+		_cin("   %.0f mm (%.1f deg v)  T%.1f  %.1fs  ease %s  handheld %.2f deg" % [
+			float(s["lens_mm"]), float(st["fov"]), float(s.get("tstop", 2.8)),
+			float(s["len_s"]), s.get("ease", "inout"), float(s.get("handheld_deg", 0.0))])
+		_cin("   travel %.2f m  peak %.2f m/s  clearance %.2f m  height %.2f-%.2f m (%s)" % [
+			float(st["travel"]), float(st["vmax"]), float(st["clear"]),
+			float(st["h_lo"]), float(st["h_hi"]), s.get("height", "eye")])
+		_cin("   depth of field: sharp %.2f m to %s (hyperfocal %.1f m)" % [
+			float(dof[0]), ("infinity" if float(dof[1]) > 900.0 else "%.2f m" % float(dof[1])),
+			float(dof[2])])
+		for w in r["warn"]:
+			_cin("   warn: " + str(w))
+		for x in r["fail"]:
+			_cin("   FAIL: " + str(x))
+		if r["ok"]:
+			npass += 1
+		_cin("")
+	_cin("%d of %d shots execute; %d rejected." % [npass, cin_shots.size(),
+		cin_shots.size() - npass])
+	_cin_flush("validation.txt")
+
+# --- 2. before/after pairs, cumulative, in TRAILER 9's order ---------------
+func _cin_pairs() -> void:
+	await get_tree().physics_frame
+	rig.ready_space(world_root)
+	var shot: Dictionary = _cin_named("t16_lamp_comes_on")
+	var tn: float = 0.55
+	_cin("=== BEFORE / AFTER, cumulative, TRAILER 9 order ===")
+	_cin("pose: %s at t=%.2f, identical for every pair" % [shot["name"], tn])
+	var acc: int = 0
+	var i: int = 0
+	for nm in CinemaGrade.ORDER:
+		var before: int = acc
+		acc |= int(CinemaGrade.NAMES[nm])
+		fx_mask = before
+		_cin_pose(shot, tn, 3)
+		await _cin_grab(CIN_DIR + "pairs/%02d_%s_off.png" % [i, nm])
+		fx_mask = acc
+		_cin_pose(shot, tn, 3)
+		await _cin_grab(CIN_DIR + "pairs/%02d_%s_on.png" % [i, nm])
+		_cin("%02d %-9s off=%-28s on=%s" % [i, nm, CinemaGrade.mask_str(before),
+			CinemaGrade.mask_str(acc)])
+		i += 1
+	_cin_flush("pairs.txt")
+
+# --- 3. the whole stack, on and off, three frames --------------------------
+func _cin_stack() -> void:
+	await get_tree().physics_frame
+	rig.ready_space(world_root)
+	var picks: Array = [["t16_lamp_comes_on", 0.30], ["t20_sensor_shadow", 0.50],
+		["t27_wrong_direction", 0.65]]
+	_cin("=== FULL STACK ON / OFF ===")
+	for p in picks:
+		var shot: Dictionary = _cin_named(String(p[0]))
+		var tn: float = float(p[1])
+		# "off" is the spike as it stood: AgX and nothing else. Comparing
+		# against LINEAR would be comparing against a picture nobody would ship.
+		fx_mask = CinemaGrade.E_TONEMAP
+		_cin_pose(shot, tn, 3)
+		await _cin_grab(CIN_DIR + "stack/%s_off.png" % shot["name"])
+		fx_mask = CinemaGrade.ALL
+		_cin_pose(shot, tn, 3)
+		await _cin_grab(CIN_DIR + "stack/%s_on.png" % shot["name"])
+		_cin("%s at t=%.2f, %.0f mm" % [shot["name"], tn, float(shot["lens_mm"])])
+	_cin_flush("stack.txt")
+
+# --- 4. the sequences ------------------------------------------------------
+func _cin_seq() -> void:
+	await get_tree().physics_frame
+	rig.ready_space(world_root)
+	var n: int = int(cfg["seqframes"])
+	for shot in cin_shots:
+		if String(shot["name"]).begins_with("x"):
+			continue
+		if shot.has("_same_camera_as"):
+			_cin("SKIP %s -- identical camera to %s by design" % [
+				shot["name"], shot["_same_camera_as"]])
+			continue
+		var r: Dictionary = rig.validate(shot)
+		if not r["ok"]:
+			_cin("SKIP %s -- rejected: %s" % [shot["name"], "; ".join(r["fail"])])
+			continue
+		var dir: String = CIN_DIR + "seq/" + String(shot["name"]) + "/"
+		DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(dir))
+		_cin("=== %s  %.0f mm  %.1f s  %d frames ===" % [shot["name"],
+			float(shot["lens_mm"]), float(shot["len_s"]), n])
+		_cin("  frame     t_s      x       y       z    step_mm   focus_m")
+		var prev: Vector3 = Vector3.ZERO
+		for i in range(n):
+			var tn: float = float(i) / float(n - 1)
+			var ps: Dictionary = _cin_pose(shot, tn, i)
+			await _cin_grab(dir + "%03d.png" % i)
+			var p: Vector3 = ps["pos"]
+			var step: float = 0.0 if i == 0 else p.distance_to(prev) * 1000.0
+			_cin("  %5d  %6.3f  %6.2f  %6.2f  %6.2f  %8.1f  %7.2f" % [
+				i, tn * float(shot["len_s"]), p.x, p.y, p.z, step, float(ps["focus"])])
+			prev = p
+		_cin("")
+	_cin_flush("sequences.txt")
+
+# --- 5. the deliberate failure --------------------------------------------
+func _cin_fail() -> void:
+	await get_tree().physics_frame
+	rig.ready_space(world_root)
+	var shot: Dictionary = _cin_named("xfail_through_the_wall")
+	var r: Dictionary = rig.validate(shot)
+	_cin("=== THE DELIBERATE FAILURE ===")
+	_cin("%s: %s" % [shot["name"], "PASS" if r["ok"] else "REJECTED"])
+	for x in r["fail"]:
+		_cin("  FAIL: " + str(x))
+	# find the last legal t and the first illegal one, and photograph both
+	var last_ok: float = 0.0
+	var first_bad: float = -1.0
+	for i in range(65):
+		var tn: float = float(i) / 64.0
+		var ps: Dictionary = rig.pose(shot, tn)
+		var p: Vector3 = ps["pos"]
+		var clear: float = rig._frustum_clear(p, ps["basis"], float(shot["lens_mm"]))
+		var bad: bool = rig._overlaps(p) or clear < CameraRig.NEAR_CLEAR - 0.001
+		if bad and first_bad < 0.0:
+			first_bad = tn
+		if not bad and first_bad < 0.0:
+			last_ok = tn
+	_cin("last legal t = %.3f, first rejected t = %.3f" % [last_ok, first_bad])
+	fx_mask = CinemaGrade.ALL
+	for pair in [["a_start", 0.0], ["b_last_legal", last_ok],
+				 ["c_rejected", maxf(first_bad, 0.0)], ["d_end_inside_rock", 1.0]]:
+		var tn: float = float(pair[1])
+		var ps: Dictionary = _cin_pose(shot, tn, 3)
+		await _cin_grab(CIN_DIR + "fail/%s.png" % String(pair[0]))
+		var p: Vector3 = ps["pos"]
+		_cin("  %-18s t=%.3f  pos %.2f %.2f %.2f  overlaps=%s  clearance=%.2f m" % [
+			String(pair[0]), tn, p.x, p.y, p.z, str(rig._overlaps(p)),
+			rig._frustum_clear(p, ps["basis"], float(shot["lens_mm"]))])
+	_cin("")
+	_cin("The rig does not move the camera to a legal place and it does not stop")
+	_cin("short. It rejects the shot and names the number that rejected it. The")
+	_cin("frames above are what would have been shipped if it had not.")
+	_cin_flush("failure.txt")
+
+# --- 6. cost ---------------------------------------------------------------
+func _cin_cost() -> void:
+	await get_tree().physics_frame
+	rig.ready_space(world_root)
+	var shot: Dictionary = _cin_named("t16_lamp_comes_on")
+	_cin("=== COST, leave-one-out from the full stack ===")
+	_cin("1920x1080, pose %s t=0.55. Interleaved A/B/A/B/A/B, 56 frames a block," % shot["name"])
+	_cin("median GPU ms of each block, reported as the median of the deltas.")
+	_cin("")
+	_cin("%-10s %8s %8s %8s   %s" % ["effect", "with", "without", "cost ms", "verdict"])
+	for nm in CinemaGrade.ORDER:
+		var bit: int = int(CinemaGrade.NAMES[nm])
+		var ds: Array = []
+		var wa: Array = []
+		var wo: Array = []
+		for rep in range(3):
+			fx_mask = CinemaGrade.ALL
+			_cin_pose(shot, 0.55, rep)
+			var a: float = await _cin_gpu_median(56)
+			fx_mask = CinemaGrade.ALL & ~bit
+			_cin_pose(shot, 0.55, rep)
+			var b: float = await _cin_gpu_median(56)
+			wa.append(a); wo.append(b); ds.append(a - b)
+		ds.sort(); wa.sort(); wo.sort()
+		_cin("%-10s %8.2f %8.2f %8.2f" % [nm, wa[1], wo[1], ds[1]])
+	# and the two ends
+	# THE STATIC POSE UNDER-REPORTS MOTION BLUR. At t16's 0.49 m/s the frame
+	# moves under a third of a pixel, so the tap loop collapses to n=1 and the
+	# row above measures only the reprojection arithmetic. Re-measured at a
+	# pose that actually moves: t27's lateral drift, run at 1.2 s.
+	var fast: Dictionary = _cin_named("t27_wrong_direction").duplicate(true)
+	fast["len_s"] = 1.2
+	_cin("")
+	_cin("re-measured on a moving frame (t27 at 1.2 s, 14.7%% of pixels blurred):")
+	for nm in ["mblur", "ca"]:
+		var bit2: int = int(CinemaGrade.NAMES[nm])
+		var d2: Array = []
+		var w2: Array = []
+		var o2: Array = []
+		for rep in range(3):
+			fx_mask = CinemaGrade.ALL
+			_cin_pose(fast, 0.50, rep)
+			var a2: float = await _cin_gpu_median(56)
+			fx_mask = CinemaGrade.ALL & ~bit2
+			_cin_pose(fast, 0.50, rep)
+			var b2: float = await _cin_gpu_median(56)
+			w2.append(a2); o2.append(b2); d2.append(a2 - b2)
+		d2.sort(); w2.sort(); o2.sort()
+		_cin("%-10s %8.2f %8.2f %8.2f" % [nm, w2[1], o2[1], d2[1]])
+
+	fx_mask = 0
+	_cin_pose(shot, 0.55, 0)
+	var none_ms: float = await _cin_gpu_median(80)
+	fx_mask = CinemaGrade.ALL
+	_cin_pose(shot, 0.55, 0)
+	var all_ms: float = await _cin_gpu_median(80)
+	fx_mask = 0
+	_cin_pose(shot, 0.55, 0)
+	var none2: float = await _cin_gpu_median(80)
+	_cin("")
+	_cin("stack off  %.2f ms  (repeat %.2f ms)" % [none_ms, none2])
+	_cin("stack on   %.2f ms" % all_ms)
+	_cin("whole stack %.2f ms over an untreated frame" % (all_ms - (none_ms + none2) * 0.5))
+	_cin("")
+	_cin("THERMAL: %s" % _gpu_state())
+	_cin_flush("cost.txt")
+
+# --- 7. the reprojection sanity frame --------------------------------------
+# A dolly-in must produce velocity pointing OUTWARD from the frame centre. In
+# texture space row 0 is the top, so the top half of the frame must read vel.y
+# < 0 (drawn red) and the bottom half vel.y > 0 (drawn blue). If that is upside
+# down, the render target's Y is flipped relative to NDC and every motion blur
+# in the project is smearing along the wrong diagonal.
+func _cin_veldbg() -> void:
+	await get_tree().physics_frame
+	rig.ready_space(world_root)
+	var shot: Dictionary = _cin_named("t16_lamp_comes_on")
+	fx_mask = CinemaGrade.ALL
+	var ps: Dictionary = rig.pose(shot, 0.55)
+	cam.global_transform = Transform3D(ps["basis"], ps["pos"])
+	cam.fov = CameraRig.fov_for(float(ps["lens"]))
+	grade.apply(fx_mask, cam, float(ps["lens"]), float(ps["tstop"]), float(ps["focus"]))
+	grade.lens.use_external_prev = true
+	# a large, unambiguous dolly straight back along the view axis
+	grade.lens.external_prev = Transform3D(ps["basis"], ps["pos"] - (-ps["basis"].z) * 0.25)
+	grade.lens.max_blur_px = 4000.0
+	grade.lens.flags = CinemaLens.F_MBLUR | CinemaLens.F_VELDBG
+	await _cin_grab(CIN_DIR + "diag/veldbg_dolly_in.png")
+	grade.lens.max_blur_px = 40.0
+	_cin("=== reprojection sanity ===")
+	_cin("diag/veldbg_dolly_in.png -- dolly IN by 0.25 m.")
+	_cin("Correct: TOP half red, BOTTOM half blue. Inverted: the other way round.")
+	_cin_flush("veldbg.txt")
+
+# A location scout. Sweeps the main drive with a template move and reports the
+# stations where the rig would accept it. This is authoring, not repairing: it
+# says where a shot COULD stand, the shot list is then written by hand against
+# the answer, and the validator still governs what ships.
+# Showcase frames for the three effects that a slow wide static pose cannot
+# show: bloom needs a source above threshold, motion blur needs motion, depth
+# of field needs something close.
+# Is per-object motion blur affordable at all?
+#
+# The question is not the blur, it is the PREREQUISITE. Godot 4.7 only produces
+# a velocity buffer when something asks for one (TAA, FSR2, or a CompositorEffect
+# with needs_motion_vectors). Asking for it makes every opaque draw write motion
+# vectors and keeps a second copy of every transform, so it is paid on the whole
+# scene whether or not anything in it moves. This measures that, interleaved.
+# ART-DIRECTION 2.9 on the frames the cinematic layer actually produces. If the
+# lens quietly darkens the picture, this is what says so.
+# Photograph one shot from several candidate stations so the station can be
+# chosen by looking rather than by a sightline number. The sightline says the
+# camera CAN see a long way; it does not say what is in the first two metres.
+func _cin_locations() -> void:
+	await get_tree().physics_frame
+	rig.ready_space(world_root)
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(CIN_DIR + "loc"))
+	var tpl: Dictionary = _cin_named(String(cfg["shot"])).duplicate(true)
+	fx_mask = CinemaGrade.ALL
+	for stx in String(cfg["stations"]).split(",", false):
+		var i: int = int(stx)
+		for grp in ["move", "look"]:
+			for k in (tpl[grp] as Dictionary).keys():
+				if tpl[grp][k] is Dictionary:
+					tpl[grp][k]["st"] = i
+		var r: Dictionary = rig.validate(tpl)
+		_cin_pose(tpl, 0.5, 3)
+		await _cin_grab(CIN_DIR + "loc/%s_st%03d.png" % [tpl["name"], i])
+		_cin("st %3d  %s  sight-checked frame written" % [i, "PASS" if r["ok"] else "REJECTED"])
+	_cin_flush("locations.txt")
+
+func _cin_contract() -> void:
+	await get_tree().physics_frame
+	rig.ready_space(world_root)
+	for d in ["contract_off", "contract_on"]:
+		DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(CIN_DIR + d))
+	for shot in cin_shots:
+		if String(shot["name"]).begins_with("x") or shot.has("_same_camera_as"):
+			continue
+		for tn in [0.15, 0.50, 0.85]:
+			fx_mask = CinemaGrade.E_TONEMAP
+			_cin_pose(shot, tn, 3)
+			await _cin_grab(CIN_DIR + "contract_off/%s_%02d.png" % [shot["name"], int(tn * 100)])
+			fx_mask = CinemaGrade.ALL
+			_cin_pose(shot, tn, 3)
+			await _cin_grab(CIN_DIR + "contract_on/%s_%02d.png" % [shot["name"], int(tn * 100)])
+	_cin("contract frames written: AgX-only in contract_off, full stack in contract_on")
+	_cin_flush("contract.txt")
+
+func _cin_mvcost() -> void:
+	await get_tree().physics_frame
+	rig.ready_space(world_root)
+	var shot: Dictionary = _cin_named("t16_lamp_comes_on")
+	fx_mask = CinemaGrade.ALL
+	_cin("=== per-object motion blur: the cost of asking for motion vectors ===")
+	var wa: Array = []
+	var wo: Array = []
+	for rep in range(3):
+		grade.lens.needs_motion_vectors = false
+		_cin_pose(shot, 0.55, rep)
+		wo.append(await _cin_gpu_median(64))
+		grade.lens.needs_motion_vectors = true
+		_cin_pose(shot, 0.55, rep)
+		wa.append(await _cin_gpu_median(64))
+	grade.lens.needs_motion_vectors = false
+	wa.sort(); wo.sort()
+	_cin("needs_motion_vectors=false  %.2f ms   (%s)" % [wo[1], str(wo)])
+	_cin("needs_motion_vectors=true   %.2f ms   (%s)" % [wa[1], str(wa)])
+	_cin("velocity pass costs %.2f ms before a single blur tap is taken" % (wa[1] - wo[1]))
+	_cin_flush("mvcost.txt")
+
+func _cin_tune() -> void:
+	await get_tree().physics_frame
+	rig.ready_space(world_root)
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(CIN_DIR + "tune"))
+	_cin("=== TUNING FRAMES ===")
+	var s16: Dictionary = _cin_named("t16_lamp_comes_on")
+	# --- bloom threshold sweep, at a pose with a beacon pilot in it ----------
+	fx_mask = CinemaGrade.E_TONEMAP
+	_cin_pose(s16, 0.55, 3)
+	grade.env.glow_enabled = false
+	await _cin_grab(CIN_DIR + "tune/bloom_off.png")
+	for th in [0.8, 1.6, 2.6, 4.0]:
+		fx_mask = CinemaGrade.E_TONEMAP | CinemaGrade.E_BLOOM
+		_cin_pose(s16, 0.55, 3)
+		grade.env.glow_hdr_threshold = th
+		await _cin_grab(CIN_DIR + "tune/bloom_t%0.1f.png" % th)
+		_cin("bloom threshold %.1f" % th)
+	# --- motion blur, at the fastest instant of the fastest shot -------------
+	var s27: Dictionary = _cin_named("t27_wrong_direction")
+	for on in [false, true]:
+		fx_mask = CinemaGrade.E_TONEMAP | (CinemaGrade.E_MBLUR if on else 0)
+		_cin_pose(s27, 0.50, 3)
+		await _cin_grab(CIN_DIR + "tune/mblur_t27_%s.png" % ("on" if on else "off"))
+	# and the same shot as if it were a 2x faster move, to show the shutter
+	var fast: Dictionary = s27.duplicate(true)
+	fast["len_s"] = 1.2
+	for on in [false, true]:
+		fx_mask = CinemaGrade.E_TONEMAP | (CinemaGrade.E_MBLUR if on else 0)
+		_cin_pose(fast, 0.50, 3)
+		await _cin_grab(CIN_DIR + "tune/mblur_fast_%s.png" % ("on" if on else "off"))
+	_cin("motion blur: t27 at its peak (%.2f m/s) and the same move at 1.2 s" % 0.55)
+	# --- depth of field, on the shallowest shot in the list ------------------
+	var s20: Dictionary = _cin_named("t20_sensor_shadow")
+	for on in [false, true]:
+		fx_mask = CinemaGrade.E_TONEMAP | (CinemaGrade.E_DOF if on else 0)
+		_cin_pose(s20, 0.50, 3)
+		await _cin_grab(CIN_DIR + "tune/dof_t20_%s.png" % ("on" if on else "off"))
+	_cin("depth of field: t20, 35 mm at T2.0 focused 1.9 m -- the shallowest in the list")
+	# --- what focal length does the LAMP allow? -----------------------------
+	# The work lamp is a 54 degree cone (spot_angle 27). A lens whose horizontal
+	# field matches it is 18/tan(27) = 35.3 mm. Anything wider is looking at
+	# rock the lamp is not lighting.
+	for mm in [21.0, 28.0, 35.0, 50.0]:
+		var v: Dictionary = s16.duplicate(true)
+		v["lens_mm"] = mm
+		fx_mask = CinemaGrade.ALL
+		_cin_pose(v, 0.55, 3)
+		await _cin_grab(CIN_DIR + "tune/lens_%02dmm.png" % int(mm))
+	_cin("focal length sweep at the t16 pose: 21 / 28 / 35 / 50 mm against a 54 deg lamp")
+	_cin_flush("tune.txt")
+
+func _cin_scout() -> void:
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	rig.ready_space(world_root)
+	var ids: PackedInt32Array = topo.edges[0]
+	var tpl: Dictionary = _cin_named(String(cfg["shot"])).duplicate(true)
+	if tpl.is_empty():
+		print("SCOUT needs --shot=NAME as the template")
+		return
+	print("SCOUT template = %s  (%s at %.0f mm)" % [tpl["name"], tpl["height"], float(tpl["lens_mm"])])
+	var good: Array = []
+	for i in range(6, ids.size() - 30, 2):
+		var sd: PackedInt32Array = topo.stations[ids[i]]
+		if sd[CaveTopology.S_WIDTH] < CaveTopology.WC_PASSAGE:
+			continue
+		if sd[CaveTopology.S_STATE] == CaveTopology.FLOODED:
+			continue
+		for grp in ["move", "look"]:
+			for k in (tpl[grp] as Dictionary).keys():
+				var an = tpl[grp][k]
+				if an is Dictionary:
+					an["st"] = i
+		var r: Dictionary = rig.validate(tpl)
+		if r["ok"]:
+			var st2: Dictionary = r["stats"]
+			good.append(i)
+			# how far can this camera actually see? "Wide, small in frame"
+			# needs a sightline, and ART-DIRECTION 3.6 measured the median at
+			# 3.6 m, so the ones that have one are worth finding.
+			var ps0: Dictionary = rig.pose(tpl, 0.0)
+			var rq := PhysicsRayQueryParameters3D.create(ps0["pos"],
+				ps0["pos"] + (-(ps0["basis"] as Basis).z) * 60.0)
+			rq.collision_mask = 1
+			var h0: Dictionary = rig._ss().intersect_ray(rq)
+			var sight: float = 60.0 if h0.is_empty() else (ps0["pos"] as Vector3).distance_to(h0["position"])
+			print("SCOUT ok st=%3d  works=0x%05X worked=%3d clear=%.2f h=%.2f-%.2f sight=%.1f m" % [
+				i, sd[CaveTopology.S_WORKS], sd[CaveTopology.S_WORKED],
+				float(st2["clear"]), float(st2["h_lo"]), float(st2["h_hi"]), sight])
+	print("SCOUT %s: %d stations of the drive accept it" % [tpl["name"], good.size()])
+	print("SCOUT stations: ", good)
+
+func _cin_probe() -> void:
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	rig.ready_space(world_root)
+	var st: Dictionary = _cin_stations()
+	print("stations: ", st)
+	var ids: PackedInt32Array = topo.edges[0]
+	for key in ["rail", "dense", "long", "spoil"]:
+		var i: int = int(st[key])
+		var fr: Array = rig.frame_at(i)
+		var floorp: Vector3 = fr[0]
+		var sd: PackedInt32Array = topo.stations[ids[i]]
+		print("--- %s st=%d floor=%s width=%d worked=%d works=0x%X hw=%.2f ht=%.2f" % [
+			key, i, str(floorp.snapped(Vector3(0.01,0.01,0.01))), sd[CaveTopology.S_WIDTH],
+			sd[CaveTopology.S_WORKED], sd[CaveTopology.S_WORKS],
+			dress._hw(sd), dress._ht(sd)])
+		for h in [0.4, 1.0, 1.6]:
+			var p: Vector3 = floorp + Vector3.UP * h
+			var q := PhysicsShapeQueryParameters3D.new()
+			q.shape = rig.body
+			q.transform = Transform3D(Basis.IDENTITY, p)
+			q.margin = 0.05
+			q.collision_mask = 1
+			var hits: Array = rig._ss().intersect_shape(q, 8)
+			var names: Array = []
+			for hh in hits:
+				var col = hh["collider"]
+				names.append("%s#%d" % [str(col.name) if col else "?", int(hh["shape"])])
+			print("   h=%.2f  hits=%d  %s  floor_under=%.3f  head=%.3f" % [
+				h, hits.size(), str(names), rig.floor_under(p), rig.head_room(p)])
+			var dn := PhysicsRayQueryParameters3D.create(p + Vector3.UP*0.05, p - Vector3.UP*12.0)
+			dn.collision_mask = 1
+			var hit: Dictionary = rig._ss().intersect_ray(dn)
+			if not hit.is_empty():
+				print("        down-ray hit at y=%.3f  normal=%s" % [
+					float((hit["position"] as Vector3).y), str(hit["normal"].snapped(Vector3(0.01,0.01,0.01)))])
+	print("static_root children: ", rig.static_root.get_child_count())
+	var c0 = rig.static_root.get_child(0)
+	print("first shape: ", c0.shape, " gt=", c0.global_transform)
+
+func _gpu_state() -> String:
+	var o: Array = []
+	OS.execute("nvidia-smi", ["--query-gpu=temperature.gpu,clocks.sm,utilization.gpu",
+		"--format=csv,noheader,nounits"], o)
+	return String(o[0]).strip_edges() if o.size() > 0 else "unknown"
+
+func _cin_named(n: String) -> Dictionary:
+	for s in cin_shots:
+		if String(s["name"]) == n:
+			return s
+	return cin_shots[0] if cin_shots.size() > 0 else {}

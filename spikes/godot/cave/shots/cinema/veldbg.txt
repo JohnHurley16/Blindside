@@ -1,0 +1,3 @@
+=== reprojection sanity ===
+diag/veldbg_dolly_in.png -- dolly IN by 0.25 m.
+Correct: TOP half red, BOTTOM half blue. Inverted: the other way round.

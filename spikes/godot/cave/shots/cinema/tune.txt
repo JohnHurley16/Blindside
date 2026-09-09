@@ -1,0 +1,8 @@
+=== TUNING FRAMES ===
+bloom threshold 0.8
+bloom threshold 1.6
+bloom threshold 2.6
+bloom threshold 4.0
+motion blur: t27 at its peak (0.55 m/s) and the same move at 1.2 s
+depth of field: t20, 35 mm at T2.0 focused 1.9 m -- the shallowest in the list
+focal length sweep at the t16 pose: 21 / 28 / 35 / 50 mm against a 54 deg lamp

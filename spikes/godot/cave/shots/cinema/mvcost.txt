@@ -1,0 +1,4 @@
+=== per-object motion blur: the cost of asking for motion vectors ===
+needs_motion_vectors=false  11.60 ms   ([11.5920000076294, 11.5979995727539, 11.7770004272461])
+needs_motion_vectors=true   12.91 ms   ([12.5159997940063, 12.9119997024536, 13.3629999160767])
+velocity pass costs 1.31 ms before a single blur tap is taken

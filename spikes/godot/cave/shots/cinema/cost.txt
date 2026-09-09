@@ -1,0 +1,18 @@
+=== COST, leave-one-out from the full stack ===
+1920x1080, pose t16_lamp_comes_on t=0.55. Interleaved A/B/A/B/A/B, 56 frames a block,
+median GPU ms of each block, reported as the median of the deltas.
+
+effect         with  without  cost ms   verdict
+tonemap       11.83    11.50     0.61
+bloom         12.12    11.81     0.31
+dof           11.65     8.85     2.88
+mblur         11.97    11.91     0.06
+grain         12.01    10.59     1.42
+vignette      11.90    11.80     0.06
+ca            12.01    12.00     0.06
+distort       12.04    11.99     0.06
+grade         12.00    11.96     0.03
+
+stack off  6.32 ms  (repeat 6.69 ms)
+stack on   12.18 ms
+whole stack 5.68 ms over an untreated frame

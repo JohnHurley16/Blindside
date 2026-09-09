@@ -29,3 +29,15 @@ docs/art/vision/**/_bbox/
 docs/art/vision/**/*.log
 # Godot's per-project import and shader cache. Regenerated on first open.
 spikes/godot/*/.godot/
+# Cinema spike frame sequences and diagnostic sweeps: hundreds of MB of intermediates.
+# The curated pairs, the contract check and the notes are tracked.
+spikes/godot/cave/shots/cinema/seq/
+spikes/godot/cave/shots/cinema/loc/
+spikes/godot/cave/shots/cinema/diag/
+spikes/godot/cave/shots/cinema/pairs/
+spikes/godot/cave/shots/cinema/contract_on/
+spikes/godot/cave/shots/cinema/contract_off/
+spikes/godot/cave/shots/cinema/fail/
+spikes/godot/cave/**/*.import
+spikes/godot/cave/shots/cinema/tune/
+spikes/godot/cave/shots/_probe/

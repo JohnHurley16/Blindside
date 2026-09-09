@@ -10,7 +10,12 @@ Targets for a lamp frame:
     > 0.05  legible    3 - 20%   (below 3% is unplayable)
     < 0.02  true black >= 70%
 
-Run:  .venv/Scripts/python.exe spikes/godot/cave/lumcheck.py
+Run:  .venv/Scripts/python.exe spikes/godot/cave/lumcheck.py [DIR]
+
+DIR defaults to shots/. Pass one to check a different set -- the cinematic
+layer renders into shots/cinema/, and the contract has to hold there too:
+a lens that darkens the frame to look moody is an exposure change wearing a
+costume, and this is what catches it.
 """
 import sys, os, glob
 import numpy as np
@@ -40,10 +45,16 @@ def bands(path):
 
 
 def main():
-    files = sorted(glob.glob(os.path.join(SHOTS, "*.png")))
+    root = SHOTS
+    if len(sys.argv) > 1:
+        root = sys.argv[1]
+        if not os.path.isabs(root):
+            root = os.path.join(HERE, root)
+    files = sorted(glob.glob(os.path.join(root, "*.png")))
     if not files:
-        print("no shots")
+        print("no shots in %s" % root)
         return 1
+    print("%s" % root)
     print("%-24s %7s %7s %7s %7s %8s   %s" % (
         "shot", ">0.50", ">0.18", ">0.05", "<0.02", "mean", "verdict"))
     bad = 0

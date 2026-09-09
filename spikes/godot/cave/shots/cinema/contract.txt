@@ -1,0 +1,1 @@
+contract frames written: AgX-only in contract_off, full stack in contract_on

@@ -1,0 +1,4 @@
+=== FULL STACK ON / OFF ===
+t16_lamp_comes_on at t=0.30, 21 mm
+t20_sensor_shadow at t=0.50, 35 mm
+t27_wrong_direction at t=0.65, 21 mm
