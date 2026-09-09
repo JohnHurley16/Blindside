@@ -5,6 +5,11 @@
 > off. She would lose every time whatever she taught, which tests nothing and costs her
 > goodwill. The options are in `docs/CAVE-WINNABLE.md` and the decision is P2X-11 on the board.
 > Run the corridor session (`PROTOCOL.md`) now; run this one after the cave is winnable.
+>
+> **Measured through, 2026-09-08.** `docs/CAVE-WINNABLE.md` §4 found a tuning that reproduces
+> the corridor's target shape in the cave — 16 of 20 at threshold 8, with the rule that
+> ignores uncertainty at 0 of 20 — and §6 states the four options with what each costs the
+> beat sheet. The choice is the designer's and it is P2X-11 on the board.
 
 Run this **after** the corridor session (`PROTOCOL.md`), on the same day if she is willing. The
 corridor asks whether teaching works. This asks the question the whole re-sequence rests on:
