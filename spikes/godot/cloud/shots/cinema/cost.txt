@@ -1,0 +1,17 @@
+=== POST COST, leave-one-out from `all`, interleaved A/B ===
+scene cine_walk, 482482 returns, 35 mm lens, 1920x1080
+READ THE MEASUREMENT WARNING IN CINEMA.md BEFORE USING THESE.
+
+  tonemap   all  35.36 ms   without  34.78 ms   delta  +0.57 ms
+  bloom     all  11.71 ms   without  10.73 ms   delta  +0.98 ms
+  dof       all  11.84 ms   without   8.30 ms   delta  +3.54 ms
+  mblur     all  11.91 ms   without  11.51 ms   delta  +0.40 ms
+  grain     all  11.81 ms   without  10.58 ms   delta  +1.22 ms
+  vignette  all  11.68 ms   without  11.51 ms   delta  +0.17 ms
+  ca        all  11.69 ms   without  11.16 ms   delta  +0.53 ms
+  distort   all  11.45 ms   without  11.38 ms   delta  +0.07 ms
+  grade     all  11.67 ms   without  11.57 ms   delta  +0.10 ms
+
+  no post        5.07 ms   (1 draw calls)
+  what ships     7.06 ms   (mblur+vignette)
+  everything    11.43 ms

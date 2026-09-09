@@ -66,6 +66,25 @@ var centre: PackedVector3Array = PackedVector3Array()
 var tri_total := 0
 
 
+# CAVE-MATCH MODE. Set before build() when the geometry has to be the same
+# passage the cave spike renders, which is what a matched cut requires.
+#
+# Two things in this file were built for the sensor test and are wrong for a
+# matched cut, and both are switched off here rather than deleted, because the
+# sensor test still needs them:
+#
+#   * the biggest chamber is inflated to >= 9.5 m so a standing scanner lays a
+#     dozen ground rings. The cave spike has no such chamber -- a chamber there
+#     is just a wider length of the same swept drive -- so an inflated one is a
+#     room that does not exist in the other project.
+#   * chambers are cut out of the sweep and replaced with a dome and a floor
+#     fan. The cave sweeps straight through.
+#
+# With cave_match on, a chamber is a wide bit of drive, exactly as it is in
+# spikes/godot/cave/dressing.gd. See CINEMA.md 2.
+var cave_match: bool = false
+
+
 func build(seed_v: int, length_cells: int) -> void:
 	topo = CaveTopology.new()
 	topo.generate(seed_v, length_cells)
@@ -89,7 +108,8 @@ func build(seed_v: int, length_cells: int) -> void:
 
 	_collect_chambers()
 	_sweep_edges()
-	_build_chambers()
+	if not cave_match:
+		_build_chambers()
 	_place_props()
 	_build_centreline()
 	_commit()
@@ -98,7 +118,33 @@ func build(seed_v: int, length_cells: int) -> void:
 # ---------------------------------------------------------------------------
 # accumulators
 # ---------------------------------------------------------------------------
+# A SECOND collision body, for the CAMERA rather than for the laser, and the
+# difference between them is the whole of spikes/godot/cave/cinema.gd 4.1:
+#
+#   "Loose scatter -- stones, ballast, grit, spall, litter -- is deliberately
+#    NOT collision. A 40 mm chip is not an obstacle."
+#
+# The laser must see every chip, because a chip casts a return and a shadow.
+# The camera must not, because a rig stands on the floor and a 0.3 m stone is
+# something you step over. Merging the two is how the matched cut got rejected
+# the first time this ran: the cave's camera walked straight down a drive that
+# this spike had strewn with boulders the cave does not have.
+#
+# surf_* bodies are on layer 1 and the sensor masks to 1. cam_body is layer 2
+# and the rig masks to 2.
+var loose_mode: bool = false
+var cam_v := PackedVector3Array()
+var cam_i := PackedInt32Array()
+var cam_body: StaticBody3D = null
+var cam_tris: int = 0
+
 func _add(cls: int, v: PackedVector3Array, ix: PackedInt32Array) -> void:
+	if not loose_mode:
+		var cb: int = cam_v.size()
+		for p2 in v:
+			cam_v.push_back(p2)
+		for k2 in ix:
+			cam_i.push_back(cb + k2)
 	var base: int = (verts[cls] as PackedVector3Array).size()
 	var vv: PackedVector3Array = verts[cls]
 	for p in v:
@@ -203,6 +249,23 @@ func _commit() -> void:
 		cs.shape = sh
 		body.add_child(cs)
 		bodies.append(body)
+	# the camera's body: everything except loose scatter, on its own layer so
+	# the sensor never sees it twice
+	if cam_v.size() > 0:
+		var cam_arr: Array = []
+		cam_arr.resize(Mesh.ARRAY_MAX)
+		cam_arr[Mesh.ARRAY_VERTEX] = cam_v
+		cam_arr[Mesh.ARRAY_INDEX] = cam_i
+		var cam_mesh := ArrayMesh.new()
+		cam_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, cam_arr)
+		cam_body = StaticBody3D.new()
+		cam_body.name = "camera_collision"
+		cam_body.collision_layer = 2
+		cam_body.collision_mask = 0
+		var ccs := CollisionShape3D.new()
+		ccs.shape = cam_mesh.create_trimesh_shape()
+		cam_body.add_child(ccs)
+		cam_tris = cam_i.size() / 3
 
 
 func _normals(v: PackedVector3Array, ix: PackedInt32Array) -> PackedVector3Array:
@@ -290,6 +353,8 @@ func _catmull(p0: Vector3, p1: Vector3, p2: Vector3, p3: Vector3, t: float) -> V
 
 
 func _in_chamber(p: Vector3, k: float) -> bool:
+	if cave_match:
+		return false
 	for c in chamber_m:
 		var cc: Array = c
 		var d: float = Vector2(p.x - cc[0], p.z - cc[1]).length()
@@ -321,7 +386,13 @@ func _collect_chambers() -> void:
 		var rc: int = topo.chambers[ci * 5 + 2]
 		var sid: int = topo.chambers[ci * 5 + 4]
 		var st: PackedInt32Array = _st(sid)
-		var r_m: float = maxf(9.5, float(rc) * 1.5) if ci == big else maxf(3.4, float(rc) * 0.70)
+		# In cave-match mode a chamber is not a room: it is the same swept
+		# drive at HALL width, which is what the other spike renders. The
+		# record is kept only so the walk planner can still ask where the wide
+		# parts are; nothing is cut out and nothing is inflated.
+		var r_m: float = _hw(st) * 1.5
+		if not cave_match:
+			r_m = maxf(9.5, float(rc) * 1.5) if ci == big else maxf(3.4, float(rc) * 0.70)
 		big_chamber = big
 		chamber_m.append([float(sx) * CELL, float(sy) * CELL, r_m,
 						  float(st[CaveTopology.S_FLOOR_MM]) * 0.001, sid])
@@ -504,7 +575,10 @@ func _cfloor(x: float, z: float) -> float:
 # ---------------------------------------------------------------------------
 func _place_props() -> void:
 	# --- chamber furniture -------------------------------------------------
-	for ci in range(chamber_m.size()):
+	# Skipped in cave-match mode: there is no chamber room to furnish, and a
+	# pillar and a charging mast standing in the middle of a wide drive are
+	# objects the other spike does not have.
+	for ci in range(0 if cave_match else chamber_m.size()):
 		var c: Array = chamber_m[ci]
 		var cx: float = c[0]
 		var cz: float = c[1]
@@ -574,11 +648,22 @@ func _place_props() -> void:
 		# useful prop here -- a regular row of posts down a drive produces a
 		# regular row of shadow slots on the wall behind them.
 		if (wks & CaveTopology.WK_SETS) != 0:
+			# Sized to the CAVE SPIKE's own set, which is a 1.95 m post and a
+			# 2.02 m cap scaled by (hw - 0.12)/1.18 across and (ht - 0.25)/2.02
+			# up. The first version here stood 1.98 m posts under a cap at
+			# 0.64 of the height, which put a beam across the drive at 2.05 m
+			# -- half a metre below where the other project puts it. That is
+			# not only a content difference: the rig finds the floor by casting
+			# DOWN from 2.6 m above the station datum, so a cap at 2.05 m is a
+			# floor, and every eye-height shot in this drive came out two
+			# metres in the air.
+			var psc: float = clampf((hw - 0.12) / 1.18, 0.55, 2.4)
+			var psy: float = clampf((ht - 0.25) / 2.02, 0.5, 2.2)
 			for side in [-1.0, 1.0]:
-				_box(SURF_TIMBER, Vector3(0.16, ht * 0.62, 0.16),
-					Transform3D(Basis.IDENTITY, p + Vector3(0.0, ht * 0.31, side * (hw - 0.10))))
-			_box(SURF_TIMBER, Vector3(0.18, 0.18, hw * 2.0),
-				Transform3D(Basis.IDENTITY, p + Vector3(0.0, ht * 0.64, 0.0)))
+				_box(SURF_TIMBER, Vector3(0.18 * psc, 1.95 * psy, 0.16),
+					Transform3D(Basis.IDENTITY, p + Vector3(0.0, 0.97 * psy, side * 1.18 * psc)))
+			_box(SURF_TIMBER, Vector3(0.17, 0.20 * psy, 2.62 * psc),
+				Transform3D(Basis.IDENTITY, p + Vector3(0.0, 2.02 * psy, 0.0)))
 		# rail: two steel lines down the floor. In a scan these are two bright
 		# parallel dotted lines and they are the clearest intensity feature in
 		# a corridor.
@@ -594,12 +679,30 @@ func _place_props() -> void:
 		if (wks & CaveTopology.WK_BEACON) != 0:
 			_box(SURF_RETRO, Vector3(0.02, 0.22, 0.22),
 				Transform3D(Basis.IDENTITY, p + Vector3(0.0, 1.05, -(hw - 0.06))))
-		# loose rock on the floor every few cells
+		# A SPOIL HEAP against one wall where the topology says there is one.
+		# The cave spike draws this from the same WK_SPOIL bit and the sensor
+		# spike did not, which mattered: trailer shot 20 is "the clean wedge of
+		# no data behind a fallen block" and a 0.3 m stone does not cast one.
+		# Placed on the side the parent's index parity chooses, as the cave
+		# does, so the two spikes agree about which wall it is against.
+		if (wks & CaveTopology.WK_SPOIL) != 0:
+			var sgn: float = 1.0 if (si % 2 == 0) else -1.0
+			var hs: int = topo.draw(702, si, 0)
+			var sc: float = 0.80 + 0.35 * float(hs % 100) / 100.0
+			# Against the wall and it stays there. The first version was a
+			# 1.4 m lump at 0.72 of the half-width, which reached 0.45 m PAST
+			# the centreline and filled the drive.
+			_rock_lump(SURF_ROCK, p + Vector3(0.0, 0.20 * sc, sgn * hw * 0.86),
+				0.66 * sc, si + 5000, 0.52)
+		# loose rock on the floor every few cells. NOT camera collision -- see
+		# the note on cam_body above.
 		if along % 3 == 1:
 			var hh: int = topo.draw(701, si, 0)
 			var off: float = (float(hh % 200) / 100.0 - 1.0) * hw * 0.7
 			var rr2: float = 0.16 + 0.20 * float((hh >> 9) % 100) / 100.0
+			loose_mode = true
 			_rock_lump(SURF_ROCK, p + Vector3(0.0, rr2 * 0.5, off), rr2, si, 0.7)
+			loose_mode = false
 
 
 func _disc(cls: int, c: Vector3, r: float) -> void:
@@ -628,3 +731,5 @@ func attach(root: Node3D) -> void:
 	for cls in range(N_SURF):
 		if bodies[cls] != null:
 			root.add_child(bodies[cls])
+	if cam_body != null:
+		root.add_child(cam_body)

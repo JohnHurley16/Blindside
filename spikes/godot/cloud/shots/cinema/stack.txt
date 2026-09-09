@@ -1,0 +1,3 @@
+t18_belief_cut: off = nothing, on = vignette
+t20_sensor_shadow: off = nothing, on = vignette
+t26_the_fold: off = nothing, on = vignette

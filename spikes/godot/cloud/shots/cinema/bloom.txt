@@ -1,0 +1,12 @@
+=== BLOOM THRESHOLD SWEEP -- t19_cloud_building at t=0.90, a retro plate in frame ===
+The point shader writes ALBEDO in 0..1 and a retroreflector clips the
+intensity channel at exactly 1.0, so nothing in a belief frame is ever
+above 1.0 and the cave's threshold of 1.60 can catch nothing at all.
+  threshold 1.60
+  threshold 0.80
+  threshold 0.40
+  threshold 0.10
+  threshold 0.00
+
+beliefcheck.py measures thresh_off against each: if thresh_000 is also
+unchanged the effect is not running and the verdict above is worthless.

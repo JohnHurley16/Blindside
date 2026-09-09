@@ -1,0 +1,24 @@
+=== THE DELIBERATE FAILURES ===
+
+xfail_through_the_wall: REJECTED
+  why authored: VERBATIM from the cave file. Authored to fail there and it must fail here, or the ported rig is not the same rig.
+  FAIL: body intersects geometry at t=0.34 (the 0.35 m sphere overlaps)
+  FAIL: frustum clearance falls to 0.14 m at t=0.53 (needs 0.40)
+  FAIL: height 'eye' wants 1.38-1.82 m; the move runs 0.74-1.62 m above the floor
+  frames: fail/xfail_through_the_wall_a_start.png and _b_end.png -- the second is what
+          would have shipped if the rule had not fired.
+
+xfail_survey_draws_truth: REJECTED
+  why authored: Authored to fail on the rule that pays for the survey camera's exemption from having a body. It is the fold's camera with the truth layer switched on: legal as a picture, illegal as a claim.
+  FAIL: a survey camera has no body and may not draw truth: truth in frame means the camera claims a place it has not proved
+  frames: fail/xfail_survey_draws_truth_a_start.png and _b_end.png -- the second is what
+          would have shipped if the rule had not fired.
+
+xfail_into_the_cloud: REJECTED
+  why authored: Authored to fail on rule 9. A survey camera descending into an accumulated cloud is this register's version of flying through a wall: the data closes over the lens.
+  FAIL: camera is 1.53 m inside the cloud's own extent at t=1.00: a survey camera may not enter its subject
+  frames: fail/xfail_into_the_cloud_a_start.png and _b_end.png -- the second is what
+          would have shipped if the rule had not fired.
+
+The rig does not move a camera to a legal place and it does not stop
+short. It rejects the shot and names the number that rejected it.

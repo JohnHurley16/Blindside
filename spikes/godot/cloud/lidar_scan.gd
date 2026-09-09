@@ -105,6 +105,10 @@ func sweep(space: PhysicsDirectSpaceState3D, p0: Vector3, yaw0: float,
 	var q := PhysicsRayQueryParameters3D.new()
 	q.collide_with_areas = false
 	q.collide_with_bodies = true
+	# layer 1 only. LidarGeo also builds a SECOND collision body for the
+	# camera rig (layer 2) that omits loose scatter; a laser must never see it
+	# or every surface answers twice.
+	q.collision_mask = 1
 	var dyaw: float = wrapf(yaw1 - yaw0, -PI, PI)
 	var period: float = 1.0 / spin_hz
 	var el := PackedFloat32Array()

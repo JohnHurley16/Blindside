@@ -16,6 +16,27 @@ WIDTH = 1200
 QUALITY = 82
 
 GROUPS = [
+    ("lidar", "As a real scanner sees it",
+     "Rebuilt after the designer said it looked nothing like the point clouds from self-driving "
+     "cars. A scanning head of 32 emitters at fixed elevations, raycast against the cave's real "
+     "geometry, so the shadows behind objects are not drawn, they simply happen.",
+     [("lidar/01_single_sweep.png", "One revolution from a standing machine. Concentric rings on the floor, bands on the walls, a hole at the sensor, and clean wedges of no data behind everything."),
+      ("lidar/02_occlusion_shadows.png", "The shadows on their own. A laser cannot see through anything, and those voids are as characteristic as the points."),
+      ("lidar/05_rings_plan.png", "From above. Ring spacing is tight near the machine and metres apart far from it."),
+      ("lidar/04_rings_countable.png", "Close enough to count the rings. Each one is a single emitter at a fixed angle."),
+      ("lidar/06_intensity.png", "Coloured by return strength. Retroreflective things blaze; wet and oblique surfaces return almost nothing."),
+      ("lidar/08_height.png", "Coloured by height, the other convention."),
+      ("lidar/09_first_person.png", "From the machine's own position."),
+      ("lidar/10_accumulated_walk.png", "Accumulated over a walk, which is what the machine actually keeps."),
+      ("lidar/11_drift_two_passes.png", "Two passes down one corridor. The rings do not agree, because the pose they were placed from drifted."),
+      ("lidar/12_drift_close.png", "Close in. The bands interleave and fail to line up, so sub-metre drift is now readable."),
+      ("lidar/13_fix_before.png", "Before a fix. The same corridor twice, with the same boulders and sets in the same order in both records."),
+      ("lidar/14_fix_after.png", "After. The fix has closed it, and the old returns were never moved."),
+      ("lidar/17_lie_before.png", "One second before the rival's lie."),
+      ("lidar/18_lie_after.png", "After. The map folds."),
+      ("lidar/19_toy_sensor_whole_walk.png", "What the toy simulation's sensor gathers in an entire match."),
+      ("lidar/20_real_sensor_whole_walk.png", "What a real scanner gathers on the same walk. This is the sensor decision, as a picture."),
+      ]),
     ("what", "What the machine believes",
      "Every disc is one sensor return, drawn where the machine thinks it happened, facing back "
      "along the ray that measured it. Nothing here is the real cave. This is the only view the "
@@ -151,8 +172,8 @@ figcaption{padding:11px 14px;font-size:14px;color:var(--faint);line-height:1.55}
         '<span><b>1M</b>points at 8 ms</span>'
         '<span><b>2M</b>practical ceiling</span>'
         '<span><b>64 B</b>per point</span>'
-        '<span><b>5,663</b>points in a real match</span>'
-        '<span><b>1,007</b>of those are wall hits</span>'
+        '<span><b>8,640</b>toy sensor, whole match</span>'
+        '<span><b>23,397</b>real scanner, one tenth of a second</span>'
         '</div></header>')
     out.write_text(head + hdr + f'<nav>{"".join(nav)}</nav><main>{"".join(body)}</main>',
                    encoding="utf-8", newline="\n")

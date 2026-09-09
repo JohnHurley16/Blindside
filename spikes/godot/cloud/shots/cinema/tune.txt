@@ -1,0 +1,10 @@
+=== RECENCY WINDOW, t18_belief_cut at t=0.50, 964815 returns ===
+knee = seconds to the age floor; floor = what an old return keeps.
+  knee900_floor100_px36
+  knee260_floor055_px36
+  knee090_floor022_px26
+  knee032_floor016_px26
+  knee018_floor012_px24
+  knee018_floor012_px18
+  knee009_floor008_px24
+  knee018_floor030_px24

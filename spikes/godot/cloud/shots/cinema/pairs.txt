@@ -1,0 +1,17 @@
+=== POST, ONE EFFECT AT A TIME ===
+EACH EFFECT ALONE against nothing, not cumulative. The cave's pairs are
+cumulative because they are building a look; the question here is a RULE
+test -- does this effect merge rings, and does it put light into a sensor
+shadow -- and a cumulative stack answers it about the stack rather than
+about the effect. Measured cumulatively first, and the depth-of-field row
+destroyed the void that every later row was then measured against.
+
+--- w at t=0.55: close, machine height, in the drive
+    tonemap, bloom, dof, mblur, grain, vignette, ca, distort, grade
+--- b at t=0.90: eye height, a retroreflector in frame
+    tonemap, bloom, dof, mblur, grain, vignette, ca, distort, grade
+--- s at t=0.90: the survey register, plan, accumulated
+    tonemap, bloom, dof, mblur, grain, vignette, ca, distort, grade
+
+w** = t18 close in the drive, b** = t19 with a retro plate,
+s** = t26 the survey register. beliefcheck.py pairs <dir> measures them.

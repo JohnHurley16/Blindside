@@ -109,6 +109,21 @@ var shot_filter := ""
 var shot_dir := "shots/lidar"
 var stats_only := false
 
+# ---------------------------------------------------------------- cinema
+# The trailer's belief shots (TRAILER.md 3 shots 18, 19, 20, 21 and 26) and the
+# camera rig that executes them. See cinema.gd, cinema_run.gd and CINEMA.md.
+var cinema_mode := ""
+var cinema: CloudCinema = null
+# The walk planner's overrides, used only by the cinema bakes: a trailer shot
+# is authored at a STATION, so the machine has to walk past that station rather
+# than wherever the longest chamber-free run happens to be.
+var cine_from := -1
+var cine_to := -1
+var walk_oneway := false
+# the cinema rig drives the camera transform directly; the orbit rig must not
+# overwrite it every frame
+var cam_driven := false
+
 
 # ===========================================================================
 func _ready() -> void:
@@ -118,12 +133,28 @@ func _ready() -> void:
 		elif a.begins_with("--shot="): shots_only = true; shot_filter = a.substr(7)
 		elif a.begins_with("--shotdir="): shot_dir = a.substr(10)
 		elif a.begins_with("--seed="): seed_v = int(a.substr(7))
+		elif a.begins_with("--len="): length_cells = int(a.substr(6))
+		elif a.begins_with("--cinema="): cinema_mode = a.substr(9)
 
 	print("adapter: ", RenderingServer.get_video_adapter_name(), " | api ",
 		RenderingServer.get_video_adapter_api_version())
 
 	var t0 := Time.get_ticks_msec()
 	geo = LidarGeo.new()
+	if cinema_mode != "":
+		cinema = CloudCinema.new()
+		cinema.parse_args(self)
+		# THE CAMERA MATCH BEGINS HERE, and it is two integers.
+		# spikes/godot/cave/ generates seed 7 over 240 cells. Station 68's
+		# x and z are the same at any length -- the drive's Y walk depends only
+		# on the cell index -- but `worked`, the works bitfield and the sump
+		# all divide by the stretch length, so at 170 cells station 68 is the
+		# same COORDINATE in a different passage: different profile, different
+		# props, different floor. Nothing else in this file matters if these
+		# two numbers are wrong. CINEMA.md 2.
+		seed_v = cinema.cave_seed
+		length_cells = cinema.cave_len
+		geo.cave_match = true
 	geo.build(seed_v, length_cells)
 	geo.attach(self)
 	print("cave: seed ", seed_v, "  ", geo.topo.stations.size(), " stations  ",
@@ -139,7 +170,9 @@ func _ready() -> void:
 	await get_tree().physics_frame
 	await get_tree().physics_frame
 
-	if stats_only:
+	if cinema_mode != "":
+		call_deferred("_run_cinema")
+	elif stats_only:
 		call_deferred("_run_stats")
 	elif shots_only:
 		call_deferred("_run_shots")
@@ -320,6 +353,19 @@ func _build_path() -> void:
 	# wall gets recorded twice and the only way drift becomes visible as a
 	# disagreement rather than as a shape you cannot check.
 	var ids: PackedInt32Array = geo.topo.edges[0]
+	# A cinema bake overrides the search: a trailer shot names a station and
+	# the machine has to walk past THAT station, not past whichever run the
+	# planner likes best.
+	if cine_from >= 0:
+		path_pts = PackedVector3Array()
+		for i in range(maxi(0, cine_from), mini(ids.size(), cine_to + 1)):
+			path_pts.push_back(geo._st_pos(ids[i]))
+		path_len = 0.0
+		for i in range(1, path_pts.size()):
+			path_len += path_pts[i - 1].distance_to(path_pts[i])
+		print("walk: stations %d..%d  %d cells  %.1f m" % [
+			cine_from, cine_to, path_pts.size(), path_len])
+		return
 	var start := -1
 	var run := 0
 	var best_start := 0
@@ -363,6 +409,15 @@ func _path_at(s: float) -> Array:
 func _true_pose(t: float) -> Array:
 	if not run_is_walk:
 		return [stand_pos, 0.0]
+	if walk_oneway:
+		# The belief cut follows a machine walking AWAY from the camera into
+		# ground it has not mapped, so there is no return leg. Nothing in the
+		# frame is recorded twice, which is correct: shot 18 is the reveal, not
+		# the discrepancy.
+		var s1: float = clampf(t * walk_speed, 0.0, path_len)
+		var r1: Array = _path_at(s1)
+		var p1: Vector3 = r1[0]
+		return [p1 + Vector3(0, geo._cfloor(p1.x, p1.z) + 0.90, 0), float(r1[1])]
 	var half: float = path_len / walk_speed
 	var s: float
 	var back := false
@@ -498,11 +553,17 @@ func _make_scan(kind: String) -> LidarScan:
 	return s
 
 
+# Set by CloudCinema before a `cine_*` bake. Keys: st, lead, fwd, speed,
+# rev_dt, oneway, fix ("none" | "honest" | "lie").
+var cine_spec: Dictionary = {}
+
 func _bake(name: String) -> void:
 	var t0 := Time.get_ticks_msec()
 	scene_name = name
 	fix_log = []
-	run_is_walk = name in ["walk", "lie", "toy_walk", "real_short"]
+	var is_cine: bool = name.begins_with("cine_")
+	run_is_walk = name in ["walk", "lie", "toy_walk", "real_short"] \
+		or (is_cine and name != "cine_stand")
 
 	var ch: Array = _biggest_chamber()
 	var cx: float = ch[0]
@@ -515,7 +576,53 @@ func _bake(name: String) -> void:
 	var fix_spec: Array = []
 	var rev_dt := 0.0
 
-	if name == "chamber1":
+	if not is_cine:
+		walk_speed = 1.50
+		walk_oneway = false
+		cine_from = -1
+	if is_cine:
+		var ids0: PackedInt32Array = geo.topo.edges[0]
+		var st: int = int(cine_spec.get("st", 68))
+		walk_speed = float(cine_spec.get("speed", 0.45))
+		walk_oneway = bool(cine_spec.get("oneway", true))
+		rev_dt = float(cine_spec.get("rev_dt", 0.5))
+		scans = [_make_scan("real")]
+		if name == "cine_stand":
+			# the machine stands `stand_f` metres along the drive from the
+			# station and `stand_r` metres off the centreline, which is where a
+			# machine the camera is looking at would be
+			var i0: int = clampi(st, 0, ids0.size() - 1)
+			var i1: int = clampi(st + 1, 0, ids0.size() - 1)
+			var sp: Vector3 = geo._st_pos(ids0[i0])
+			var fw: Vector3 = geo._st_pos(ids0[i1]) - sp
+			fw.y = 0.0
+			fw = fw.normalized() if fw.length() > 0.01 else Vector3(1, 0, 0)
+			var rt: Vector3 = fw.cross(Vector3.UP).normalized()
+			sp += fw * float(cine_spec.get("stand_f", 0.0)) + rt * float(cine_spec.get("stand_r", 0.0))
+			stand_pos = Vector3(sp.x, sp.y + geo._cfloor(sp.x, sp.z) + 0.90, sp.z)
+			sensor_stand = stand_pos
+			t_end = float(cine_spec.get("dur", 0.4))
+			cine_from = -1
+		else:
+			cine_from = maxi(0, st - int(cine_spec.get("lead", 16)))
+			cine_to = mini(ids0.size() - 1, st + int(cine_spec.get("fwd", 26)))
+			_build_path()
+			t_end = (1.0 if walk_oneway else 2.0) * path_len / walk_speed
+			var cap: float = float(cine_spec.get("dur", 0.0))
+			if cap > 0.0:
+				t_end = minf(t_end, cap)
+			var kind: String = String(cine_spec.get("fix", "none"))
+			# The out-and-back is what makes a corridor get recorded twice, and
+			# the fix at the turn is what makes the two records different
+			# epochs -- which is the only reason a later correction can close
+			# the doubling at all (NOTES.md 5).
+			if kind == "honest":
+				fix_spec = [[t_end * 0.49, "honest", 0.0, 0.0, 0.0],
+							[t_end - 1.2, "honest", 0.0, 0.0, 0.0]]
+			elif kind == "lie":
+				fix_spec = [[t_end * 0.49, "honest", 0.0, 0.0, 0.0],
+							[t_end - 1.2, "lie", 11.0, 1.15, deg_to_rad(26.0)]]
+	elif name == "chamber1":
 		t_end = 0.10
 		scans = [_make_scan("real")]
 		rev_dt = 0.10
@@ -779,7 +886,8 @@ func _process(dt: float) -> void:
 		now += dt * play_rate
 		if now > t_end:
 			now = 0.0
-	_update_camera()
+	if not cam_driven:
+		_update_camera()
 	_apply_uniforms()
 	_rebuild_lines()
 
@@ -916,6 +1024,11 @@ func _run_shots() -> void:
 		await _settle(10)
 		await _snap(String(d["name"]))
 	_run_stats()
+
+
+func _run_cinema() -> void:
+	await cinema.run(self)
+	get_tree().quit()
 
 
 func _run_stats() -> void:

@@ -1,0 +1,548 @@
+[
+  {
+    "name": "t18_belief_cut",
+    "trailer": "18",
+    "_same_camera_as": "cave:t17_follow_machine",
+    "_note": "VERBATIM camera from spikes/godot/cave/shots_cinema.json. Every field above the divider is a byte-for-byte copy; nothing below it exists in the cave file. ground_from/ground_to are the cave rig's own resolved floor at the two move anchors, read out of cave/shots/cinema/sequences.txt.",
+    "len_s": 4.0,
+    "lens_mm": 35.0,
+    "tstop": 2.8,
+    "ease": "inout",
+    "handheld_deg": 0.22,
+    "height": "machine",
+    "seed": 17,
+    "move": {
+      "from": {
+        "st": 68,
+        "r": 0.1,
+        "u": 0.42,
+        "f": 0.0
+      },
+      "to": {
+        "st": 68,
+        "r": 0.02,
+        "u": 0.42,
+        "f": 1.6
+      }
+    },
+    "look": {
+      "from": {
+        "st": 68,
+        "r": 0.0,
+        "u": 0.62,
+        "f": 3.2
+      },
+      "to": {
+        "st": 68,
+        "r": 0.0,
+        "u": 0.7,
+        "f": 4.6
+      }
+    },
+    "focus": {
+      "from": 2.4,
+      "to": 3.2
+    },
+    "ground_from": 0.14,
+    "ground_to": -0.14,
+    "frame": "world",
+    "scene": "cine_walk",
+    "cine": {
+      "st": 68,
+      "lead": 8,
+      "fwd": 11,
+      "speed": 0.4,
+      "rev_dt": 1.6,
+      "oneway": true,
+      "fix": "none",
+      "dur": 23.6
+    },
+    "t_from": 19.0,
+    "t_to": 23.0,
+    "view": {
+      "mode": 0,
+      "pt_world": 0.014,
+      "min_px": 1.6,
+      "max_px": 2.2,
+      "age_floor": 0.22,
+      "age_knee": 9.0
+    }
+  },
+  {
+    "name": "t19_cloud_building",
+    "trailer": "19",
+    "_note": "The map extending ahead into nothing. Four sweeps a second land during the take; the camera moves 1.3 m and the DATA does the rest. Eye height, a wide lens and a LEVEL aim: the first version looked down at a point 5 m away and the frame was all floor, with no end to the map in it. The subject of this shot is where the returns stop, so the camera has to be able to see that far.",
+    "len_s": 5.0,
+    "lens_mm": 21.0,
+    "tstop": 2.8,
+    "ease": "inout",
+    "handheld_deg": 0.2,
+    "height": "eye",
+    "seed": 19,
+    "move": {
+      "from": {
+        "st": 68,
+        "r": 0.1,
+        "u": 1.5,
+        "f": 0.0
+      },
+      "to": {
+        "st": 68,
+        "r": 0.0,
+        "u": 1.5,
+        "f": 1.3
+      }
+    },
+    "look": {
+      "from": {
+        "st": 68,
+        "r": 0.0,
+        "u": 1.35,
+        "f": 13.0
+      },
+      "to": {
+        "st": 68,
+        "r": 0.0,
+        "u": 1.35,
+        "f": 16.0
+      }
+    },
+    "focus": {
+      "from": 8.0,
+      "to": 12.0
+    },
+    "frame": "world",
+    "scene": "cine_walk",
+    "cine": {
+      "st": 68,
+      "lead": 3,
+      "fwd": 18,
+      "speed": 0.42,
+      "rev_dt": 0.25,
+      "oneway": true,
+      "fix": "none",
+      "dur": 11.5
+    },
+    "t_from": 2.5,
+    "t_to": 7.5,
+    "view": {
+      "mode": 0,
+      "pt_world": 0.018,
+      "min_px": 1.6,
+      "max_px": 3.6,
+      "age_floor": 0.55,
+      "age_knee": 12.0
+    }
+  },
+  {
+    "name": "t20_sensor_shadow",
+    "trailer": "20",
+    "_same_camera_as": "cave:t20_sensor_shadow",
+    "_note": "VERBATIM camera from the cave file. TRAILER 3 gives shot 20's source as L, so the cave's version is the plate and this is the one that ships -- which makes it the second matched pair and it was free.",
+    "len_s": 4.0,
+    "lens_mm": 35.0,
+    "tstop": 2.0,
+    "ease": "inout",
+    "handheld_deg": 0.3,
+    "height": "machine",
+    "seed": 20,
+    "move": {
+      "from": {
+        "st": 89,
+        "r": -0.2,
+        "u": 0.4,
+        "f": -1.2
+      },
+      "to": {
+        "st": 89,
+        "r": -0.05,
+        "u": 0.4,
+        "f": -0.95
+      }
+    },
+    "look": {
+      "from": {
+        "st": 89,
+        "r": 0.4,
+        "u": 0.35,
+        "f": 0.6
+      },
+      "to": {
+        "st": 89,
+        "r": 0.45,
+        "u": 0.35,
+        "f": 0.9
+      }
+    },
+    "focus": {
+      "from": 1.9,
+      "to": 1.9
+    },
+    "ground_from": -0.18,
+    "ground_to": -0.18,
+    "frame": "world",
+    "scene": "cine_stand",
+    "cine": {
+      "st": 89,
+      "stand_r": 0.3,
+      "stand_f": 1.1,
+      "rev_dt": 0.1,
+      "dur": 0.62
+    },
+    "view": {
+      "mode": 0,
+      "pt_world": 0.016,
+      "min_px": 1.6,
+      "max_px": 3.2,
+      "age_floor": 1.0,
+      "age_knee": 90.0
+    }
+  },
+  {
+    "name": "t21_two_registers",
+    "trailer": "21",
+    "_note": "Truth at low exposure with the cloud over it, not agreeing in shape. The disagreement is drift. A WORLD camera, so it has a body -- it is drawing the world. truth_exposure is normalised in this spike so 0.35 is 'as authored'; 0.035 is a tenth of that. The first pass ran it at 0.32, which is 91 per cent, and the result is ART-DIRECTION 8.3 exactly backwards -- truth reading and belief a haze over it. See CINEMA.md 6: the truth layer in THIS project is a flat-shaded stand-in and the shipping version of shot 21 is a composite of the cave spike's rendered truth with this cloud, on the matched camera.",
+    "len_s": 4.0,
+    "lens_mm": 21.0,
+    "tstop": 4.0,
+    "ease": "inout",
+    "handheld_deg": 0.0,
+    "height": "eye",
+    "seed": 21,
+    "move": {
+      "from": {
+        "st": 70,
+        "r": -0.4,
+        "u": 1.55,
+        "f": 0.0
+      },
+      "to": {
+        "st": 70,
+        "r": 0.3,
+        "u": 1.55,
+        "f": 0.3
+      }
+    },
+    "look": {
+      "from": {
+        "st": 70,
+        "r": 0.0,
+        "u": 1.1,
+        "f": 9.0
+      },
+      "to": {
+        "st": 70,
+        "r": 0.0,
+        "u": 1.1,
+        "f": 9.5
+      }
+    },
+    "focus": {
+      "from": 8.0,
+      "to": 8.0
+    },
+    "frame": "world",
+    "truth": true,
+    "truth_exposure": 0.035,
+    "scene": "cine_walk",
+    "cine": {
+      "st": 70,
+      "lead": 2,
+      "fwd": 34,
+      "speed": 1.0,
+      "rev_dt": 0.6,
+      "oneway": true,
+      "fix": "none",
+      "dur": 21.0
+    },
+    "t_from": 16.5,
+    "t_to": 20.5,
+    "view": {
+      "mode": 0,
+      "pt_world": 0.016,
+      "min_px": 1.6,
+      "max_px": 3.2,
+      "age_floor": 0.62,
+      "age_knee": 20.0
+    }
+  },
+  {
+    "name": "t26_the_fold",
+    "trailer": "26",
+    "_note": "THE SECOND BELIEF CUT. A beacon answers and the map folds. A SURVEY camera: thirty metres of corridor cannot be seen from inside a 2.4 m drive, so this one is over the workings and not in them. It therefore has no body and may not draw truth -- see cinema.gd rules 9 and 11.",
+    "len_s": 4.0,
+    "lens_mm": 21.0,
+    "tstop": 4.0,
+    "ease": "inout",
+    "handheld_deg": 0.0,
+    "height": "survey",
+    "seed": 26,
+    "move": {
+      "from": [
+        49.2,
+        36.0,
+        22.0
+      ],
+      "to": [
+        49.2,
+        36.0,
+        23.6
+      ]
+    },
+    "look": {
+      "from": [
+        49.2,
+        -0.2,
+        24.8
+      ],
+      "to": [
+        49.2,
+        -0.2,
+        24.8
+      ]
+    },
+    "focus": {
+      "from": 36.0,
+      "to": 36.0
+    },
+    "frame": "survey",
+    "scene": "cine_walk",
+    "cine": {
+      "st": 70,
+      "lead": 24,
+      "fwd": 34,
+      "speed": 1.2,
+      "rev_dt": 1.4,
+      "oneway": false,
+      "fix": "lie",
+      "dur": 0.0
+    },
+    "t_from": -3.0,
+    "t_to": 0.0,
+    "view": {
+      "mode": 0,
+      "pt_world": 0.011,
+      "min_px": 1.5,
+      "max_px": 2.4,
+      "age_floor": 1.0,
+      "age_knee": 90.0,
+      "clip_rel_hi": 0.55
+    }
+  },
+  {
+    "name": "x19_fix_closes",
+    "trailer": "",
+    "_note": "Not a numbered trailer shot. The third belief behaviour: a correction closing a doubled corridor. LIDAR.md 4 found this reads as a PAIR of frames and not as one still; the answer to that is that it is a shot. Two things had to be pushed to make it read at all, and both are recorded rather than hidden: the walk is 43 m each way because the doubling is only as wide as the drift the walk earns, and the crop box is 0.30 m so the ribbon is ground rings and not lower wall. At 27 m and a 0.55 m crop the two records read as ONE WIDE corridor, which is exactly the failure LIDAR.md 4 predicted.",
+    "len_s": 4.0,
+    "lens_mm": 35.0,
+    "tstop": 4.0,
+    "ease": "inout",
+    "handheld_deg": 0.0,
+    "height": "survey",
+    "seed": 14,
+    "move": {
+      "from": [
+        49.2,
+        44.0,
+        22.3
+      ],
+      "to": [
+        49.2,
+        44.0,
+        23.5
+      ]
+    },
+    "look": {
+      "from": [
+        49.2,
+        -0.2,
+        24.6
+      ],
+      "to": [
+        49.2,
+        -0.2,
+        24.6
+      ]
+    },
+    "focus": {
+      "from": 44.0,
+      "to": 44.0
+    },
+    "frame": "survey",
+    "scene": "cine_walk",
+    "cine": {
+      "st": 70,
+      "lead": 30,
+      "fwd": 40,
+      "speed": 1.2,
+      "rev_dt": 1.6,
+      "oneway": false,
+      "fix": "honest",
+      "dur": 0.0
+    },
+    "t_from": -2.8,
+    "t_to": 0.0,
+    "view": {
+      "mode": 0,
+      "pt_world": 0.011,
+      "min_px": 1.5,
+      "max_px": 2.4,
+      "age_floor": 1.0,
+      "age_knee": 90.0,
+      "clip_rel_hi": 0.3
+    }
+  },
+  {
+    "name": "xfail_through_the_wall",
+    "trailer": "",
+    "_why": "VERBATIM from the cave file. Authored to fail there and it must fail here, or the ported rig is not the same rig.",
+    "len_s": 4.5,
+    "lens_mm": 21.0,
+    "tstop": 2.8,
+    "ease": "inout",
+    "handheld_deg": 0.0,
+    "height": "eye",
+    "seed": 99,
+    "move": {
+      "from": {
+        "st": 72,
+        "r": 0.0,
+        "u": 1.6,
+        "f": 0.0
+      },
+      "to": {
+        "st": 72,
+        "r": 2.2,
+        "u": 1.6,
+        "f": 0.6
+      }
+    },
+    "look": {
+      "from": {
+        "st": 72,
+        "r": 0.0,
+        "u": 1.2,
+        "f": 6.0
+      },
+      "to": {
+        "st": 72,
+        "r": 0.0,
+        "u": 1.2,
+        "f": 6.0
+      }
+    },
+    "frame": "world",
+    "scene": "cine_stand",
+    "cine": {
+      "st": 72,
+      "rev_dt": 0.1,
+      "dur": 0.4
+    },
+    "view": {
+      "mode": 0
+    }
+  },
+  {
+    "name": "xfail_survey_draws_truth",
+    "trailer": "",
+    "_why": "Authored to fail on the rule that pays for the survey camera's exemption from having a body. It is the fold's camera with the truth layer switched on: legal as a picture, illegal as a claim.",
+    "len_s": 4.0,
+    "lens_mm": 35.0,
+    "tstop": 4.0,
+    "ease": "inout",
+    "handheld_deg": 0.0,
+    "height": "survey",
+    "seed": 26,
+    "move": {
+      "from": [
+        49.2,
+        36.0,
+        22.0
+      ],
+      "to": [
+        49.2,
+        36.0,
+        23.6
+      ]
+    },
+    "look": {
+      "from": [
+        49.2,
+        -0.2,
+        24.8
+      ],
+      "to": [
+        49.2,
+        -0.2,
+        24.8
+      ]
+    },
+    "frame": "survey",
+    "truth": true,
+    "scene": "cine_walk",
+    "cine": {
+      "st": 70,
+      "lead": 24,
+      "fwd": 34,
+      "speed": 1.2,
+      "rev_dt": 1.4,
+      "oneway": false,
+      "fix": "lie",
+      "dur": 0.0
+    },
+    "view": {
+      "mode": 0
+    }
+  },
+  {
+    "name": "xfail_into_the_cloud",
+    "trailer": "",
+    "_why": "Authored to fail on rule 9. A survey camera descending into an accumulated cloud is this register's version of flying through a wall: the data closes over the lens.",
+    "len_s": 4.0,
+    "lens_mm": 35.0,
+    "tstop": 4.0,
+    "ease": "inout",
+    "handheld_deg": 0.0,
+    "height": "survey",
+    "seed": 26,
+    "move": {
+      "from": [
+        49.2,
+        5.0,
+        23.0
+      ],
+      "to": [
+        49.2,
+        2.6,
+        23.0
+      ]
+    },
+    "look": {
+      "from": [
+        49.2,
+        -0.2,
+        24.8
+      ],
+      "to": [
+        49.2,
+        -0.2,
+        24.8
+      ]
+    },
+    "frame": "survey",
+    "scene": "cine_walk",
+    "cine": {
+      "st": 70,
+      "lead": 24,
+      "fwd": 34,
+      "speed": 1.2,
+      "rev_dt": 1.4,
+      "oneway": false,
+      "fix": "lie",
+      "dur": 0.0
+    },
+    "view": {
+      "mode": 0
+    }
+  }
+]
