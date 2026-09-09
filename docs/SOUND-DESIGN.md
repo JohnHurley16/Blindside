@@ -569,6 +569,11 @@ cheap on any backend, which is the point of having chosen them.
 
 Eight families. For each: what it is, what it is made of, what it must never do.
 
+There is a ninth thing that is not a family, because it is not a sensor channel and obeys different
+rules: **music.** It is out of scope here and settled in §6.5 for the game and §8.1 for the trailer.
+The one rule that belongs in this section: **music never occupies 400 Hz – 3 kHz**, which is the
+register `tuning.py` reserves for everything that has to be *identified*.
+
 ### 5.1 The machine's own body
 
 Dry, centred, no room, no reflections, no `Placement`. **The register that means *inside the
@@ -800,6 +805,53 @@ is an extraction game, and in an extraction game surviving is the payoff. **Noth
 makes a sound when the machine comes up the shaft.** It is the only unambiguously good news the game
 has and it is currently silent. See question 13.
 
+### 6.5 Does the game have music? One rule, and it falls out of §5.7
+
+Asked because the trailer question was asked (§8.1), and it is the larger of the two.
+
+> **Music everywhere the player is present. No music anywhere the player is listening through a
+> machine.**
+
+**The argument against a score in the run phase is §1.3's argument, arriving in a costume.** Music is
+allowed to editorialise — that is what it is *for*, and in a trailer it is a feature (§8.1). In a
+match it is a truth leak with better manners. The moment a cue swells because a rival is closing, the
+player has been told something their machine does not know, through a channel nobody audits, and the
+player's evidence and the machine's evidence have stopped being the same evidence. That is precisely
+the failure `SPECTATOR-DISPLAY.md` §4.2 rule 3 already names — *"a room tone or hazard drone driven
+from truth"* — and **a dramatic score is a hazard drone that went to school.** It belongs in the same
+prohibition, in the same words.
+
+The rule has teeth even for a score driven honestly from `Belief`, and this is the part that is easy
+to miss: a cue that swells on *believed* threat is legal under the invariant and still wrong, because
+it duplicates in music a judgement the player is supposed to be making from evidence. **Belief-legal
+is not the same as design-legal here.** The mixer may sound what the machine received; it may not
+tell the player how to feel about it.
+
+**And the run phase does not need one, because it already has a score and the score is diegetic.**
+The Assayer is a 75-second period carrying a nine-figure ostinato, a held breath, a downbeat and
+fifty-four seconds of rest. That is a composition, and §6.3 is a musical claim about it: silence
+frightens only when it is a phase of a cycle the player has learned. `THE-MACHINERY.md` §5 says the
+same thing without the word — *"the only thing down there that is regular, loud and not lying."*
+**Music on top would compete with the one rhythm the game needs the player to internalise**, and
+would compete with it for the same slot: a slow pulse, in the low-mid, that means *time is passing
+and something is coming.*
+
+**Where music is legal, and it is not nowhere.**
+
+| place | music? | why |
+|---|---|---|
+| **the surface** — pit-head, yard, bench, teaching | **yes** | No machine between the player and the world (§5.7). No belief, nothing to leak. And it makes the descent a *musical* cut every single raid, which is the trailer's best beat given away free, forever. It stops at the shaft collar. |
+| **menu, loadout, lobby** | yes | Same reason. |
+| **the run phase** | **never** | Above. This is a rule, not a preference. |
+| **replay playback / scrubbing** | **no** | The forensics layer is where the player diagnoses. A score colours a diagnosis, and `ROADMAP.md` Phase 5 makes this the most important screen in the game. |
+| **post-match summary** | yes | It is over. Nothing left to leak, and it is the one moment the game is allowed to have an opinion about what happened. |
+| **the difference layer** (§1.6, §5.9) | no | It is evidence. |
+
+That single rule is worth more than it looks. It means **the descent is scored by subtraction in the
+game exactly as it is in the trailer**, it means the surface can be warm without the cave having to
+be, and it means nobody ever has to argue about whether a tension cue is cheating — because there
+are no tension cues. See questions 16 and 17.
+
 ---
 
 ## 7. What the player learns to hear, in order
@@ -837,14 +889,165 @@ and they are already shipped.**
 
 ## 8. The trailer
 
-Critique of `TRAILER.md` §5. It is right about more than it is wrong about, and both matter.
+### 8.1 Does the trailer need a backing track? Yes, and §5's own rule proves it
 
-**1. "There is no score" is right; the reason given for it is false.** §5 opens: *"The trailer is
-built from the game's own audio, which already exists in `phase1/audio/` and is a real mixer rather
-than a library of samples."* True of Act IV and Act V. **False of Acts I, II, III and VI.**
-`phase1/audio/` contains ten recipes and none of them is rain, steel, a pipe, a servo, a footfall or
-a yard. The whole first half of the trailer needs sound that does not exist in this repository in
-any form. That belongs in §7's honestly-missing table, where it currently is not.
+The designer asked directly. **I agree it needs one**, and the argument that settles it is the one
+the designer's challenge exposes, which is a contradiction *internal to* `TRAILER.md` §5:
+
+> §5 states the rule — *"every loud moment is followed by a longer quiet one"* — and builds the
+> emotional centre of the cut on it: the descent, where *"surface noise recedes over five seconds
+> until there is nothing but the machine, then a held silence under card 3."*
+>
+> **But silence only reads as silence if something stopped, and §5 removes the thing that would
+> stop.** If the whole two minutes is quiet, the descent is not a change of register — it is more of
+> the same, at a slightly lower level. **You cannot drop out of nothing.**
+
+That is decisive on its own. Two supporting arguments, both real but neither load-bearing: two
+minutes is long to hold with no musical structure (the famously quiet trailers are usually shorter,
+or are carrying an audience that already knows the game); and a score-free announcement at a loud
+show risks reading as *unfinished* rather than as bold, which is the exact opposite of what an
+in-development announcement needs.
+
+**One correction to the concession, because it went one step further than the evidence.** §5 makes
+two claims and the challenge only breaks the first:
+
+- *"There is no score."* — **wrong**, per above.
+- *"The trailer is built from the game's own audio, which already exists in `phase1/audio/`."* —
+  also wrong, and separately. `phase1/audio/` contains **ten recipes** and none of them is rain,
+  steel, a pipe, a servo, a footfall or a yard. Acts I, II, III and VI need sound that **does not
+  exist in this repository in any form.**
+
+So the trailer does not have a *silence* problem. **It has a density problem**, and there are two
+ways to fix it: build the missing diegetic material, or add a score. It probably wants both. If it
+gets one, it should be the score — because a rain-on-steel that sounds wrong is worse than no rain,
+whereas a sparse tonal bed that is merely adequate still works. Either way, the gap belongs in §7's
+honestly-missing table, where it currently is not.
+
+#### The argument that actually justifies a score here, rather than merely permitting one
+
+**Music is the only channel in this trailer that is allowed to be wrong without lying.**
+
+The trailer's whole fifth card is *"And it can be lied to."* But the diegetic layer is forbidden from
+telling the viewer that: `ART-DIRECTION.md` §6.3's anti-tell rule, and §3.3 rule 1 here, both say the
+lie must be indistinguishable from the truth — and in the shipped game it is, because a spoofed fix
+plays the same 660/990 chime as every honest one (§1.2b). **Sound design cannot editorialise. Music
+is not a sensor and is not bound by that rule.** So the lie is the one place in the film where a
+score earns its existence rather than decorating: the diegetic layer plays routine housekeeping, and
+underneath it the tonal centre moves and does not come home. The viewer hears that something is
+wrong and cannot point at what — which is exactly the machine's situation, rendered in the one
+channel that can render it.
+
+#### What it is made of
+
+The designer's instinct — *out of the world rather than laid over it* — is right, with one
+correction. A score made **only** of struck iron and water is not a score; it is sound design with a
+tempo, and it will not fix the "reads as unfinished" problem, because what reads as finished to a
+general audience is **pitch material that moves**. Texture alone will not do it.
+
+So: the world's *timbres*, carrying a real tonal argument.
+
+| layer | material | source in the build |
+|---|---|---|
+| **the bed** | sustained inharmonic metal — long, low, struck rather than bowed | `Voice` + `Mixer._struck(ratios, brightness, tilt)`, `EnvelopeShape.EXPONENTIAL`. **This already exists.** |
+| **the room** | every score voice sent through the cave's own reflections, so it arrives with the tails of a passage | `Mixer._room()` at low quality. **Already exists**, and it is precisely *"the mine is a resonator"* — the score and the sound design are the same material because they go through the same code. |
+| **the pulse** | 1 Hz | **The ratchet.** Nine clicks at one per second is **60 BPM**, supplied by the fiction. |
+| **the form** | one and a half breaths | **The 75-second cycle.** It is too slow to be felt as tempo — nothing at 75 s is a pulse — but it is exactly right as large-scale structure, and it is the reason the cut is 2:00. |
+| **harmony** | **two events in two minutes, and no more** | authored |
+
+**An interaction the designer needs to see before answering question 4.** The tempo device above
+depends on the ratchet's rate. §9 question 4 recommends **nine fixed clicks at 1 Hz**, retiring the
+shipped accelerando, for gameplay reasons — a fixed rate makes the count *information*. If that
+recommendation is taken, **the trailer loses the free stringendo into the strike** and has to get its
+acceleration from harmonic rhythm and the edit instead. If the accelerando is kept, the trailer gets
+a built-in accelerating pulse and the game keeps a wind-up that cannot be counted. **These are one
+question, not two, and I would not want my gameplay recommendation to quietly break the trailer's
+tempo without saying so.** My position stands — take the nine clicks, and let the score accelerate
+by other means — but it is a real cost and it is stated.
+
+#### The two harmonic events
+
+1. **0:50–1:04, the descent.** The bed drops a register and loses its top. Same pitch centre. This
+   mirrors, in music, exactly what §5.7 says the mix does at the shaft: wide → narrow, full-band →
+   band-limited, world → readout.
+2. **1:45–1:47, the fold.** The centre moves a semitone and **does not resolve**, and never resolves
+   for the remaining thirteen seconds of the film. Act VI ends on it, under rain. The trailer's
+   argument is that nothing down there comes home, and this is that argument in the one channel that
+   can make it without a word.
+
+That is the entire harmonic content. Two events. Anything more is a film score, and this is not one.
+
+#### The descent — exactly what the score does at 0:50–1:04
+
+This is where the whole cut turns, and **the obvious scoring is wrong.**
+
+The obvious move is to fade the score out with the surface. Do not. If the score leaves when the
+world leaves, then the held silence at 1:01 has nothing carrying it and card 3 lands in a hole; and a
+score that exits and re-enters at 1:04 reads as an edit rather than as a place.
+
+> **The score is the one thing that survives the descent.**
+
+Everything diegetic goes over five seconds — rain, yard, weather, footfall on concrete, the hoist.
+The score does not go. It **narrows**: same pitch, same pulse, top gone, tails long, register
+dropped. So the descent is not *sound stops.* It is **the world stops and the music is left alone in
+it** — which is more frightening, and which is the literal statement of §5.7: on the surface you hear
+the world; underground you hear an instrument. **The score becomes the instrument.**
+
+And *then*, at **1:01**, under card 3, the score itself stops. Three seconds of true nothing.
+
+That is the answer to *you cannot drop out of nothing*: **you drop out of the score**, fifty seconds
+after it was established, one beat after it has just survived the loss of everything else. It is the
+single loudest structural moment available in the film and it costs no signal at all.
+
+#### Where it drops out, and nowhere else
+
+Three holes. A fourth is refused.
+
+1. **1:01–1:04** — card 3, in the black. The designed hole, above.
+2. **1:13–1:13.5** — the first belief cut. §5 already asks for half a second of silence there and
+   gives the right reason: *"sound is what tells the viewer they have changed register, not a
+   whoosh."* The score goes too, or it is only a diegetic cut.
+3. **1:43–1:45** — after the strike, and **by the game's own mechanism rather than by a fader.** The
+   mixer already ducks everything sounding to 0.10 on a crash and holds it (`CRASH_DUCK`,
+   `CRASH_SUPPRESS_S = 1.30`); `RATCHET_BREATH_DUCK` does the same in front of the hammer. Put the
+   score on a bus the strike ducks, and the trailer inherits the game's dynamics instead of an
+   editor's taste. §5's own "every loud moment is followed by a longer quiet one" is then not a
+   trailer convention at all — it is `mixer.py` running.
+
+**Refused: the fold at 1:45 must not be silent.** §5 says *"The fold at 1:45 gets no sound at all,
+which is worse."* With a score present that is strictly worse than the alternative: the diegetic
+layer plays the ordinary fix chime (true to the build — §8.2 item 3) and **the score does the fold.**
+Silence there wastes the one moment music is indispensable.
+
+#### Act by act
+
+| act | t | what the score does |
+|---|---|---|
+| **I — the place** | 0:00–0:26 | **Enters at 0:05, not 0:00.** The first five seconds — black, water, the unexplained ratchet — stay naked, or the payoff at 1:39 becomes a musical callback instead of a narrative one. Then the bed: one low struck-metal centre, 60 BPM implied and never stated. |
+| **II — the teaching** | 0:26–0:50 | Warmest and densest. **The only place the score is allowed to be pleasant**, because it is the only warm act in the film. One upper voice added. Still one centre. |
+| **III — the commit** | 0:50–1:04 | The turn. Diegetic world recedes over five seconds; the score narrows but survives. **Stops dead at 1:01** for card 3. |
+| **IV — the dark** | 1:04–1:36 | Returns at 1:04 with the lamp, thinner than before. Long tails, wide spacing, almost no event — this act belongs to the sensor. Half-second hole at the 1:13 belief cut. |
+| **V — what is down there** | 1:36–1:54 | From 1:39 the score's pulse and the machine's pulse are **the same pulse**. Ducked by the strike at 1:43. **At 1:45 the centre moves and does not resolve.** |
+| **VI — title** | 1:54–2:00 | The moved centre, unresolved, under rain. It never comes home. That is the film's argument. |
+
+#### How it relates to the diegetic layer rather than fighting it
+
+Four rules, and all four are mechanisms that already exist:
+
+1. **Same room.** Score voices go through `Mixer._room()`, so they arrive with the same reflection
+   pattern as everything else. They are in the cave, not over it.
+2. **Separate bus, one-way ducking.** The world ducks the score. **The score never ducks the world.**
+3. **The score never occupies the ping band.** `AUDIO_HEARD_PING_F0 = 760`, own ping 620→2100 Hz,
+   the ratchet's ring 940→2103 Hz. The score's business is below 400 Hz and above 4 kHz, and the
+   400 Hz–3 kHz window stays clear — which is the same register rule `tuning.py` already enforces on
+   everything that has to be *identified*.
+4. **The score is never a cue for an event.** It has two harmonic events in two minutes and neither
+   is synchronised to a sound; both are synchronised to a *card*. Music comments on the film's
+   argument, never on the world's contents. That is also the rule that keeps §6.5 honest.
+
+### 8.2 The rest of the critique of `TRAILER.md` §5
+
+**1. The material gap.** See §8.1: `phase1/audio/` covers Acts IV and V and nothing else, and §7's
+honestly-missing table does not say so.
 
 **2. The nine clicks are not what the mixer plays.** §5 Act V: *"the ratchet, nine clicks, rising in
 pitch and level."* Shot 24: nine. `WHAT-HAPPENED-HERE.md` §7 beat 1 plants nine at 0:03 as the
@@ -890,6 +1093,67 @@ puts its head to the floor and downloads… the belief view fills with something
 and calls it the best value in the trailer. §5 gives it nothing. Interfacing broadcasts a continuous
 `TONE` at 80 cells for the whole dwell and *"the whole cave hears you take it."* **A silent download
 misrepresents the mechanic in the one shot that sells the mystery.**
+
+**9. Shot 24 asks for twelve seconds of machine in a four-second shot.** Shot 24 is `1:39 | 4s` and
+its content is *"The Assayer's boom slews. The hammer ratchets: nine clicks."* The slew is **3 s**
+and nine clicks at 1 Hz is **9 s**. It does not fit, and the shot is the trailer's whole Act V
+payoff. **Fix, and it is better filmmaking anyway: start the wind under shot 23.** The mast comes out
+of the dark at 1:36 with the clicks already running, and the count has nine seconds to be a count.
+Act V is 18 s and can afford it if the mast reveal carries the wind's audio rather than preceding it.
+This also matters to §8.1: **a pulse that is on screen for four seconds is not a tempo.**
+
+**10. The trailer promises a cycle and delivers a count.** `WHAT-HAPPENED-HERE.md` §7: *"A viewer who
+counts has been handed the machine's entire cycle before the game has started."* Counting gives the
+click count. It gives the **period** only if two firings are 75 seconds apart on screen — and the
+opening ratchet is at 0:03 against the strike at 1:43, which is 100 s. **Moving the opening ratchet
+to 0:28 makes the period literally true**, for free, and puts the mine's clock ticking underneath the
+warm teaching act, which is a good intrusion. Against it: 0:03 is a stronger place for the first
+sound in the film, and *"black, water dripping, one distant ratchet"* is an excellent opening. I do
+not think this is clear-cut; I think it is worth knowing that the claim in §7 is currently
+unearned.
+
+### 8.3 What is buildable in `phase1/audio` today, what needs code, what needs a composer
+
+**Buildable now, with zero new code.**
+
+- `Voice` already takes a waveform, an `f0 → f1` sweep, duration, amplitude, pan, attack, decay,
+  delay, envelope shape, **an arbitrary partial stack**, and noise band limits. `Mixer._struck()`
+  builds inharmonic struck-bar stacks. So **a tonal bed is a set of long `SINE` voices on inharmonic
+  ratios with exponential envelopes, and a harmonic move is a second set of `f0`s.** The entire pitch
+  layer of §8.1 exists today.
+- **The pulse** is `play(..., delay=n * 1.0)`.
+- **The room** is `Mixer._room()` at low quality — long, dull, passage-shaped tails, free.
+- **The render** is already there: `Mixer(offline=True)` plus `render_offline()`, and
+  `view/recorder.py` already pulls the mix frame by frame into a WAV and muxes it with ffmpeg. **A
+  procedural score can be rendered to a stem this week and cut in an editor.**
+
+**Needs new code, and it is small.** Roughly 200 lines total.
+
+1. **A transport.** There is no bar/beat clock; everything schedules off match seconds. A `Score`
+   class owning a tempo and a section list, emitting voices on beats — the same shape of object as
+   `ratchet.py`, and it belongs beside it. ~150 lines.
+2. **Two buses.** `Mixer.duck()` currently hits every voice. `Voice` needs a `bus` field and `duck()`
+   a bus filter, so the world can duck the score one-way (§8.1). ~15 lines.
+3. **Amplitude automation upward.** `Voice.duck()` is the only level change and it only ramps down. A
+   crescendo needs its mirror. ~20 lines.
+4. **A streaming voice — for the game, not the trailer.** `Voice` builds its whole waveform at
+   construction: a 30-second bed is 5.3 MB and, at the measured 2.1 ms per 2.4 s, about **26 ms to
+   build inside one frame.** Irrelevant to an offline trailer render; fatal live. This is the same
+   finding as §4.8 and the same fix.
+
+**Genuinely needs a composer.**
+
+- **The pitch material.** Which notes, and which semitone the fold moves to. `_struck(ratios)` supplies
+  a mechanism; it does not supply a tune, and a wrong tune is worse than no tune. This is the one
+  place in the whole document where I would not trust a default.
+- **Anything with a performance in it.** Synthesis gets a sustained inharmonic tone with an envelope;
+  the gap between that and something a person played is the same wall §5.10 names for the machinery.
+
+**Recommendation: build the procedural score in `phase1/audio` first, cut the trailer with it, and
+hand it to a composer as the brief rather than as the deliverable.** It answers the structural
+questions cheaply and in exactly the right material — where it drops out, what the descent does, what
+the fold does, what register it must stay out of — and those are precisely the questions a composer
+would otherwise have to guess at from a text document. See question 15.
 
 ---
 
@@ -955,6 +1219,26 @@ game and it is currently silent. (§6.4)
 instead?** Default: **yes.** The player and the policy must cluster bearings by the same law or §1.3's
 argument fails in the small. Retires `tracker.py` and `acoustic_track.py`. (§2.5)
 
+**15. Does the trailer get a backing track?** Default: **yes** — sparse, tonal, built from the world's
+timbres through the game's own room, two harmonic events in two minutes, surviving the descent and
+stopping under card 3. Built procedurally in `phase1/audio` first and handed to a composer as the
+brief. **`TRAILER.md` §5 needs rewriting either way**, because its material claim is false
+independently of the score question. (§8.1, §8.3)
+
+**16. Does the run phase have any non-diegetic music, ever?** Default: **no**, as a rule sitting
+beside "audio may not import truth", and for the same reason: a score that has an opinion about the
+machine's situation is telling the player something their machine does not know. Note this bites even
+on a belief-driven score. (§6.5)
+
+**17. Does the surface have music?** Default: **yes**, stopping at the shaft collar — which makes the
+descent a musical event every raid, not just once in a trailer. Menu and loadout yes; replay playback
+no; post-match summary yes. (§6.5)
+
+**A note on question 4, restated because it now has two owners.** Nine fixed clicks versus the
+accelerando is a gameplay question *and* the trailer's tempo question. Taking the nine costs the
+trailer a free stringendo into the strike. My recommendation is unchanged — take the nine — but it
+should be decided knowing both bills. (§5.3, §8.1)
+
 ---
 
 ## 10. Every guess, in one place
@@ -979,6 +1263,17 @@ argument fails in the small. Retires `tracker.py` and `acoustic_track.py`. (§2.
    all**, which is exactly what it could not test.
 8. **The ten-hour ordering in §7.** It is an argument from what each sound predicts, not an
    observation. No playtest in this repo has ever been run with the current mixer audible.
+9. **That a two-minute unscored trailer reads as unfinished at a loud show** (§8.1). This is a claim
+   about an audience, from a designer's instinct that I agree with, and neither of us has tested it.
+   It is the weakest of the three arguments for a score and it is not the one the case rests on — the
+   *"you cannot drop out of nothing"* contradiction is internal to `TRAILER.md` §5 and needs no
+   audience research at all.
+10. **That texture without moving pitch will not read as finished** (§8.1). Same class of claim.
+11. **That ~200 lines covers the transport, the buses and the upward automation.** Estimated from the
+    shape of `ratchet.py`, not from writing it.
+12. **That the surface has enough of an identity to be scored.** `ART-DIRECTION.md` has no surface
+    section at all — no rendered exterior, no sky, no location — so §6.5's warmest claim rests on
+    `DESIGN-PRINCIPLES.md` §3 and the Godot spike, not on an art direction.
 
 **And one thing that is not a guess and should be said before anything in this document is acted
 on:** `docs/phase1-playtests/2026-09-08-cold-read.md` §6 — *"It cannot tell us whether the sound

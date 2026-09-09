@@ -176,20 +176,50 @@ water, and long tails down passages are the same material as the sound design ra
 competing layer. It can be synthesised in `phase1/audio/`, which already has voices, waveforms,
 envelopes and a mixer, so this is buildable now rather than a commission.
 
-**Where it goes, precisely.**
+**Where it goes, precisely — and the obvious placement is wrong.**
+
+The instinct is to fade the score out with the surface, at the shaft, so that music equals
+daylight. Do not. If the score goes when the surface goes, then the held silence at 1:01 has
+nothing to carry it, and the return of sound at 1:04 reads as an edit rather than as an arrival.
+
+**The score is the one thing that survives the descent.** Everything diegetic falls away over those
+five seconds — the yard, the rain, the winding gear, the machines — and the music narrows and is
+left alone in the dark. The world stops and the music does not. **Then, one beat later, at 1:01,
+the score stops too.** That is what the silence drops out of: fifty seconds of established music,
+which has just survived losing everything else.
+
+Same contrast the designer asked for, made in two stages instead of one, and the second stage is
+the one that hurts.
 
 | | | |
 |---|---|---|
 | 0:00–0:05 | nothing, then the unexplained ratchet | the score has not started; the world has |
 | 0:05–0:26 | the score enters under the headframe, low and slow | Act I |
-| 0:26–0:50 | it tightens through the teaching, rhythm arriving as the stops build | Act II |
-| 0:50–0:54 | it holds through the machine stepping onto the plate | the last moment of control |
-| **0:54** | **it stops, not fades** | the descent begins |
-| 0:54–2:00 | nothing but the game's own audio, for sixty-six seconds | Acts III to VI |
+| 0:26–0:50 | it tightens through the teaching; pulse arrives as the stops build | Act II |
+| 0:50–0:59 | every diegetic layer falls away; **the score drops a register and narrows** | the descent |
+| **1:01** | **the score stops, alone, over black** | the card lands in the hole it leaves |
+| 1:04–2:00 | nothing but the game's own audio, for fifty-six seconds | Acts IV to VI |
 
 **It does not come back.** Not for the machinery, not for the lie, not under the title. Bringing it
-back at the end would say that the viewer is safe again, and they are not. The last sound of the
-trailer is rain on an empty shaft.
+back would say the viewer is safe again. The last sound is rain on an empty shaft.
+
+**The argument that settles it, and it is not about contrast at all.** Card 5 is *"And it can be
+lied to."* The diegetic layer is **forbidden** from telling a viewer that: `ART-DIRECTION.md` §6.3
+bans any tell on a spoofed beacon, and the build honours it — a spoofed fix plays exactly the same
+chime as an honest one. Sound design in this game is a sensor readout and a sensor cannot
+editorialise. **Music is the only channel in the trailer allowed to know something the machine does
+not.** That is what a score is for here, and it is why the fold at 1:45 gets no silence: the
+diegetic layer plays its ordinary, cheerful housekeeping chime, and the score does the fold.
+
+**Two rules that stop it fighting the sound design.** It shares the same room model, so it sits in
+the space rather than on top of it; and it stays out of 400 Hz to 3 kHz, which `tuning.py` already
+reserves for anything that must be identified by ear.
+
+**A density problem, separate from the silence problem, and it must not be missed.** This section
+used to claim the trailer is built from the game's own audio. That is false. `phase1/audio/` has
+ten recipes and none of them is rain, steel, a pipe, a servo, a footfall or a yard. Acts I and II
+have almost no diegetic material to be built from. If only one thing gets made, **make the score**:
+an adequate tonal bed works, whereas inadequate rain-on-steel is worse than none.
 
 The rest of the trailer is built from the game's own audio, which already exists in
 `phase1/audio/` and is a real mixer rather than a library of samples.
