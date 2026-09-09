@@ -161,3 +161,36 @@ of props but whose surfaces read as flat shaded blocks.
 Both need a designer ruling. Until then the spikes treat the *intent* as binding — one rock
 family, world-space mapping, nothing unwrapped, nothing photographic — and the letter as
 amendable.
+
+## 7. Density is order, not scatter — 2026-09-09
+
+> I don't know what you are doing... the random shit thrown all over on the surface looks
+> like an abandoned scrap yard and that is not the vibe at all.
+
+Said looking at the pit-head after the density pass. The pass was mine and the fault is in how
+I briefed it: §4 asked for detail at three scales without saying detail *of what*, and uniform
+random scatter is the fastest way to fill a frame. It is also exactly how you draw abandonment.
+
+**What it binds.**
+- **Every object answers who put it there and why.** If that question has no answer, the object
+  is litter, and a frame full of litter reads as a site nobody works at. Density comes from
+  purpose: things in rows, in racks, in marked bays, on pallets, aligned to the site's own grid
+  and to each other, because a person or a machine put them down deliberately.
+- **The pit-head is a working facility, not a ruin.** The mine below is dead and drowned; the
+  operation above it is live. That contrast is the whole point of having a surface (§3), and
+  the art has to carry it. Somebody swept this yard this week.
+- **Clear ground is a feature.** Traffic lanes, turning circles, the apron in front of a bay
+  and the ground a machine walks are kept clear, and their emptiness reads as use. Uniform
+  cover is the tell.
+- **Weeds, debris and standing water belong in the margins only** — behind buildings, along
+  fences, in corners nothing crosses. Growing through the middle of a working apron says
+  nobody has walked there in a year.
+- **Repetition reads as manufactured.** The players' register is modular and mass-produced, so
+  identical units in an aligned row say "somebody built these" far more strongly than the same
+  objects rotated randomly. This is also the cheapest possible fix for §4's complaint that
+  advanced robots are not plausible in the frame.
+
+**The instrument this changes.** Placement stops being weighted random scatter over a surface
+class and becomes a small number of *arrangements* — a rack, a row, a bay, a stack, a lay-down
+area, a queue — each with its own footprint, spacing and alignment, placed against the layout's
+zones. Randomness sets which arrangement and what it holds, never the position of each object.
