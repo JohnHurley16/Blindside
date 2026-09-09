@@ -23,7 +23,8 @@ const CSV_PATH := "res://metrics.csv"
 var cfg := {
 	"seed": 7, "len": 240, "shadow": true, "fog": true, "props": true,
 	"vis": true, "walkonly": false, "stay": false, "shotsonly": false,
-	"speed": 1.7,
+	"speed": 1.7, "shotdir": "", "shotset": "legacy", "ssao": false,
+	"pom": true, "scales": true, "water": true,
 }
 
 var sub: SubViewport
@@ -49,6 +50,7 @@ var adapter: String = ""
 var shot_list: Array = []
 var shot_i: int = 0
 var busy: bool = false
+var shot_dir: String = SHOT_DIR
 
 func _parse_args() -> void:
 	var args: PackedStringArray = OS.get_cmdline_user_args()
@@ -68,6 +70,14 @@ func _parse_args() -> void:
 			cfg["props"] = false
 		elif a == "--novis":
 			cfg["vis"] = false
+		elif a == "--ssao":
+			cfg["ssao"] = true
+		elif a == "--nopom":
+			cfg["pom"] = false
+		elif a == "--noscales":
+			cfg["scales"] = false
+		elif a == "--nowater":
+			cfg["water"] = false
 		elif a == "--walkonly":
 			cfg["walkonly"] = true
 		elif a == "--stay":
@@ -76,6 +86,10 @@ func _parse_args() -> void:
 			cfg["shotsonly"] = true
 		elif a.begins_with("--speed="):
 			cfg["speed"] = float(a.substr(8))
+		elif a.begins_with("--shotdir="):
+			cfg["shotdir"] = a.substr(10)
+		elif a.begins_with("--shotset="):
+			cfg["shotset"] = a.substr(10)
 
 func _stage(msg: String) -> void:
 	# stdout is fully buffered when Godot's output is redirected, so progress
@@ -94,7 +108,10 @@ func _ready() -> void:
 		pf.close()
 	_stage("ready")
 	_parse_args()
-	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(SHOT_DIR))
+	shot_dir = SHOT_DIR
+	if String(cfg["shotdir"]) != "":
+		shot_dir = SHOT_DIR + String(cfg["shotdir"]) + "/"
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(shot_dir))
 
 	# --- the 1920x1080 render target -------------------------------------
 	var svc := SubViewportContainer.new()
@@ -123,7 +140,29 @@ func _ready() -> void:
 	env.tonemap_mode = Environment.TONE_MAPPER_AGX
 	env.tonemap_exposure = 1.0
 	env.tonemap_white = 6.0
-	env.ssao_enabled = false
+	# SSAO -- MEASURED, AND CUT. Off by default; --ssao turns it on.
+	#
+	# Godot's SSAO modulates AMBIENT, and ambient here is disabled, so it does
+	# nothing at all without ssao_light_affect. Turned onto direct light at
+	# 0.55 it cost 4.35 ms of an 8.68 ms GPU frame -- half the frame -- and it
+	# was also what produced every one of the 60 ms+ spikes in the walk: the
+	# runs with it off were the only stall-free ones. The underfoot frame with
+	# and without differs by 0.25% mean absolute pixel value
+	# (shots/photoreal/cmp_ssao.png), because the material AO computed from the
+	# parallax height field is already doing this job, from the real geometry
+	# rather than from the depth buffer, and doing it better.
+	#
+	# Keeping the code and the switch because the ruling in the note below is
+	# still worth having; the technique is simply not worth its price here.
+	env.ssao_enabled = cfg["ssao"]
+	env.ssao_radius = 0.55
+	env.ssao_intensity = 2.4
+	env.ssao_power = 1.6
+	env.ssao_detail = 0.9
+	env.ssao_horizon = 0.10
+	env.ssao_sharpness = 0.96
+	env.ssao_light_affect = 0.55
+	env.ssao_ao_channel_affect = 0.55
 	env.glow_enabled = true
 	env.glow_intensity = 0.35
 	env.glow_bloom = 0.02
@@ -160,6 +199,26 @@ func _ready() -> void:
 	gen_ms_dress = float(t2 - t1) / 1000.0
 	gen_ms_total = float(t2 - t0) / 1000.0
 
+	# --- the per-technique ablation switches -------------------------------
+	# 0.001, not 0.0: these uniforms are all divisors in a distance ramp, and
+	# setting one to zero divides by zero, which makes the ablation row measure
+	# a NaN rather than the technique. The first ablation table taken with this
+	# switch reported parallax as FREE and three normal scales as a saving,
+	# which is what sent me looking.
+	if not cfg["pom"]:
+		dress.mat_rock.set_shader_parameter("pom_far", 0.001)
+	if not cfg["scales"]:
+		dress.mat_rock.set_shader_parameter("bump_gain", 0.0)
+		dress.mat_rock.set_shader_parameter("detail_far", 0.001)
+		dress.mat_rock.set_shader_parameter("micro_far", 0.001)
+		dress.mat_rock.set_shader_parameter("floor_bump_far", 0.001)
+		dress.mat_stone.set_shader_parameter("detail_far", 0.001)
+		dress.mat_stone.set_shader_parameter("micro_far", 0.001)
+	if not cfg["water"]:
+		for c in geo.get_children():
+			for g in c.get_children():
+				if g is MultiMeshInstance3D and g.name == "watertile":
+					g.visible = false
 	if not cfg["props"]:
 		for c in geo.get_children():
 			for g in c.get_children():
@@ -170,6 +229,18 @@ func _ready() -> void:
 			for g in c.get_children():
 				if g is GeometryInstance3D:
 					g.visibility_range_end = 0.0
+
+	if OS.get_cmdline_user_args().has("--dumpnoise") or OS.get_cmdline_args().has("--dumpnoise"):
+		for nm in [["fbm", dress.tex_fbm], ["cel", dress.tex_cel], ["agg", dress.tex_agg], ["cid", dress.tex_cid]]:
+			var t3: ImageTexture3D = nm[1]
+			var imgs: Array[Image] = t3.get_data()
+			print("DBG noise %s slices=%d dim=%dx%dx%d" % [nm[0], imgs.size(), t3.get_width(), t3.get_height(), t3.get_depth()])
+			if imgs.size() == 0:
+				continue
+			var im: Image = imgs[mini(20, imgs.size() - 1)]
+			im.convert(Image.FORMAT_RGB8)
+			im.save_png(ProjectSettings.globalize_path("res://_noise_dump_%s.png" % nm[0]))
+			print("DBG noise %s slice %dx%d fmt %d" % [nm[0], im.get_width(), im.get_height(), im.get_format()])
 
 	# --- beacon pilots: the only standing light, and it is the players' ---
 	var nlit: int = 0
@@ -195,16 +266,29 @@ func _ready() -> void:
 	sub.add_child(cam)
 	lamp = SpotLight3D.new()
 	lamp.light_color = Color(1.00, 0.98, 0.95)     # white for every team
-	lamp.light_energy = 4.2
+	# Re-derived, not inherited. ART-DIRECTION 2.2 is explicit that the wattage
+	# is renderer-specific and must be re-derived against the RATIOS whenever
+	# the materials move. The floor albedo dropped from the schematic's 0.42 to
+	# a measured-plausible 0.19, so the lamp goes up to hold "floor 3 m ahead,
+	# grazing, about 0.08 relative luminance".
+	lamp.light_energy = 5.4
 	lamp.spot_range = 26.0
 	lamp.spot_angle = 27.0                          # a 54 degree cone
 	lamp.spot_angle_attenuation = 0.40
 	lamp.spot_attenuation = 2.0
 	lamp.shadow_enabled = cfg["shadow"]
-	lamp.shadow_bias = 0.035
-	lamp.shadow_normal_bias = 0.6
+	# Tighter than the first pass. A large bias detaches a small prop's shadow
+	# from its own base, which is the classic hovering tell, and the whole point
+	# of moving the lamp off the eye was to get those contact shadows back.
+	lamp.shadow_bias = 0.020
+	lamp.shadow_normal_bias = 1.10
 	lamp.light_specular = 1.0
-	lamp.position = Vector3(0.10, -0.16, 0.0)
+	# The lamp is 0.26 m to the side of and 0.22 m below the sensor. It was
+	# 0.10/0.16, which is close enough to co-located that NOTHING in the frame
+	# had a modelling shadow: every surface was lit from exactly the direction
+	# it was seen from, and that alone made the underfoot read flat. This is the
+	# cheapest single photoreal change in the whole pass.
+	lamp.position = Vector3(0.26, -0.22, 0.10)
 	lamp.rotation_degrees = Vector3(-11.0, 0.0, 0.0) # tilted 11 deg down
 	cam.add_child(lamp)
 
@@ -254,7 +338,7 @@ func _ready() -> void:
 		km.get_surface_count(), str((fmt & Mesh.ARRAY_FORMAT_COLOR) != 0),
 		str((ar[Mesh.ARRAY_COLOR] as PackedColorArray)[0]) if ar[Mesh.ARRAY_COLOR] != null else "none"])
 	print("path length      : %.1f m" % total_len)
-	print("flags            : shadow=%s fog=%s props=%s vis=%s" % [cfg["shadow"], cfg["fog"], cfg["props"], cfg["vis"]])
+	print("flags            : shadow=%s fog=%s props=%s vis=%s ssao=%s" % [cfg["shadow"], cfg["fog"], cfg["props"], cfg["vis"], cfg["ssao"]])
 
 func _add_particles() -> void:
 	# drips: where the works are wet. GPU particles, a handful of emitters,
@@ -372,10 +456,41 @@ func _build_shot_list() -> void:
 		["11_set_line", i_dense + 2, 1.20, 13, -0.04, 0.0, 40.0],
 		["12_crown", i_dense + 4, 1.05, 6, 0.0, 0.26, 52.0],
 	]
+	# a station carrying BOTH a timber set and a bolt line, so the iron-against-
+	# rock frame is guaranteed rather than hoped for
+	var i_iron: int = _find(func(s): return (s[CaveTopology.S_WORKS] & CaveTopology.WK_SETS) != 0 		and (s[CaveTopology.S_WORKS] & CaveTopology.WK_BOLTLINE) != 0 		and (s[CaveTopology.S_WORKS] & CaveTopology.WK_PIPE) != 0, 0.45)
+	if String(cfg["shotset"]) == "photoreal":
+		# The photoreal pair set. Format is deliberately different from the
+		# legacy one so a pose is an ABSOLUTE eye height, yaw offset and pitch
+		# -- these frames have to be byte-for-byte the same camera before and
+		# after, and a pose derived from a look-ahead point is not, because the
+		# look-ahead point moves if anything about the path changes.
+		#   [name, station, eye_m, yaw_offset_rad, pitch_rad, fov, "PR"]
+		shot_list = [
+			["p1_underfoot_macro", i_rail + 3, 1.20, 0.05, -0.785, 50.0, "PR"],
+			["p2_wet_floor_water", i_flood - 13, 1.10, 0.0, -0.34, 52.0, "PR"],
+			["p3_wall_lamp_dist", i_dense, 1.30, 0.85, -0.06, 46.0, "PR"],
+			["p4_bedded_face", i_shallow + 4, 1.10, 1.05, 0.04, 40.0, "PR"],
+			# legacy pose format (look-ahead, not absolute pitch): this is the
+			# same camera as the old 11_set_line, which is the frame that
+			# actually contains sets, a pipe run, mesh and wet floor at once.
+			["p5_iron_prop", i_dense + 2, 1.20, 13, -0.04, 0.0, 40.0],
+			["p6_wide_passage", i_rail, 1.15, 0.0, -0.10, 48.0, "PR"],
+			["p7_ballast_gauge", i_rail + 1, 0.98, 0.03, -0.55, 52.0, "PR"],
+			["p8_junction_wet", i_junc - 4, 1.15, 0.14, -0.22, 56.0, "PR"],
+		]
 
 func _pose_for(shot: Array) -> Array:
 	var ids: PackedInt32Array = topo.edges[0]
 	var idx: int = clampi(shot[1], 1, dress.path_points.size() - 2)
+	if shot.size() == 7 and typeof(shot[6]) == TYPE_STRING:
+		var pp: Vector3 = dress.path_points[idx]
+		pp.y = dress._st_pos(ids[idx]).y + float(shot[2])
+		var ah: int = clampi(idx + 4, 0, dress.path_points.size() - 1)
+		var dd: Vector3 = (dress.path_points[ah] - dress.path_points[idx]).normalized()
+		if dd.length() < 0.5:
+			dd = Vector3(0, 0, -1)
+		return [pp, atan2(-dd.x, -dd.z) + float(shot[3]), float(shot[4]), float(shot[5])]
 	if shot.size() > 7:
 		# an explicit world target: stand back along the passage and look at it.
 		# This is how the two-registers frame is guaranteed rather than hoped for.
@@ -539,7 +654,7 @@ func _do_shots() -> void:
 			await RenderingServer.frame_post_draw
 		var img: Image = sub.get_texture().get_image()
 		_stage("shot " + str(shot[0]))
-		var path: String = SHOT_DIR + str(shot[0]) + ".png"
+		var path: String = shot_dir + str(shot[0]) + ".png"
 		img.save_png(ProjectSettings.globalize_path(path))
 		var dc: int = int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))
 		var pr: int = int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME))

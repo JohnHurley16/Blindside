@@ -19,9 +19,9 @@ extends RefCounted
 
 const CELL: float = 0.6
 const CHUNK_M: float = 8.0
-const RING_VERTS: int = 30          # 15 per side
-const HALF_RING: int = 15
-const SUBSTEPS: int = 3             # rings per station -> ~0.2 m spacing
+const RING_VERTS: int = 40          # 20 per side
+const HALF_RING: int = 20
+const SUBSTEPS: int = 4             # rings per station -> ~0.15 m spacing
 
 # how far each family of thing is drawn. The lamp reaches ~20 m on walls and
 # ~6 m on the floor (ART-DIRECTION 2.1), and the direction says spend no art
@@ -36,8 +36,20 @@ var rng: RandomNumberGenerator
 var noise: FastNoiseLite
 var noise_lo: FastNoiseLite
 
+# Generated noise, not a bitmap asset. PROCEDURAL-AND-GODOT Q5 (default yes).
+# These four volumes replace ~700 integer-hash evaluations per rock fragment
+# with ~30-60 texture fetches, which is what paid for the parallax and the
+# three normal scales. Built by FastNoiseLite at load, from the cave seed;
+# nothing is imported, nothing is unwrapped, nothing is photographic. 786 KB.
+const NTEX: int = 64
+var tex_fbm: ImageTexture3D
+var tex_cel: ImageTexture3D
+var tex_agg: ImageTexture3D
+var tex_cid: ImageTexture3D
+
 var mat_rock: ShaderMaterial
 var mat_stone: ShaderMaterial
+var mat_block: ShaderMaterial
 var mat_iron: ShaderMaterial
 var mat_steel: ShaderMaterial
 var mat_timber: ShaderMaterial
@@ -45,7 +57,7 @@ var mat_composite: ShaderMaterial
 var mat_alu: ShaderMaterial
 var mat_porcelain: ShaderMaterial
 var mat_cable: ShaderMaterial
-var mat_water: StandardMaterial3D
+var mat_water: ShaderMaterial
 var mat_pilot: StandardMaterial3D
 
 var kit: Dictionary = {}            # name -> Mesh
@@ -172,6 +184,8 @@ func build(p_topo: CaveTopology, p_seed: int, root: Node3D) -> void:
 	noise_lo.frequency = 0.11
 	noise_lo.fractal_octaves = 2
 
+	_make_noise_textures(p_seed)
+	stage.call("noise volumes")
 	_make_materials()
 	_make_kit()
 	stage.call("kit built")
@@ -185,31 +199,109 @@ func build(p_topo: CaveTopology, p_seed: int, root: Node3D) -> void:
 	stage.call("emitted")
 	_build_camera_path()
 
+# --- the generated noise volumes ------------------------------------------
+# kind 0 = fbm, 1 = cellular F2-F1 (joints), 2 = cellular F1 (the bevel between
+# aggregate stones), 3 = cellular CELL_VALUE (one value per stone: its height
+# and its albedo). Seamless, so they tile in world space at any scale.
+func _noise3(kind: int, freq: float, oct: int, seedv: int) -> ImageTexture3D:
+	var n := FastNoiseLite.new()
+	n.seed = seedv
+	n.frequency = freq
+	if kind == 0:
+		n.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+		n.fractal_type = FastNoiseLite.FRACTAL_FBM
+		n.fractal_octaves = oct
+		n.fractal_lacunarity = 2.0
+		n.fractal_gain = 0.54
+	else:
+		n.noise_type = FastNoiseLite.TYPE_CELLULAR
+		n.fractal_type = FastNoiseLite.FRACTAL_NONE
+		n.cellular_distance_function = FastNoiseLite.DISTANCE_EUCLIDEAN
+		n.cellular_jitter = 1.0
+		if kind == 1:
+			n.cellular_return_type = FastNoiseLite.RETURN_DISTANCE2_SUB
+		elif kind == 2:
+			n.cellular_return_type = FastNoiseLite.RETURN_DISTANCE
+		else:
+			n.cellular_return_type = FastNoiseLite.RETURN_CELL_VALUE
+	var imgs: Array[Image] = n.get_seamless_image_3d(NTEX, NTEX, NTEX, false, 0.08)
+	var t := ImageTexture3D.new()
+	t.create(imgs[0].get_format(), NTEX, NTEX, NTEX, false, imgs)
+	if OS.get_cmdline_args().has("--dumpnoise"):
+		var im: Image = imgs[20].duplicate()
+		im.convert(Image.FORMAT_RGB8)
+		im.save_png(ProjectSettings.globalize_path("res://_noise_dump_k%d.png" % kind))
+		var mn := 255
+		var mx := 0
+		for yy in range(NTEX):
+			for xx in range(NTEX):
+				var v: int = int(imgs[20].get_pixel(xx, yy).r * 255.0)
+				mn = mini(mn, v)
+				mx = maxi(mx, v)
+		print("DBG noise kind %d fmt %d range %d..%d" % [kind, imgs[0].get_format(), mn, mx])
+	return t
+
+func _make_noise_textures(sd: int) -> void:
+	# 2 base cycles across the tile, 5 octaves -> features from half a tile down
+	# to a thirty-second of one. Sampled at three world scales in the shader.
+	tex_fbm = _noise3(0, 2.0 / float(NTEX), 5, sd + 101)
+	# 6 cells across the tile, so `p * fracture / 6` gives `fracture` per metre
+	tex_cel = _noise3(1, 6.0 / float(NTEX), 1, sd + 211)
+	tex_agg = _noise3(2, 6.0 / float(NTEX), 1, sd + 307)
+	# one value per cell, so a stone is not the value of the stone beside it.
+	# Same seed and frequency as tex_agg, so the cells line up exactly.
+	tex_cid = _noise3(3, 6.0 / float(NTEX), 1, sd + 307)
+
 # --- materials -------------------------------------------------------------
 func _make_materials() -> void:
 	mat_rock = ShaderMaterial.new()
 	mat_rock.shader = load("res://rock.gdshader")
+	mat_rock.set_shader_parameter("t_fbm", tex_fbm)
+	mat_rock.set_shader_parameter("t_cel", tex_cel)
+	mat_rock.set_shader_parameter("t_agg", tex_agg)
+	mat_rock.set_shader_parameter("t_cid", tex_cid)
+	mat_rock.set_shader_parameter("water_y", float(topo.water_datum_mm) * 0.001)
 	mat_stone = ShaderMaterial.new()
 	mat_stone.shader = load("res://stone.gdshader")
+	mat_stone.set_shader_parameter("t_fbm", tex_fbm)
+	mat_stone.set_shader_parameter("t_cel", tex_cel)
+	mat_stone.set_shader_parameter("water_y", float(topo.water_datum_mm) * 0.001)
+	# Loose rock in a drowned mine is wet rock. 0.35 was the first pass's guess
+	# and it left every breakdown block reading as dry chalk under the lamp.
+	mat_stone.set_shader_parameter("wetness", 0.55)
+	mat_stone.set_shader_parameter("stone_tint", Vector3(0.80, 0.775, 0.74))
+	# Breakdown blocks and spall plates are the only loose rock that is ever
+	# within half a metre of the lamp, and at that range ANY albedo blows. A
+	# 0.6 m boulder rendered at the same value as a 60 mm chip reads as
+	# polystyrene. They get their own instance of the same shader: darker,
+	# because a block that fell off the back is a fresh wet face, not a dusted
+	# one, and wetter, because it has been sitting in the muck.
+	mat_block = ShaderMaterial.new()
+	mat_block.shader = mat_stone.shader
+	mat_block.set_shader_parameter("t_fbm", tex_fbm)
+	mat_block.set_shader_parameter("t_cel", tex_cel)
+	mat_block.set_shader_parameter("water_y", float(topo.water_datum_mm) * 0.001)
+	mat_block.set_shader_parameter("wetness", 0.78)
+	mat_block.set_shader_parameter("stone_tint", Vector3(0.60, 0.583, 0.560))
 
 	# One shader, six parameter sets. Vertex colours carry the part colours, so
 	# a rail is rusted web plus bright head inside a single draw call.
+	# METAL IS 0 OR 1. Cast iron was 0.55 in the first pass, which is not a
+	# material. Where the rust has taken it, the mask carries it to dielectric.
 	var ksh: Shader = load("res://kit.gdshader")
-	mat_iron = _kit_mat(ksh, 0.55, 0.68, 1.00, 0.35, 0.0)      # cast iron
-	mat_steel = _kit_mat(ksh, 1.00, 0.17, 0.15, 0.40, 0.0)     # rubbed steel
-	mat_timber = _kit_mat(ksh, 0.00, 0.90, 0.35, 0.45, 1.0)    # waterlogged
-	mat_composite = _kit_mat(ksh, 0.00, 0.36, 0.00, 0.10, 0.0) # BROUGHT
-	mat_alu = _kit_mat(ksh, 0.92, 0.28, 0.00, 0.10, 0.0)       # BROUGHT
-	mat_porcelain = _kit_mat(ksh, 0.00, 0.10, 0.03, 0.20, 0.0) # the Bus
-	mat_cable = _kit_mat(ksh, 0.00, 0.58, 0.00, 0.25, 0.0)
+	var F0_IRON := Color(0.560, 0.570, 0.580)
+	var F0_ALU := Color(0.912, 0.914, 0.920)
+	mat_iron = _kit_mat(ksh, 1.0, 0.62, 1.00, 0.42, 0.0, F0_IRON)   # cast iron
+	mat_steel = _kit_mat(ksh, 1.0, 0.19, 0.16, 0.45, 0.0, F0_IRON)  # rubbed steel
+	mat_timber = _kit_mat(ksh, 0.0, 0.88, 0.16, 0.55, 1.0, F0_IRON) # waterlogged
+	mat_composite = _kit_mat(ksh, 0.0, 0.38, 0.00, 0.14, 0.0, F0_ALU)  # BROUGHT
+	mat_alu = _kit_mat(ksh, 1.0, 0.26, 0.00, 0.14, 0.0, F0_ALU)        # BROUGHT
+	mat_porcelain = _kit_mat(ksh, 0.0, 0.09, 0.03, 0.24, 0.0, F0_IRON) # the Bus
+	mat_cable = _kit_mat(ksh, 0.0, 0.56, 0.00, 0.30, 0.0, F0_IRON)
 
-	mat_water = StandardMaterial3D.new()
-	mat_water.albedo_color = Color(0.020, 0.028, 0.032, 0.86)
-	mat_water.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat_water.metallic = 0.15
-	mat_water.roughness = 0.03
-	mat_water.metallic_specular = 0.9
-	mat_water.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mat_water = ShaderMaterial.new()
+	mat_water.shader = load("res://water.gdshader")
+	mat_water.set_shader_parameter("t_fbm", tex_fbm)
 
 	# WARM_DIM amber. Never cyan (belief), never red (lethal). ART-DIRECTION 2.5
 	mat_pilot = StandardMaterial3D.new()
@@ -220,7 +312,7 @@ func _make_materials() -> void:
 	mat_pilot.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 
 func _kit_mat(sh: Shader, metal: float, rough: float, rust: float,
-			  wet: float, grain: float) -> ShaderMaterial:
+			  wet: float, grain: float, f0: Color = Color(0.56, 0.57, 0.58)) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
 	m.shader = sh
 	m.set_shader_parameter("metal", metal)
@@ -228,6 +320,9 @@ func _kit_mat(sh: Shader, metal: float, rough: float, rust: float,
 	m.set_shader_parameter("rust", rust)
 	m.set_shader_parameter("wet_amt", wet)
 	m.set_shader_parameter("grain", grain)
+	m.set_shader_parameter("metal_f0", Vector3(f0.r, f0.g, f0.b))
+	m.set_shader_parameter("t_fbm", tex_fbm)
+	m.set_shader_parameter("water_y", float(topo.water_datum_mm) * 0.001)
 	return m
 
 # --- the kit of parts ------------------------------------------------------
@@ -292,7 +387,7 @@ func _face(dir: Vector3) -> Basis:
 	return Basis.looking_at(-d, up)
 
 # an angular stone: a box distorted per-vertex. Reads as broken rock, not a ball.
-func _stone_mesh(sd: int, r: float, flat: float = 1.0) -> ArrayMesh:
+func _stone_mesh(sd: int, r: float, flat: float = 1.0, mat: Material = null) -> ArrayMesh:
 	var lr := RandomNumberGenerator.new()
 	lr.seed = sd
 	var s := _sph(r, 7)
@@ -306,7 +401,19 @@ func _stone_mesh(sd: int, r: float, flat: float = 1.0) -> ArrayMesh:
 		var k: float = r * (0.62 + lr.randf() * 0.55)
 		v[i] = Vector3(d.x * k, d.y * k * flat, d.z * k)
 	a[Mesh.ARRAY_VERTEX] = v
-	a[Mesh.ARRAY_NORMAL] = _recalc_normals(v, a[Mesh.ARRAY_INDEX])
+	# BUG, and it was in every underfoot frame this spike ever rendered.
+	# _recalc_normals' cross product has the opposite sign to Godot's
+	# front-face winding, so every loose stone, ballast chip, spall flake and
+	# breakdown block was lit by a normal pointing INTO itself. Under one lamp
+	# and zero ambient that means no diffuse and no specular: they rendered as
+	# flat black cut-outs lying on the floor, which is most of why the underfoot
+	# scale read as origami. A stone is star-shaped about its own origin, so
+	# `dot(n, v) > 0` is the correct outward test.
+	var sn: PackedVector3Array = _recalc_normals(v, a[Mesh.ARRAY_INDEX])
+	for i in range(sn.size()):
+		if sn[i].dot(v[i]) < 0.0:
+			sn[i] = -sn[i]
+	a[Mesh.ARRAY_NORMAL] = sn
 	var col := PackedColorArray()
 	col.resize(v.size())
 	for i in range(v.size()):
@@ -319,11 +426,11 @@ func _stone_mesh(sd: int, r: float, flat: float = 1.0) -> ArrayMesh:
 	var arr := []
 	arr.resize(Mesh.ARRAY_MAX)
 	arr[Mesh.ARRAY_VERTEX] = a[Mesh.ARRAY_VERTEX]
-	arr[Mesh.ARRAY_NORMAL] = a[Mesh.ARRAY_NORMAL]
+	arr[Mesh.ARRAY_NORMAL] = sn
 	arr[Mesh.ARRAY_COLOR] = col
 	arr[Mesh.ARRAY_INDEX] = a[Mesh.ARRAY_INDEX]
 	am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
-	am.surface_set_material(0, mat_stone)
+	am.surface_set_material(0, mat if mat != null else mat_stone)
 	return am
 
 func _recalc_normals(v: PackedVector3Array, idx: PackedInt32Array) -> PackedVector3Array:
@@ -358,7 +465,7 @@ func _make_kit() -> void:
 	for i in range(3):
 		_reg("ballast%d" % i, _stone_mesh(211 + i, 0.038 + i * 0.012, 0.8), VIS_UNDERFOOT)
 	for i in range(3):
-		_reg("block%d" % i, _stone_mesh(311 + i, 0.30 + i * 0.24, 0.72), VIS_SILHOUETTE)
+		_reg("block%d" % i, _stone_mesh(311 + i, 0.30 + i * 0.24, 0.72, mat_block), VIS_SILHOUETTE)
 	# fines / silt fan: a flat disc
 	b = MB.new()
 	b.add_prim(mat_stone, _cyl(0.30, 0.012, 9), _xf(Vector3.ZERO), Color(0.40, 0.35, 0.27))
@@ -568,7 +675,7 @@ func _make_kit() -> void:
 	_reg("lagging", b.commit(), VIS_LAMP)
 	# fresh spall: thin angular flakes off the back, on ledges and underfoot
 	for i in range(3):
-		_reg("spall%d" % i, _stone_mesh(511 + i, 0.16 + i * 0.07, 0.28), VIS_LAMP)
+		_reg("spall%d" % i, _stone_mesh(511 + i, 0.16 + i * 0.07, 0.28, mat_block), VIS_LAMP)
 	# grit: the smallest thing a machine stands on
 	for i in range(2):
 		_reg("grit%d" % i, _stone_mesh(611 + i, 0.026 + i * 0.010, 0.85), VIS_UNDERFOOT)
@@ -614,6 +721,13 @@ func _prop(p: Vector3, name: String, xf: Transform3D, _col: Color = Color(1, 1, 
 # ===========================================================================
 # station geometry helpers
 # ===========================================================================
+# The shell floor is displaced by noise in _sweep_edge; the rock shader then
+# parallax-maps another 58 mm of aggregate DOWN from that polygon. A prop
+# placed on the polygon therefore stands on the tallest stone in the frame and
+# reads as hovering. This returns the offset that puts it back in the ground.
+func _floor_y(q: Vector3, worked: float) -> float:
+	return noise.get_noise_3d(q.x * 3.1, 7.0, q.z * 3.1) * lerp(0.10, 0.022, worked) - 0.026
+
 func _st(i: int) -> PackedInt32Array:
 	return topo.stations[i]
 
@@ -711,14 +825,16 @@ func _sweep_edge(ids: PackedInt32Array) -> void:
 			var ht: float = lerp(_ht(sa), _ht(sb), t)
 			var worked: float = lerp(float(sa[CaveTopology.S_WORKED]), float(sb[CaveTopology.S_WORKED]), t) / 255.0
 			var wet: float = lerp(float(sa[CaveTopology.S_WET]), float(sb[CaveTopology.S_WET]), t) / 255.0
+			# WK_STANDWATER used to place an instanced disc. It now raises the
+			# wetness the shader sees, and the shader grows the puddle out of
+			# the parallax height field where the ground is actually low.
+			if (sa[CaveTopology.S_WORKS] & CaveTopology.WK_STANDWATER) != 0:
+				wet = maxf(wet, 0.82)
 			var dark: float = float(sa[CaveTopology.S_DEPTH]) / float(maxi(1, topo.edges[0].size()))
 			dark = clampf(dark, 0.0, 1.0)
 			var frac01: float = clampf((float(sa[CaveTopology.S_FRACTURE]) - 3.0) / 11.0, 0.0, 1.0)
 			var bed01: float = clampf((float(sa[CaveTopology.S_BEDDING]) - 4.0) / 31.0, 0.0, 1.0)
 			var packed: float = floor(frac01 * 31.0) * 32.0 + floor(bed01 * 31.0)
-			var water_y: float = -9999.0
-			if sa[CaveTopology.S_STATE] == CaveTopology.FLOODED:
-				water_y = float(topo.water_datum_mm) * 0.001
 			var gutter: bool = (sa[CaveTopology.S_WORKS] & CaveTopology.WK_GUTTER) != 0
 			var iron_base: float = 0.0
 			var wks: int = sa[CaveTopology.S_WORKS]
@@ -750,25 +866,35 @@ func _sweep_edge(ids: PackedInt32Array) -> void:
 				var floor_mask: float = clampf(uv.y / 0.35, 0.0, 1.0)
 				var big: float = noise_lo.get_noise_3d(lp.x * 1.0, lp.y * 1.0, lp.z * 1.0)
 				var fine: float = noise.get_noise_3d(lp.x * 2.2, lp.y * 2.2, lp.z * 2.2)
-				var amp: float = lerp(0.42, 0.085, worked) * floor_mask
+				var amp: float = lerp(0.52, 0.155, worked) * floor_mask
 				var d: float = big * amp + fine * amp * 0.45
+				# BEDDING AS GEOMETRY, not only as a shader band. A lamp that
+				# sits at the eye returns almost no shading contrast from a
+				# normal map (N.L equals N.V), so the beds have to be real
+				# ledges in the silhouette or they do not read at all.
+				var bedp: float = lerp(0.25, 0.60, fposmod(floor(lp.y * 0.7) * 0.37 + 0.31, 1.0))
+				d += sin(lp.y * TAU / bedp) * 0.030 * bed01 * floor_mask
+				d -= smoothstep(0.86, 1.0, sin(lp.y * TAU / bedp) * 0.5 + 0.5) * 0.045 * bed01 * floor_mask
 				lp += outward * d
 				# the floor is not flat either: rubble relief under the sweep
 				if uv.y < 0.02:
 					lp.y += (noise.get_noise_3d(lp.x * 3.1, 7.0, lp.z * 3.1)) * lerp(0.10, 0.022, worked)
 				ring.append(lp)
-				var above: float = lp.y - water_y if water_y > -9000.0 else 4.0
+				# UV2.x is the SIGNED lateral offset from the centreline in
+				# metres. The waterline moved into a shader uniform; the floor
+				# needed a lateral coordinate so the trammed way and the wheel
+				# ruts have somewhere to be.
 				data.append([
 					Color(wet, worked, dark, iron_base * clampf(1.2 - abs(uv.y - 1.5), 0.0, 1.0)),
 					Vector2(axial, s01 * 0.5 + (0.5 if side < 0.0 else 0.0)),
-					Vector2(above, packed)
+					Vector2(uv.x, packed)
 				])
 			if prev_ring.size() == RING_VERTS:
 				_emit_band(prev_ring, prev_data, ring, data, prev_centre, p + Vector3.UP * ht * 0.42)
 			prev_ring = ring
 			prev_data = data
 			prev_centre = p + Vector3.UP * ht * 0.42
-			axial += 0.2
+			axial += 0.15
 
 func _catmull(p0: Vector3, p1: Vector3, p2: Vector3, p3: Vector3, t: float) -> Vector3:
 	var t2: float = t * t
@@ -852,7 +978,7 @@ func _build_chambers() -> void:
 				for w in range(4):
 					cc.push_back(Color(wet, worked, dark, 0.15))
 					uu.push_back(Vector2(v[w].x, float(b2) / float(SEG)))
-					u2.push_back(Vector2(v[w].y - p.y + 0.4, packed))
+					u2.push_back(Vector2(6.0, packed))
 				var nn: PackedVector3Array = _recalc_normals(v, idx)
 				var ctr: Vector3 = p + Vector3.UP * (ht * 0.35)
 				for w in range(4):
@@ -870,14 +996,14 @@ func _build_chambers() -> void:
 		fv.push_back(p)
 		fc.push_back(Color(wet, worked, dark, 0.1))
 		fu.push_back(Vector2(p.x, 0.0))
-		fu2.push_back(Vector2(0.4, packed))
+		fu2.push_back(Vector2(6.0, packed))
 		for b2 in range(SEG + 1):
 			var th2: float = float(b2 % SEG) / float(SEG) * TAU
 			var lp2: Vector3 = rows[0][b2 % SEG]
 			fv.push_back(lp2)
 			fc.push_back(Color(wet, worked, dark, 0.1))
 			fu.push_back(Vector2(lp2.x, float(b2) / float(SEG)))
-			fu2.push_back(Vector2(0.4, packed))
+			fu2.push_back(Vector2(6.0, packed))
 		for b2 in range(SEG):
 			fi.push_back(0); fi.push_back(b2 + 1); fi.push_back(((b2 + 1) % SEG) + 1)
 		var fn: PackedVector3Array = PackedVector3Array()
@@ -915,42 +1041,52 @@ func _dress_station(sid: int, i: int, ids: PackedInt32Array) -> void:
 	var basis_dir := Basis.from_euler(Vector3(0, yaw, 0))
 
 	# ---------- UNDERFOOT (0 - 1.5 m) --------------------------------------
-	# loose stone. More where the ground is bad, less where it was trammed.
-	var n_stone: int = int(14.0 + 34.0 * (1.0 - worked * 0.62) + (1.0 - integ) * 24.0)
+	# Loose stone. HALF-BURIED, not resting: every one of these is sunk between
+	# a quarter and three-quarters of its own radius into the ground, which is
+	# what stops a floor reading as a pile of cut-outs lying on a plane. The
+	# counts are roughly half what they were, because the rock shader now
+	# parallax-maps the aggregate itself and the props only have to break its
+	# silhouette. That is also where most of the frame-rate cost went.
+	var n_stone: int = int(8.0 + 17.0 * (1.0 - worked * 0.62) + (1.0 - integ) * 12.0)
 	for k in range(n_stone):
 		var u: float = rng.randf_range(-0.95, 0.95) * hw
 		var v: float = rng.randf_range(-0.30, 0.30)
 		var q: Vector3 = p + right * u + tangent * v
-		q.y += 0.02
-		_prop(q, "stone%d" % (rng.randi() % 4),
+		var si: int = rng.randi() % 4
+		var sc: float = rng.randf_range(0.55, 1.7)
+		var rad: float = (0.075 + float(si) * 0.035) * sc
+		q.y += _floor_y(q, worked) - rad * rng.randf_range(0.25, 0.72)
+		_prop(q, "stone%d" % si,
 			_xf(q, Vector3(rng.randf() * 0.4, rng.randf() * TAU, rng.randf() * 0.4),
-				Vector3.ONE * rng.randf_range(0.55, 1.7)),
+				Vector3.ONE * sc),
 			Color(1, 1, 1).lerp(Color(0.55, 0.5, 0.45), rng.randf() * 0.6))
-	# grit: the smallest scale, and the one that decides whether a floor reads
-	# as ground or as a polygon. 22 per 0.6 m cell inside 12 m of the lamp.
-	for k in range(22):
+	# grit: the smallest instanced scale. The parallax field supplies the rest.
+	for k in range(9):
 		var ug: float = rng.randf_range(-0.98, 0.98) * hw
 		var qg: Vector3 = p + right * ug + tangent * rng.randf_range(-0.30, 0.30)
-		qg.y += 0.008
+		var gc: float = rng.randf_range(0.6, 2.0)
+		qg.y += _floor_y(qg, worked) - 0.030 * gc * rng.randf_range(0.2, 0.7)
 		_prop(qg, "grit%d" % (rng.randi() % 2),
 			_xf(qg, Vector3(rng.randf() * TAU, rng.randf() * TAU, rng.randf() * TAU),
-				Vector3.ONE * rng.randf_range(0.6, 2.0)))
-	# fresh spall under bad ground: angular flakes off the back
+				Vector3.ONE * gc))
+	# fresh spall under bad ground: angular flakes off the back, lying in the
+	# muck at the angle they came to rest, one edge under the fines
 	if integ < 0.62:
-		for k in range(int(4.0 + (1.0 - integ) * 9.0)):
+		for k in range(int(3.0 + (1.0 - integ) * 7.0)):
 			var qsl: Vector3 = p + right * rng.randf_range(-0.95, 0.95) * hw + tangent * rng.randf_range(-0.3, 0.3)
-			qsl.y += 0.02
+			qsl.y += _floor_y(qsl, worked) - rng.randf_range(0.005, 0.030)
 			_prop(qsl, "spall%d" % (rng.randi() % 3),
-				_xf(qsl, Vector3(rng.randf() * 0.5, rng.randf() * TAU, rng.randf() * 0.5),
+				_xf(qsl, Vector3(rng.randf_range(-0.28, 0.28), rng.randf() * TAU, rng.randf_range(-0.28, 0.28)),
 					Vector3.ONE * rng.randf_range(0.6, 1.6)))
-	# fines and silt fans, where the water has been
+	# silt fans, where the water has been. Value, not brightness: the first pass
+	# gave these a near-white vertex colour and they read as paper on the floor.
 	if wet > 0.45:
-		for k in range(3):
+		for k in range(2):
 			var q2: Vector3 = p + right * rng.randf_range(-0.9, 0.9) * hw + tangent * rng.randf_range(-0.3, 0.3)
-			q2.y += 0.006
+			q2.y += _floor_y(q2, worked) + 0.004
 			_prop(q2, "fines", _xf(q2, Vector3(0, rng.randf() * TAU, 0),
-				Vector3(rng.randf_range(0.6, 2.0), 1.0, rng.randf_range(0.6, 2.0))),
-				Color(0.9, 0.85, 0.78))
+				Vector3(rng.randf_range(0.8, 2.4), 1.0, rng.randf_range(0.8, 2.4))),
+				Color(0.55, 0.52, 0.48))
 	# litter: small, sparse, everywhere the industry went
 	for k in range(2):
 		if worked < 0.25 or rng.randf() > 0.5:
@@ -970,11 +1106,13 @@ func _dress_station(sid: int, i: int, ids: PackedInt32Array) -> void:
 		qs.y += 0.045
 		_prop(qs, "sleeper", Transform3D(basis_dir, qs),
 			Color(1, 1, 1).lerp(Color(0.6, 0.55, 0.5), rng.randf() * 0.7))
-		for k in range(26):
+		for k in range(15):
 			var qb: Vector3 = p + right * rng.randf_range(-0.72, 0.72) + tangent * rng.randf_range(-0.3, 0.3)
-			qb.y += 0.03
-			_prop(qb, "ballast%d" % (rng.randi() % 3),
-				_xf(qb, Vector3(rng.randf(), rng.randf() * TAU, rng.randf()), Vector3.ONE * rng.randf_range(0.7, 1.5)),
+			var bi: int = rng.randi() % 3
+			var bs: float = rng.randf_range(0.7, 1.5)
+			qb.y += _floor_y(qb, worked) - (0.038 + float(bi) * 0.012) * bs * rng.randf_range(0.15, 0.6) + 0.02
+			_prop(qb, "ballast%d" % bi,
+				_xf(qb, Vector3(rng.randf(), rng.randf() * TAU, rng.randf()), Vector3.ONE * bs),
 				Color(0.9, 0.86, 0.8))
 
 	# ---------- SILHOUETTE -------------------------------------------------
@@ -1071,11 +1209,12 @@ func _dress_station(sid: int, i: int, ids: PackedInt32Array) -> void:
 		var qpl: Vector3 = p + right * (hw * 0.96)
 		qpl.y += 1.40
 		_prop(qpl, "plate", Transform3D(_face(-right), qpl), Color(1, 1, 1))
-	if (wks & CaveTopology.WK_STANDWATER) != 0:
-		var qw: Vector3 = p + right * rng.randf_range(-0.6, 0.6) * hw
-		qw.y += 0.012
-		_prop(qw, "puddle", _xf(qw, Vector3(0, rng.randf() * TAU, 0),
-			Vector3(rng.randf_range(0.7, 2.2), 1.0, rng.randf_range(0.7, 1.8))), Color(1, 1, 1))
+	# NOTE: the instanced `puddle` disc is GONE. It was a flat plane with
+	# roughness 0.03 and metallic 0.15, which under a lamp sitting at the eye
+	# returned nothing to the camera and read as a black hole cut in the floor
+	# -- the single most damaging object in the underfoot frame. The rock
+	# shader now grows puddles out of the parallax height field itself, so the
+	# water sits in the real low spots and the aggregate breaks its surface.
 	# discarded kit of the old register
 	if worked > 0.4 and rng.randf() < 0.09:
 		var qd: Vector3 = p + right * (hw * rng.randf_range(0.55, 0.9) * (1.0 if rng.randf() < 0.5 else -1.0))

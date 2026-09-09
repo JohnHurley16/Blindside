@@ -15,6 +15,14 @@ that is proved.
 Nothing in this directory is imported by `phase1/` or `phase2/`, and nothing outside
 `spikes/godot/cave/` was modified.
 
+> **Superseded in part, 2026-09-09.** The materials and the underfoot scale were rebuilt for
+> DESIGN-PRINCIPLES §6 ("it needs to look photoreal"). **`PHOTOREAL.md` is the current record
+> for §4 (technique), §5 (measurements) and §7 (what did not hit the bar).** Everything in
+> this file about the topology/dressing seam, the generation rules and the kit of parts still
+> stands. Three findings in `PHOTOREAL.md` §1 are bugs that were in the build this document
+> describes, so its screenshots and its §7 conclusions about the underfoot scale should be
+> read as measuring those bugs rather than the design.
+
 ---
 
 ## 1. How to run it
@@ -30,7 +38,8 @@ GODOT="C:/Users/jackh/Downloads/Godot_v4.7.2-stable_win64.exe/Godot_v4.7.2-stabl
 
 # other flags: --seed=N --len=CELLS --speed=M_PER_S --noshadow --nofog --noprops
 #              --novis --walkonly --stay
-./check.sh                 # parse/compile gate, headless
+./check.sh                 # GDScript parse gate, headless
+./shadercheck.sh           # SHADER compile gate -- check.sh never compiles one
 ./ablate.sh                # the performance ablation table in §5.3
 ./scale.sh                 # the length-scaling table in §5.4
 python lumcheck.py         # the ART-DIRECTION §2.9 exposure contract, linearised

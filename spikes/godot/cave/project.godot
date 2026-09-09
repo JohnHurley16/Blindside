@@ -21,3 +21,11 @@ renderer/rendering_method="forward_plus"
 lights_and_shadows/directional_shadow/soft_shadow_filter_quality=2
 anti_aliasing/quality/msaa_3d=0
 environment/defaults/default_clear_color=Color(0, 0, 0, 1)
+; SSAO at the default medium quality cost 3.2 ms of a 7.9 ms GPU frame -- 40%,
+; for a contact-darkening term. At low quality and half size it is 0.9 ms and
+; the frames are indistinguishable at 1080p, because what it is being asked to
+; do here is darken a 50 mm crevice, not resolve a room.
+environment/ssao/quality=1
+environment/ssao/half_size=true
+environment/ssao/blur_passes=2
+environment/ssao/adaptive_target=0.4

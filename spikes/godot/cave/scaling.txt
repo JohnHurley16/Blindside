@@ -1,51 +1,51 @@
 --- len=60 cells (36.0 m) ---
 open cells       : 615 of 5624
 stations         : 80   edges 2   chambers 4   junctions 1
-gen topology ms  : 1.58
-gen dressing ms  : 425.48
-gen total ms     : 427.06
+gen topology ms  : 1.03
+gen dressing ms  : 413.76
+gen total ms     : 414.79
 chunks           : 17
-shell triangles  : 16256
-prop instances   : 7696  in 253 multimeshes  (47 kit parts)
-fps        mean 75.3   p50 73.0   p05 73.0 (worst 5%)   min 73.0
+shell triangles  : 27416
+prop instances   : 4374  in 247 multimeshes  (47 kit parts)
+fps        mean 351.3   p50 352.0   p05 349.0 (worst 5%)   min 349.0
 --- len=120 cells (72.0 m) ---
-open cells       : 987 of 10184
+open cells       : 1005 of 10184
 stations         : 165   edges 4   chambers 4   junctions 3
-gen topology ms  : 2.82
-gen dressing ms  : 591.30
-gen total ms     : 594.13
+gen topology ms  : 1.92
+gen dressing ms  : 461.12
+gen total ms     : 463.04
 chunks           : 24
-shell triangles  : 31436
-prop instances   : 15883  in 514 multimeshes  (47 kit parts)
-fps        mean 68.6   p50 66.0   p05 66.0 (worst 5%)   min 66.0
+shell triangles  : 54456
+prop instances   : 8955  in 505 multimeshes  (47 kit parts)
+fps        mean 352.1   p50 352.0   p05 352.0 (worst 5%)   min 342.0
 --- len=240 cells (144.0 m) ---
-open cells       : 1954 of 19304
+open cells       : 2006 of 19304
 stations         : 351   edges 8   chambers 4   junctions 7
-gen topology ms  : 5.20
-gen dressing ms  : 694.04
-gen total ms     : 699.24
-chunks           : 48
-shell triangles  : 64676
-prop instances   : 33526  in 973 multimeshes  (47 kit parts)
-fps        mean 84.7   p50 86.0   p05 75.0 (worst 5%)   min 75.0
+gen topology ms  : 3.91
+gen dressing ms  : 645.61
+gen total ms     : 649.53
+chunks           : 49
+shell triangles  : 113656
+prop instances   : 19015  in 946 multimeshes  (47 kit parts)
+fps        mean 354.9   p50 357.0   p05 346.0 (worst 5%)   min 346.0
 --- len=480 cells (288.0 m) ---
-open cells       : 3536 of 37544
+open cells       : 3626 of 37544
 stations         : 691   edges 15   chambers 4   junctions 14
-gen topology ms  : 8.57
-gen dressing ms  : 888.28
-gen total ms     : 896.85
-chunks           : 81
-shell triangles  : 125456
-prop instances   : 65310  in 1742 multimeshes  (47 kit parts)
-fps        mean 89.3   p50 92.0   p05 74.0 (worst 5%)   min 74.0
+gen topology ms  : 7.64
+gen dressing ms  : 971.73
+gen total ms     : 979.37
+chunks           : 83
+shell triangles  : 221896
+prop instances   : 36960  in 1719 multimeshes  (47 kit parts)
+fps        mean 292.6   p50 313.0   p05 232.0 (worst 5%)   min 232.0
 --- len=960 cells (576.0 m) ---
-open cells       : 6837 of 74024
+open cells       : 6913 of 74024
 stations         : 1386   edges 28   chambers 4   junctions 27
-gen topology ms  : 18.34
-gen dressing ms  : 1453.13
-gen total ms     : 1471.47
-chunks           : 160
-shell triangles  : 249776
-prop instances   : 128557  in 3624 multimeshes  (47 kit parts)
-fps        mean 93.3   p50 96.0   p05 76.0 (worst 5%)   min 73.0
+gen topology ms  : 15.65
+gen dressing ms  : 1695.77
+gen total ms     : 1711.42
+chunks           : 159
+shell triangles  : 443256
+prop instances   : 72701  in 3529 multimeshes  (47 kit parts)
+fps        mean 225.8   p50 250.0   p05 152.0 (worst 5%)   min 152.0
 SCALE_DONE

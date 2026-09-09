@@ -1,55 +1,205 @@
+=== 1 baseline () ===
+  [gpu 82 C,  780 MHz,  0%]
+=== 2 nopom (--nopom) ===
+  [gpu 83 C,  780 MHz,  0%]
+gen dressing ms  : 828.96
+shell triangles  : 113656
+prop instances   : 19015  in 946 multimeshes  (47 kit parts)
+fps        mean 148.4   p50 159.0   p05 59.0 (worst 5%)   min 49.0
+gpu ms     p50 4.59   p95 12.05   max 19.24
+cpu ms     p50 6.64   p95 19.98   max 23.69
+draw calls p50 305   p95 393   max 447
+primitives p50 235036   p95 296270   max 314356
+video mem  p50 188.7 MB  max 188.7 MB
+=== 3 baseline () ===
+  [gpu 80 C,  210 MHz,  0%]
+gen dressing ms  : 693.73
+shell triangles  : 113656
+prop instances   : 19015  in 946 multimeshes  (47 kit parts)
+fps        mean 163.7   p50 171.0   p05 115.0 (worst 5%)   min 20.0
+gpu ms     p50 4.72   p95 7.54   max 35.51
+cpu ms     p50 7.12   p95 12.91   max 65.28
+draw calls p50 311   p95 414   max 447
+primitives p50 233482   p95 294216   max 314248
+video mem  p50 188.7 MB  max 188.7 MB
+=== 4 noscales (--noscales) ===
+  [gpu 83 C,  780 MHz,  4%]
+gen dressing ms  : 1011.06
+shell triangles  : 113656
+prop instances   : 19015  in 946 multimeshes  (47 kit parts)
+fps        mean 106.8   p50 143.0   p05 17.0 (worst 5%)   min 11.0
+gpu ms     p50 5.57   p95 45.11   max 91.31
+cpu ms     p50 18.18   p95 72.73   max 101.48
+draw calls p50 301   p95 399   max 444
+primitives p50 237796   p95 297920   max 309422
+video mem  p50 188.7 MB  max 188.7 MB
+=== 5 baseline () ===
+  [gpu 84 C,  780 MHz,  0%]
+gen dressing ms  : 717.84
+shell triangles  : 113656
+prop instances   : 19015  in 946 multimeshes  (47 kit parts)
+fps        mean 163.6   p50 170.0   p05 126.0 (worst 5%)   min 21.0
+gpu ms     p50 4.72   p95 7.16   max 34.33
+cpu ms     p50 7.08   p95 22.33   max 62.70
+draw calls p50 312   p95 414   max 447
+primitives p50 234536   p95 294276   max 314360
+video mem  p50 188.7 MB  max 188.7 MB
+=== 6 nowater (--nowater) ===
+  [gpu 86 C,  780 MHz,  99%]
+gen dressing ms  : 3861.89
+shell triangles  : 113656
+prop instances   : 19015  in 946 multimeshes  (47 kit parts)
+fps        mean 102.6   p50 65.0   p05 16.0 (worst 5%)   min 13.0
+gpu ms     p50 5.11   p95 39.51   max 55.79
+cpu ms     p50 18.56   p95 78.30   max 83.93
+draw calls p50 309   p95 362   max 446
+primitives p50 250682   p95 300352   max 314204
+video mem  p50 188.7 MB  max 188.7 MB
+=== 7 baseline () ===
+  [gpu 87 C,  780 MHz,  99%]
+gen dressing ms  : 1441.01
+shell triangles  : 113656
+prop instances   : 19015  in 946 multimeshes  (47 kit parts)
+fps        mean 96.4   p50 59.0   p05 37.0 (worst 5%)   min 37.0
+gpu ms     p50 10.48   p95 19.73   max 26.00
+cpu ms     p50 20.72   p95 28.48   max 32.80
+draw calls p50 313   p95 398   max 447
+primitives p50 237378   p95 291644   max 314248
+video mem  p50 188.7 MB  max 188.7 MB
+=== 8 ssao (--ssao) ===
+  [gpu 87 C,  780 MHz,  99%]
+gen dressing ms  : 1599.78
+shell triangles  : 113656
+prop instances   : 19015  in 946 multimeshes  (47 kit parts)
+fps        mean 86.1   p50 110.0   p05 31.0 (worst 5%)   min 29.0
+gpu ms     p50 8.02   p95 28.55   max 35.94
+cpu ms     p50 9.70   p95 41.20   max 41.20
+draw calls p50 299   p95 392   max 446
+primitives p50 227698   p95 290748   max 314356
+video mem  p50 209.0 MB  max 209.0 MB
+=== 9 baseline () ===
+  [gpu 82 C,  210 MHz,  0%]
 === baseline () ===
-gen dressing ms  : 584.46
-prop instances   : 33526  in 973 multimeshes  (47 kit parts)
-fps        mean 88.7   p50 85.0   p05 71.0 (worst 5%)   min 70.0
-gpu ms     p50 10.27   p95 13.92   max 18.65
-cpu ms     p50 14.60   p95 16.25   max 19.64
-draw calls p50 328   p95 397   max 423
-primitives p50 326510   p95 435182   max 456580
-video mem  p50 178.3 MB  max 178.3 MB
-=== novis (--novis) ===
-gen dressing ms  : 554.21
-prop instances   : 33526  in 973 multimeshes  (47 kit parts)
-fps        mean 85.1   p50 82.0   p05 68.0 (worst 5%)   min 68.0
-gpu ms     p50 10.60   p95 14.12   max 56.97
-cpu ms     p50 14.94   p95 66.65   max 76.13
-draw calls p50 753   p95 985   max 1023
-primitives p50 1064228   p95 1426682   max 1537220
-video mem  p50 180.5 MB  max 180.6 MB
-=== noprops (--noprops) ===
-gen dressing ms  : 565.15
-prop instances   : 33526  in 973 multimeshes  (47 kit parts)
-fps        mean 63.1   p50 63.0   p05 59.0 (worst 5%)   min 55.0
-gpu ms     p50 14.73   p95 15.60   max 61.53
-cpu ms     p50 16.40   p95 48.49   max 81.62
+gen dressing ms  : 722.00
+shell triangles  : 113656
+prop instances   : 19015  in 946 multimeshes  (47 kit parts)
+fps        mean 136.3   p50 143.0   p05 47.0 (worst 5%)   min 40.0
+gpu ms     p50 5.86   p95 14.32   max 22.60
+cpu ms     p50 7.57   p95 24.28   max 28.06
+draw calls p50 312   p95 420   max 447
+primitives p50 225332   p95 293592   max 314352
+video mem  p50 188.7 MB  max 188.7 MB
+=== 10 novis (--novis) ===
+gen dressing ms  : 1206.46
+shell triangles  : 113656
+prop instances   : 19015  in 946 multimeshes  (47 kit parts)
+  [gpu 81 C,  210 MHz,  19%]
+gen dressing ms  : 3207.11
+shell triangles  : 113656
+prop instances   : 19015  in 946 multimeshes  (47 kit parts)
+fps        mean 13.7   p50 13.0   p05 9.0 (worst 5%)   min 8.0
+gpu ms     p50 51.43   p95 82.57   max 102.58
+cpu ms     p50 84.88   p95 121.52   max 126.28
+draw calls p50 599   p95 983   max 1036
+primitives p50 535060   p95 876386   max 916760
+video mem  p50 188.2 MB  max 188.2 MB
+=== 11 baseline () ===
+  [gpu 86 C,  780 MHz,  99%]
+gen dressing ms  : 3492.74
+shell triangles  : 113656
+prop instances   : 19015  in 946 multimeshes  (47 kit parts)
+fps        mean 110.0   p50 120.0   p05 13.0 (worst 5%)   min 11.0
+gpu ms     p50 6.45   p95 52.83   max 74.85
+cpu ms     p50 8.97   p95 95.98   max 100.22
+draw calls p50 315   p95 369   max 443
+primitives p50 256916   p95 300622   max 314252
+video mem  p50 188.7 MB  max 188.7 MB
+=== 12 noprops (--noprops) ===
+  [gpu 82 C,  210 MHz,  0%]
+gen dressing ms  : 703.81
+shell triangles  : 113656
+prop instances   : 19015  in 946 multimeshes  (47 kit parts)
+fps        mean 180.3   p50 181.0   p05 165.0 (worst 5%)   min 164.0
+gpu ms     p50 4.59   p95 5.00   max 6.00
+cpu ms     p50 6.06   p95 6.91   max 15.55
 draw calls p50 24   p95 29   max 31
-primitives p50 35078   p95 42268   max 44478
-video mem  p50 179.0 MB  max 179.1 MB
-=== noshadow (--noshadow) ===
-gen dressing ms  : 564.71
-prop instances   : 33526  in 973 multimeshes  (47 kit parts)
-fps        mean 92.4   p50 88.0   p05 75.0 (worst 5%)   min 74.0
-gpu ms     p50 9.76   p95 13.43   max 14.10
-cpu ms     p50 14.33   p95 15.10   max 15.23
-draw calls p50 156   p95 191   max 209
-primitives p50 168248   p95 241140   max 257440
-video mem  p50 147.4 MB  max 147.4 MB
-=== nofog (--nofog) ===
-gen dressing ms  : 562.16
-prop instances   : 33526  in 973 multimeshes  (47 kit parts)
-fps        mean 88.2   p50 87.0   p05 53.0 (worst 5%)   min 51.0
-gpu ms     p50 9.59   p95 13.21   max 51.75
-cpu ms     p50 14.15   p95 74.96   max 78.29
-draw calls p50 327   p95 397   max 423
-primitives p50 321018   p95 431850   max 456220
-video mem  p50 167.1 MB  max 167.1 MB
-=== lean (--noshadow --nofog) ===
-gen dressing ms  : 591.99
-prop instances   : 33526  in 973 multimeshes  (47 kit parts)
-fps        mean 99.4   p50 94.0   p05 80.0 (worst 5%)   min 79.0
-gpu ms     p50 9.05   p95 12.72   max 13.44
-cpu ms     p50 13.60   p95 14.41   max 14.51
-draw calls p50 156   p95 191   max 209
-primitives p50 168500   p95 241140   max 257440
-video mem  p50 136.2 MB  max 136.3 MB
+primitives p50 61478   p95 74108   max 77628
+video mem  p50 189.7 MB  max 189.7 MB
+=== 13 baseline () ===
+  [gpu 80 C,  210 MHz,  0%]
+gen dressing ms  : 697.45
+shell triangles  : 113656
+prop instances   : 19015  in 946 multimeshes  (47 kit parts)
+fps        mean 168.1   p50 174.0   p05 126.0 (worst 5%)   min 28.0
+gpu ms     p50 4.62   p95 6.91   max 53.12
+cpu ms     p50 6.94   p95 10.64   max 86.80
+draw calls p50 308   p95 412   max 447
+primitives p50 231040   p95 293568   max 314252
+video mem  p50 188.7 MB  max 188.7 MB
+=== 14 noshadow (--noshadow) ===
+  [gpu 83 C,  780 MHz,  99%]
+gen dressing ms  : 1856.01
+shell triangles  : 113656
+prop instances   : 19015  in 946 multimeshes  (47 kit parts)
+fps        mean 158.8   p50 160.0   p05 18.0 (worst 5%)   min 16.0
+gpu ms     p50 4.20   p95 6.89   max 49.16
+cpu ms     p50 7.07   p95 73.40   max 83.06
+draw calls p50 146   p95 192   max 222
+primitives p50 117038   p95 163754   max 173336
+video mem  p50 156.3 MB  max 156.3 MB
+=== 15 baseline () ===
+  [gpu 78 C,  1245 MHz,  1%]
+gen dressing ms  : 731.25
+shell triangles  : 113656
+prop instances   : 19015  in 946 multimeshes  (47 kit parts)
+fps        mean 155.1   p50 183.0   p05 15.0 (worst 5%)   min 12.0
+gpu ms     p50 4.45   p95 7.24   max 76.94
+cpu ms     p50 7.84   p95 91.44   max 100.45
+draw calls p50 292   p95 397   max 447
+primitives p50 211918   p95 294810   max 314360
+video mem  p50 188.7 MB  max 188.7 MB
+=== 16 nofog (--nofog) ===
+  [gpu 77 C,  210 MHz,  0%]
+gen dressing ms  : 734.76
+shell triangles  : 113656
+prop instances   : 19015  in 946 multimeshes  (47 kit parts)
+fps        mean 183.6   p50 214.0   p05 26.0 (worst 5%)   min 10.0
+gpu ms     p50 3.67   p95 6.25   max 97.69
+cpu ms     p50 14.66   p95 85.03   max 131.44
+draw calls p50 307   p95 415   max 447
+primitives p50 230632   p95 291592   max 314300
+video mem  p50 177.5 MB  max 177.6 MB
+=== 17 baseline () ===
+  [gpu 77 C,  1245 MHz,  3%]
+gen dressing ms  : 741.10
+shell triangles  : 113656
+prop instances   : 19015  in 946 multimeshes  (47 kit parts)
+fps        mean 128.2   p50 168.0   p05 12.0 (worst 5%)   min 11.0
+gpu ms     p50 4.31   p95 27.70   max 97.70
+cpu ms     p50 42.04   p95 106.72   max 126.04
+draw calls p50 277   p95 387   max 443
+primitives p50 196294   p95 279798   max 309706
+video mem  p50 188.7 MB  max 188.7 MB
+=== 18 lean (--noshadow --nofog) ===
+  [gpu 76 C,  210 MHz,  0%]
+gen dressing ms  : 650.07
+shell triangles  : 113656
+prop instances   : 19015  in 946 multimeshes  (47 kit parts)
+fps        mean 181.5   p50 275.0   p05 12.0 (worst 5%)   min 11.0
+gpu ms     p50 3.00   p95 30.46   max 87.47
+cpu ms     p50 21.36   p95 95.56   max 113.28
+draw calls p50 134   p95 184   max 221
+primitives p50 111620   p95 154004   max 173172
+video mem  p50 145.1 MB  max 145.2 MB
+=== 19 baseline () ===
+  [gpu 76 C,  210 MHz,  0%]
+gen dressing ms  : 654.28
+shell triangles  : 113656
+prop instances   : 19015  in 946 multimeshes  (47 kit parts)
+fps        mean 230.4   p50 230.0   p05 149.0 (worst 5%)   min 126.0
+gpu ms     p50 3.56   p95 6.46   max 8.03
+cpu ms     p50 5.84   p95 8.59   max 9.07
+draw calls p50 306   p95 416   max 447
+primitives p50 225440   p95 290132   max 314252
+video mem  p50 188.7 MB  max 188.7 MB
 ABLATE_DONE
