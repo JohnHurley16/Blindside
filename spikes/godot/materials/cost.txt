@@ -1,0 +1,55 @@
+Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org
+Vulkan 1.4.312 - Forward+ - Using Device #0: NVIDIA - NVIDIA GeForce RTX 3080 Laptop GPU
+
+=== BLINDSIDE material testbed ===
+adapter   : NVIDIA GeForce RTX 3080 Laptop GPU (NVIDIA)
+engine    : 4.7.2-stable (official)
+materials : 27
+render    : 1920x1080, Forward+
+
+=== per-material GPU cost, 1920x1080, the material covering the frame ===
+adapter: NVIDIA GeForce RTX 3080 Laptop GPU
+baseline, StandardMaterial3D, one spot with shadows:
+    underfoot   0.771 ms
+    at range    0.689 ms
+
+material                underfoot   at range delta near   verdict at full screen
+rock_wet                    35.73      13.38      34.96   CLOSE RANGE ONLY, and not the whole floor
+rock_fresh                  44.51      15.71      43.74   CLOSE RANGE ONLY, and not the whole floor
+rock_weathered              38.99      18.00      38.22   CLOSE RANGE ONLY, and not the whole floor
+rock_stained                40.56      17.51      39.79   CLOSE RANGE ONLY, and not the whole floor
+rock_tidemark               34.06      13.21      33.29   CLOSE RANGE ONLY, and not the whole floor
+silt_dry                    27.71      10.40      26.93   CLOSE RANGE ONLY, and not the whole floor
+silt_damp                   27.94      10.50      27.17   CLOSE RANGE ONLY, and not the whole floor
+mud_saturated               11.02       4.39      10.25   large surfaces, watch near coverage
+aggregate                   41.50      14.02      40.73   CLOSE RANGE ONLY, and not the whole floor
+ballast                     43.69      17.77      42.92   CLOSE RANGE ONLY, and not the whole floor
+water_shallow                2.64       2.23       1.87   large surfaces, any range
+water_deep                   1.89       1.69       1.12   large surfaces, any range
+concrete_weathered          29.57      11.70      28.80   CLOSE RANGE ONLY, and not the whole floor
+hardstanding                34.79      16.19      34.02   CLOSE RANGE ONLY, and not the whole floor
+iron_painted                33.51      23.51      32.74   CLOSE RANGE ONLY, and not the whole floor
+iron_bare                   30.52      19.39      29.75   CLOSE RANGE ONLY, and not the whole floor
+steel_rusted                30.60      18.42      29.83   CLOSE RANGE ONLY, and not the whole floor
+iron_rotten                 32.04      25.55      31.27   CLOSE RANGE ONLY, and not the whole floor
+timber_wet                  11.99       5.12      11.22   large surfaces, watch near coverage
+timber_rotten               36.40      10.41      35.63   CLOSE RANGE ONLY, and not the whole floor
+alu_machined                 4.34       2.85       3.56   large surfaces, any range
+alu_anodised                 4.28       2.83       3.51   large surfaces, any range
+composite                    4.33       2.90       3.56   large surfaces, any range
+polymer                      4.13       2.70       3.36   large surfaces, any range
+powdercoat                   4.05       2.41       3.28   large surfaces, any range
+rubber                       6.51       4.39       5.74   large surfaces, watch near coverage
+label                        4.39       2.87       3.62   large surfaces, any range
+
+=== variant cost, identical uniforms (rock_weathered), underfoot ===
+full                        47.05 ms
+lean                        38.90 ms
+far                          5.63 ms
+
+=== ablation on `aggregate`, underfoot ===
+everything on               41.53 ms
+no parallax                 13.21 ms
+no detail+micro bands       34.82 ms
+neither                     10.24 ms
+COST_DONE
