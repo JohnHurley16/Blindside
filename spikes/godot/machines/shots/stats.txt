@@ -1,0 +1,39 @@
+01_four_abreast_clear        1920x1080 draws=53    tris=460454   scout surveyor hauler swimmer, 1 m rod  lampfwd=(0.37, -0.2, 0.91) dot(cam,lamp)=-0.937
+02_four_abreast_own_light    1920x1080 draws=20    tris=138510   only light in frame is four work lamps  lampfwd=(0.37, -0.2, 0.91) dot(cam,lamp)=-0.937
+03_scout_3q                  1920x1080 draws=13    tris=262258   hull 0.40 m, ride 0.25 m, 4 legs  lampfwd=(0.95, -0.28, -0.1) dot(cam,lamp)=-0.541
+04_surveyor_3q               1920x1080 draws=13    tris=272194   hull 0.58 m, ride 0.32 m, 4 legs  lampfwd=(0.94, -0.32, -0.11) dot(cam,lamp)=-0.520
+05_hauler_3q                 1920x1080 draws=13    tris=294546   hull 0.90 m, ride 0.34 m, 6 legs  lampfwd=(0.93, -0.35, -0.13) dot(cam,lamp)=-0.493
+06_swimmer_3q                1920x1080 draws=13    tris=264562   hull 0.66 m, ride 0.27 m, 4 legs  lampfwd=(0.95, -0.3, -0.12) dot(cam,lamp)=-0.526
+07_side_ortho_row            1920x470 draws=48    tris=415406   ORTHOGRAPHIC, same scale, 1 m rod in 0.1 m bands  lampfwd=(-0.91, -0.2, 0.37) dot(cam,lamp)=-0.366
+08_silhouette_four           1920x470 draws=9     tris=93390    THE TEST: four outlines, no surface at all  lampfwd=(-0.91, -0.2, 0.37) dot(cam,lamp)=-0.366
+09_loadout_silhouette        1920x470 draws=12    tris=210546   bare (left) vs default loadout (right), ortho side  lampfwd=(-0.9, -0.24, 0.37) dot(cam,lamp)=-0.372
+09b_loadout_outline          1920x470 draws=5     tris=37774    the same pair, outline only: the difference IS the readout  lampfwd=(-0.9, -0.24, 0.37) dot(cam,lamp)=-0.372
+10_team_player_vs_rival      1920x1080 draws=17    tris=318290   player pale-over-graphite, rival inverted; same hue budget  lampfwd=(-0.71, -0.24, 0.66) dot(cam,lamp)=-0.633
+11_wear_fresh_vs_worn        1920x1080 draws=17    tris=318290   wear 0.00 vs 0.85 -- veteran, not casualty  lampfwd=(-0.71, -0.24, 0.66) dot(cam,lamp)=-0.633
+12_damage_rungs              1920x540 draws=40    tris=549866   0 / .20 / .30 / .50 / .75 / 1.0 -- bar 7,4,4,2,2,0  lampfwd=(-0.9, -0.24, 0.37) dot(cam,lamp)=-0.372
+13_own_lamp                  1920x1080 draws=4     tris=68050    the only light in the world is on its head  lampfwd=(0.98, -0.18, -0.12) dot(cam,lamp)=0.976
+14_daylight                  1920x1080 draws=8     tris=181098   overcast at 12000 K, no sun disc; emissives vanish  lampfwd=(0.94, -0.35, -0.02) dot(cam,lamp)=-0.574
+15_nine_pixels               ladder 9/14/22/34/56/90 px, columns: scout, surveyor, hauler, swimmer, rival, dmg .75, wreck
+16_walk_side                 1920x1080 draws=8     tris=181098   mid-stride, side  lampfwd=(0.99, -0.16, 0.0) dot(cam,lamp)=0.005
+17_walk_front                1920x1080 draws=8     tris=181098   mid-stride, head on  lampfwd=(0.99, -0.14, 0.01) dot(cam,lamp)=-0.983
+18_broken_ground             1920x1080 draws=8     tris=181098   pitch -2.4 deg roll 2.0 deg  lampfwd=(0.98, -0.19, 0.03) dot(cam,lamp)=0.385
+19_running_lights_unfound    1920x1080 draws=6     tris=91098    quiet machine, lamp pointed PAST it  lampfwd=(0.78, -0.16, 0.6) dot(cam,lamp)=0.252
+20_running_lights_found      1920x1080 draws=6     tris=91098    same frame, lamp swung on: it returns like a road sign  lampfwd=(0.78, -0.16, 0.6) dot(cam,lamp)=0.252
+21_running_lights_fallback   1920x1080 draws=6     tris=91098    ART 4.5 fallback: strip at 1.5, always on, a permanent tell  lampfwd=(0.78, -0.16, 0.6) dot(cam,lamp)=0.252
+22_hauler_size_question      1920x570 draws=16    tris=306818   model 0.90 m (left) vs CHASSIS-TIMING 2.4 m (right)  lampfwd=(-0.88, -0.28, 0.39) dot(cam,lamp)=-0.387
+seq/walk_side      18 frames 1280x720 + sheet_walk_side.png (one full walk cycle, surveyor)
+   surveyor  tris=23048   surfaces=2 bones=19  build=131 ms
+seq/walk_front     18 frames 1280x720 + sheet_walk_front.png (one full walk cycle, surveyor)
+   surveyor  tris=23048   surfaces=2 bones=19  build=95 ms
+seq/walk_broken    18 frames 1280x720 + sheet_walk_broken.png (one full walk cycle, surveyor)
+   surveyor  tris=23048   surfaces=2 bones=19  build=101 ms
+seq/trot_side      16 frames 1280x720 + sheet_trot_side.png (one full trot cycle, scout)
+   scout     tris=20564   surfaces=2 bones=19  build=147 ms
+seq/hauler_side    18 frames 1280x720 + sheet_hauler_side.png (one full walk cycle, hauler)
+   hauler    tris=28636   surfaces=2 bones=27  build=244 ms
+
+--- per machine, measured at load ---
+scout     tris=20564  draw_surfaces=2 bones=19  legs=4 build=213 ms  hull=0.40 m
+surveyor  tris=23048  draw_surfaces=2 bones=19  legs=4 build=163 ms  hull=0.58 m
+hauler    tris=28636  draw_surfaces=2 bones=27  legs=6 build=141 ms  hull=0.90 m
+swimmer   tris=21140  draw_surfaces=2 bones=19  legs=4 build=78 ms  hull=0.66 m

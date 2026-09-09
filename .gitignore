@@ -42,3 +42,7 @@ spikes/godot/cave/**/*.import
 spikes/godot/cave/shots/cinema/tune/
 spikes/godot/cave/shots/_probe/
 spikes/godot/assayer/shots/seq/
+spikes/godot/machines/shots/seq/
+# Exported machine models: generated from agent_model by agent_model/export_gltf.py, so the
+# source of truth is the Blender model and these regenerate. See spikes/godot/machines/NOTES.md.
+spikes/godot/machines/models/*.glb
