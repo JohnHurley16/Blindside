@@ -199,3 +199,102 @@ Recorded here rather than discovered in the edit.
 
 If shots 23 to 25 cannot be built in time, Act V drops to the fold alone and the trailer runs
 1:52. The lie is the stronger beat of the two and the machinery can wait for the next one.
+
+---
+
+## 8. The camera — added 2026-09-09 on the designer's note
+
+> "Make sure the camera doesn't fly through shit... make it look cinematic."
+
+A camera that clips a wall, passes through a prop, or floats at an impossible height tells a
+viewer in one frame that this is a debug fly-through and not a game. It is the single fastest
+way to lose them. So the camera obeys physical rules, and they are not negotiable.
+
+**Hard rules.**
+- **The camera has a body.** A sphere of 0.35 m radius that sweeps against the same collision the
+  machines use. If a move would intersect anything, the move is wrong and gets re-planned; the
+  camera is never pushed through and never pops.
+- **No shot passes through solid matter.** Not rock, not a prop, not a machine, not the ground.
+- **The camera stands somewhere a body could stand**, or hangs somewhere a rig could hang. Every
+  height is justifiable: floor level, machine height 0.4 m, eye height 1.6 m, or a crane. Nothing
+  hovers at 2.5 m in a passage for no reason.
+- **Nothing clips the near plane.** Keep 0.4 m of clearance in front at all times; a wall
+  dissolving into the lens is the same tell as flying through it.
+- **Moves are short and slow.** A dolly of a metre or two, a gentle arc, a slow push. No orbit
+  around a subject, no spiral, no fly-through of a corridor at running speed. If a shot needs the
+  camera to travel far, it is two shots.
+- **The camera is a physical object with mass.** Ease in and ease out on every move, never linear.
+  A very small amount of handheld noise, low frequency and sub-degree, on the handheld shots only;
+  the crane and dolly shots are clean.
+
+**Lensing.** Pick a focal length per shot and commit: wide (18–24 mm) for the yard and the
+chamber, normal (35–50 mm) for the machine and the bench, long (85 mm+) for the machinery in the
+dark, because compression makes it feel further away and larger. Never zoom. Focus is pulled, not
+snapped, and it is pulled to something the eye is already looking at.
+
+## 9. The lens and the grade — the post-processing layer
+
+The spikes currently render clean and untreated, which reads as an engine viewport rather than as
+a photographed image. A photographed image has a lens and a sensor in front of it and both leave
+marks. These are the marks, in the order they should be added, and each is a knob that must be
+measured against the frame budget rather than switched on wholesale.
+
+| effect | what it buys | discipline |
+|---|---|---|
+| **Tonemap and exposure** | The single biggest one. A filmic curve with a real white point, and an exposure that puts the lamp pool where it belongs. Already partly present. | Must satisfy `ART-DIRECTION.md` §2.9. Never brighten a shot to make it read. |
+| **Bloom / glare** | The lamp, the winch head at 2400 K, retroreflectors. Real glare is tight and bright, not a soft haze over everything. | Threshold high. If bloom is visible on rock, it is too strong. |
+| **Depth of field** | Reads as a camera rather than an eye. Strongest on close shots; almost nothing in the wide cave shots. | Never so shallow it looks like a miniature. Focus follows the subject. |
+| **Motion blur** | Movement reads as filmed rather than sampled. Camera motion blur at minimum; per-object if affordable. | Shutter around 180 degrees. Godot 4.7 needs a compositor effect for this — verify. |
+| **Film grain** | Ties the frame together and hides banding in the near-black, which this game is nine-tenths made of. | Grain in the shadows, not in the highlights. Subtle enough to be deniable. |
+| **Vignette** | Focuses the eye and suits a lamp-lit world. | Optical amount only. |
+| **Chromatic aberration** | Lens honesty at the frame edge. | Edges only, a pixel or two, never in the centre. |
+| **Lens distortion** | A very slight barrel on the wide shots. | Sub-percent. |
+| **Colour grade** | The two registers should be gradeable separately: the world warm and iron, belief cold and clean. | One grade for the trailer, per-act variations only if they are motivated. |
+| **Lens dirt / streak** | Only on the surface, only in rain, only on the strongest sources. | Easy to overdo; cut first if in doubt. |
+
+**The rule that keeps this from becoming a filter:** every effect must be defensible as something
+a real lens or sensor does, in this light, at this scale. If it cannot be justified that way it is
+a filter, and it goes.
+
+**A warning from what has already been measured.** Screen-space reflections were tested in the
+cave and cut: under one lamp with no ambient there is nothing to reflect, and it cost about five
+milliseconds for under one per cent of pixels. Screen-space ambient occlusion costs 31 per cent of
+the frame on the surface. Post-processing here is not free and the frame budget is already tight,
+so each effect is measured on its own and anything that cannot pay for itself is cut with its cost
+recorded.
+
+## 10. The backstory, and how much of it the trailer gives away
+
+> "Hint at the backstory... people should really want to play to figure out what is going on."
+
+**What is actually true in this world**, from `THE-MACHINERY.md` and `ART-DIRECTION.md`: an iron
+mine flooded and was abandoned. The machinery the previous occupants left did not stop. It is
+water-powered, so as long as it rains it runs, and it has been running ever since. It surveys: a
+boom slews to a bearing, a hammer ratchets up nine clicks and drops, and the shock goes through
+the rock. Everything carries an index mark — a raised **K 14** on an anvil, **K 14 · 2** on the
+hammer — a numbering system that is legible as a system and unreadable as language. A machine that
+goes to one and puts its head to the floor can download something from it.
+
+**The questions the trailer should leave a viewer holding**, without answering any:
+
+1. **It is still surveying. For what, and for whom?** A survey has a client. Nobody has come to
+   collect the results in a very long time.
+2. **Who indexed all this?** K 14 implies K 1 through K 13, and a register somewhere that says
+   what K means. The player is walking through the middle of somebody's filing system.
+3. **What is in the download?** The machinery holds something a machine can take. That is the
+   clearest promise the game can make in a trailer: there is knowledge down there, it is old, and
+   it is retrievable.
+4. **Why did they leave it running?** Not switched off. Not decommissioned. Left.
+
+**How the cut delivers that without a word of exposition**, using shots already in the list:
+- The unexplained ratchet at 0:03 pays off at 1:39. A viewer who notices has been told, at the
+  very start, that something is already working down there.
+- Shot 24 holds long enough on the anvil for **K 14** to be legible without being pointed at.
+- One shot is added, and it is the best value in the trailer: the machine puts its head to the
+  floor and **downloads**, and the belief view fills with something that is not a scan. Three
+  seconds. It is the only place the trailer suggests a reason to go down other than cargo.
+- Nothing is ever explained. No card mentions the ancients, the survey, or the index.
+
+**The revised card set stays at five.** The temptation is to add a sixth explaining the machinery.
+Resist it: the ratchet, the mark and the download do that work, and a trailer that explains its
+mystery has spent it.
