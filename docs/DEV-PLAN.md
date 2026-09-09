@@ -49,9 +49,23 @@ Tick a story when it is done and move its `Status:` line. `Ready` means every de
 
 ### Ready now (8)
 
-- [ ] **P2X-11** Decide how the cave becomes winnable — the options are being measured *(P2X, P0, 0.25d)* — **designer**; blocks the cave session
+- [ ] **P2X-11** Decide how the cave becomes winnable — **four options are measured and waiting**, `docs/CAVE-WINNABLE.md` §6 *(P2X, P0, 0.25d)* — **designer**; blocks the cave session. Option A (lie at 4:20, shaft heard at 20 cells, beacon reached at 6, provisional theta 10→8) reaches 16 of 20 at theta 8 with the uncertainty-ignoring rule at 0 of 20, and costs the 2:20 betrayal beat and seed 7's machinery near miss.
+- [ ] **P2X-13** Answer the procedural/Godot question round — 14 of 15 open, defaults stand *(P2X, P0, 0.25d)* — **designer**; `docs/spikes/PROCEDURAL-AND-GODOT.md` §8. Only two need deliberate answers: the live client must never receive the match seed (it is the whole map), and the replay/spectator truth layer needs a non-diegetic survey light because the light economy forbids exposing an unlit chamber.
 - [ ] **P2X-6** Run Phase 2's gate on the corridor with a non-engineer — twenty minutes, no build *(P2X, P0, 0.5d)* — **designer**
 - [ ] **P1X-18** Designer self-test on the live window before the next session *(P1X, P0, 0.25d)*
+
+> **Where the world's look stands, 2026-09-09.** The designer read the vision board as "a very
+> solid start" but short on detail, said it must not be an empty hellscape and must be futuristic
+> enough that advanced robots belong, and ruled that none of it happens in Blender: it has to be
+> procedural and playable in Godot. Recorded as `DESIGN-PRINCIPLES.md` §4 and §5. Three spikes
+> answered the affordability question with measurements rather than opinion, all on the dev
+> machine's RTX 3080 at 1920×1080: the cave (`spikes/godot/cave/`) runs 107 fps mean with 33,470
+> prop instances, and hiding every prop makes it *slower*, so the density ceiling was not found;
+> the pit-head (`spikes/godot/surface/`) runs 117 fps mean in overcast with 85,144 instances and
+> never drops below 60. The surface is built before the cave, answered by the designer on
+> 2026-09-08. What both spikes lack is material and surface quality, not budget — and underfoot,
+> the scale the note was really about, is the weakest in both. None of this is Phase 2 work and
+> none of it advances the gate; it is a Phase 3/5 question answered early because it was cheap.
 
 > **Phase 1's gate failed on 2026-09-06** (`docs/phase1-playtests/2026-09-06-gate.md`). Per CLAUDE.md Phase 2 does not start, whatever its stories say below; the Phase 2 build that exists was made on the wrong reading and is not advanced by it. The next move is BLD-16b: re-run the gate on the live window with Recall in the player's hand, which is the cheapest experiment that separates "the display is illegible" from "the run phase is boring".
 
