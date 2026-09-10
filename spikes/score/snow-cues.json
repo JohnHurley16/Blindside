@@ -1,0 +1,123 @@
+{
+  "slots": [
+    {
+      "name": "one_deep_cold",
+      "at": 0.0,
+      "len": 0.9
+    },
+    {
+      "name": "one_deep_mild",
+      "at": 2.1,
+      "len": 0.9
+    },
+    {
+      "name": "one_packed",
+      "at": 4.2,
+      "len": 0.9
+    },
+    {
+      "name": "one_concrete",
+      "at": 6.3,
+      "len": 0.9
+    },
+    {
+      "name": "deep_cold",
+      "at": 8.4,
+      "len": 4.59
+    },
+    {
+      "name": "deep_mild",
+      "at": 14.19,
+      "len": 4.59
+    },
+    {
+      "name": "packed_cold",
+      "at": 19.98,
+      "len": 4.59
+    },
+    {
+      "name": "gait_deep",
+      "at": 25.77,
+      "len": 8.0
+    },
+    {
+      "name": "gait_packed",
+      "at": 34.97,
+      "len": 8.0
+    },
+    {
+      "name": "wind_open",
+      "at": 44.17,
+      "len": 11.0
+    },
+    {
+      "name": "wind_fixed",
+      "at": 56.37,
+      "len": 11.0
+    },
+    {
+      "name": "spindrift",
+      "at": 68.57,
+      "len": 5.5
+    },
+    {
+      "name": "falling_snow",
+      "at": 75.27,
+      "len": 8.0
+    },
+    {
+      "name": "call_still",
+      "at": 84.47,
+      "len": 9.5
+    },
+    {
+      "name": "call_snow",
+      "at": 95.17,
+      "len": 9.5
+    },
+    {
+      "name": "open_valley",
+      "at": 105.87,
+      "len": 12.0
+    },
+    {
+      "name": "machine_crossing",
+      "at": 119.07,
+      "len": 10.0
+    }
+  ],
+  "events": [
+    {
+      "name": "one_deep_cold",
+      "at": 0.24,
+      "len": 0.3
+    },
+    {
+      "name": "one_deep_mild",
+      "at": 2.34,
+      "len": 0.3
+    },
+    {
+      "name": "one_packed",
+      "at": 4.44,
+      "len": 0.3
+    },
+    {
+      "name": "one_concrete",
+      "at": 6.54,
+      "len": 0.3
+    }
+  ],
+  "winds": [
+    {
+      "name": "wind_open",
+      "at": 45.17,
+      "len": 9.0
+    },
+    {
+      "name": "wind_fixed",
+      "at": 57.37,
+      "len": 9.0
+    }
+  ]
+}

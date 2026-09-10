@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 
+from collections.abc import Sequence
+
 import numpy as np
 
 from .envelope import Envelope
@@ -10,6 +12,40 @@ from .waveform import Waveform
 
 SAMPLE_RATE: int = 44100
 _PARTIAL_FLOOR: float = 0.02   # below this a partial is inaudible and only costs a transcendental
+
+# A moving-average width: one number for a fixed corner, or a profile of control points for
+# a corner that moves. See `Voice._noise`. Anything a caller can hand to np.asarray of shape
+# (k,) works; it is resampled to one width per sample, so k may be far smaller than the note.
+Width = int | Sequence[float] | np.ndarray
+
+
+def _width_profile(width: Width, n: int) -> np.ndarray | None:
+    """One integer width per sample, or None if this is a plain fixed corner.
+
+    Returning None rather than a constant array is what keeps every existing caller on
+    exactly the code path it was on: a scalar width still costs one cumulative sum and one
+    subtraction, with no gather and no allocation.
+    """
+    if isinstance(width, (int, np.integer)):
+        return None
+    values = np.asarray(width, dtype=np.float64).reshape(-1)
+    if values.size <= 1:
+        return None
+    at = np.linspace(0.0, float(values.size - 1), max(n, 1))
+    return np.maximum(1, np.rint(np.interp(at, np.arange(values.size), values))
+                      ).astype(np.int64)
+
+
+def _max_width(*widths: Width) -> int:
+    """The longest window any of these asks for, so the noise is long enough to smooth."""
+    out = 0
+    for width in widths:
+        if isinstance(width, (int, np.integer)):
+            out = max(out, int(width))
+        else:
+            values = np.asarray(width, dtype=np.float64).reshape(-1)
+            out = max(out, int(np.max(values)) if values.size else 0)
+    return out
 
 
 def set_sample_rate(rate: int) -> None:
@@ -65,7 +101,7 @@ class Voice:
                  decay: float | None = None, seed: int = 1,
                  delay: float = 0.0, shape: EnvelopeShape = EnvelopeShape.LINEAR,
                  partials: tuple[tuple[float, float], ...] = ((1.0, 1.0),),
-                 lowpass: int = 1, highpass: int = 0) -> None:
+                 lowpass: Width = 1, highpass: Width = 0) -> None:
         self.waveform: Waveform = waveform
         self.duration: float = duration
         self.amplitude: float = amplitude
@@ -120,25 +156,49 @@ class Voice:
                 out += np.float32(gain) * np.sin(p)
         return out
 
-    def _noise(self, n: int, lowpass: int, highpass: int) -> np.ndarray:
+    def _noise(self, n: int, lowpass: Width, highpass: Width) -> np.ndarray:
         """Band-limited noise by moving average, which is a real low-pass and costs one
         cumulative sum. Width w cuts at roughly 0.44 * SAMPLE_RATE / w, so w=3 is a crack
         and w=74 is a rumble. Subtracting a wider average is a crude high-pass, which is
-        what keeps a scrape out of the machinery's register."""
-        span = max(lowpass, highpass) + 1
+        what keeps a scrape out of the machinery's register.
+
+        A WIDTH MAY NOW BE A PROFILE RATHER THAN A NUMBER, and that is the one change to
+        this class. Real wind is not a level change, it is a filter whose corner moves: a
+        gust gets brighter as it gets louder and then rougher as it finds an edge, and a
+        snow squeak is a narrow band climbing as the crystals compact. Both were impossible
+        here, because the corner was chosen at construction and never moved again --
+        `surface.py`'s own docstring called the wind the thinnest thing in the file for
+        exactly this reason. Passing a sequence gives one corner per sample, resampled from
+        however many control points the caller has, and the cumulative sum still does the
+        work: `(c[i + w(i)] - c[i]) / w(i)` is the same identity with a varying window.
+
+        Two things fall out for free and both are physics rather than luck. A narrower
+        window is brighter AND louder, because averaging w samples of white noise scales its
+        RMS by 1/sqrt(w) -- so a corner that rises 200 -> 60 samples rises 5.2 dB at the same
+        time, which is what a gust does and what a fixed band could only fake. And a swept
+        low-pass minus a swept high-pass is a band-pass whose centre moves, which is a squeak.
+        """
+        span = _max_width(lowpass, highpass) + 1
         raw = self.rng.random(n + span, dtype=np.float32) * np.float32(2.0) - np.float32(1.0)
         band = self._smooth(raw, lowpass, n)
-        if highpass > 1:
+        if _max_width(highpass) > 1:
             band = band - self._smooth(raw, highpass, n)
         peak = float(np.max(np.abs(band))) if band.size else 0.0
         return band / np.float32(peak) if peak > 0.0 else band
 
     @staticmethod
-    def _smooth(raw: np.ndarray, width: int, n: int) -> np.ndarray:
-        if width <= 1:
-            return raw[:n].copy()
+    def _smooth(raw: np.ndarray, width: Width, n: int) -> np.ndarray:
+        widths = _width_profile(width, n)
+        if widths is None:
+            w = int(width)                            # type: ignore[arg-type]
+            if w <= 1:
+                return raw[:n].copy()
+            c = np.concatenate((np.zeros(1, dtype=np.float32),
+                                np.cumsum(raw, dtype=np.float32)))
+            return (c[w:w + n] - c[:n]) / np.float32(w)
         c = np.concatenate((np.zeros(1, dtype=np.float32), np.cumsum(raw, dtype=np.float32)))
-        return (c[width:width + n] - c[:n]) / np.float32(width)
+        i = np.arange(n)
+        return ((c[i + widths] - c[i]) / widths.astype(np.float32)).astype(np.float32)
 
     # ---- playback ----------------------------------------------------------------------
     def render(self, buf: np.ndarray) -> None:

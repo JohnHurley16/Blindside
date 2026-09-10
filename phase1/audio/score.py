@@ -43,6 +43,35 @@ from .score_spec import Line, ScoreSpec, Section
 _PARTIAL_FLOOR: float = 0.02      # Voice drops a partial below this, so it is not "occupied"
 
 
+def _hash(text: str, index: int, stream: int) -> int:
+    """FNV-1a over the line's id, mixed with the strike index. Deterministic everywhere.
+
+    Not `hash()`: Python randomises string hashing per process, so a score rendered twice
+    would be two different performances and a bug report would not reproduce. Not `random`
+    either, because a module-level generator is shared state and the schedule is walked
+    block by block. A pure function of (line id, strike, stream) has neither problem.
+    """
+    h = 2166136261 ^ ((stream * 0x9E3779B1) & 0xFFFFFFFF)
+    for ch in text:
+        h = ((h ^ ord(ch)) * 16777619) & 0xFFFFFFFF
+    h = (h ^ ((index * 0x85EBCA6B) & 0xFFFFFFFF)) & 0xFFFFFFFF
+    h = ((h ^ (h >> 15)) * 0x2545F491) & 0xFFFFFFFF
+    return (h ^ (h >> 13)) & 0xFFFFFFFF
+
+
+def _wobble(text: str, index: int, stream: int) -> float:
+    """-1..1, with a slow term under a fast one.
+
+    White jitter is not rubato -- it is a badly quantised machine. A player pushes and drags
+    across a phrase and varies the individual note inside that, so this is two thirds a
+    value that only changes every third strike and one third a value that changes every
+    strike. The result drifts rather than rattling.
+    """
+    fast = _hash(text, index, stream) / 2147483647.5 - 1.0
+    slow = _hash(text, index // 3, stream + 7) / 2147483647.5 - 1.0
+    return 0.34 * fast + 0.66 * slow
+
+
 class Score:
     """A schedule over a `ScoreSpec`. Holds no buffers and builds no sound."""
 
@@ -87,15 +116,26 @@ class Score:
         if line.every_s <= 0.0:
             strikes = [(0, first)] if first < last else []
         else:
-            k0 = max(0, math.ceil((t0 - first) / line.every_s))
+            # The window is widened by the humanising amount at BOTH ends and every
+            # candidate is then tested against its own displaced time, so a strike that
+            # drifts across a block boundary is emitted exactly once and by the block it
+            # actually lands in. Widening only one end would drop it or double it.
+            slack = line.humanize_s
+            k0 = max(0, math.ceil((t0 - slack - first) / line.every_s))
+            k1 = math.floor((t1 + slack - first) / line.every_s)
             strikes = []
-            k = k0
-            while True:
+            for k in range(k0, k1 + 1):
                 t = first + k * line.every_s
-                if t >= t1 or t >= last:
+                if slack > 0.0:
+                    # Every strike moves, including the first one in a section. A gait does
+                    # not reset its feet at a bar line, and the tread here is one gait spread
+                    # across ten sections because the chord under it changes: exempting each
+                    # section's first strike would have put a third of the piece's steps
+                    # back on the grid, which is the defect this exists to remove.
+                    t += slack * _wobble(line.id, k, 1)
+                if t >= last:
                     break
                 strikes.append((k, t))
-                k += 1
         for index, t in strikes:
             if not (t0 <= t < t1) or t >= last:
                 continue
@@ -111,6 +151,8 @@ class Score:
         amp = line.amp + (line.amp_to - line.amp) * p
         if line.accent_every > 0 and index % line.accent_every == 0:
             amp *= line.accent_amp
+        if line.touch > 0.0:
+            amp *= max(0.05, 1.0 + line.touch * _wobble(line.id, index, 2))
         timbre = self.spec.timbres[line.timbre]
         return ScoreEvent(
             t=t, line=line.id, tonal=timbre.tonal, ratios=timbre.ratios, tilt=timbre.tilt,

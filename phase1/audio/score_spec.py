@@ -26,7 +26,7 @@ from typing import Any
 _LINE_KEYS: frozenset[str] = frozenset({
     "id", "timbre", "pitch", "glide_to", "detune_cents", "pan", "quality", "quality_to",
     "amp", "amp_to", "attack_s", "duration_s", "decay_s", "every_s", "at_s", "until_s",
-    "accent_every", "accent_amp", "max_reflections", "note"})
+    "accent_every", "accent_amp", "max_reflections", "humanize_s", "touch", "note"})
 _SECTION_KEYS: frozenset[str] = frozenset({"id", "from_s", "to_s", "note", "lines"})
 _TIMBRE_KEYS: frozenset[str] = frozenset({"ratios", "tilt", "noise_lowpass", "note"})
 _ROOT_KEYS: frozenset[str] = frozenset({
@@ -84,6 +84,15 @@ class Line:
     accent_every: int
     accent_amp: float
     max_reflections: int
+    # A repeating line is a GAIT, not a performance, and the two want different treatment.
+    # Composed timing belongs in `at_s` on a line of its own, where a person chose it. A
+    # tread does not: it is a stochastic process, and the first version of this score was
+    # criticised -- rightly -- for having every strike on an exact integer second with no
+    # variation of touch anywhere in two minutes. These two fields are that variation, and
+    # they are deterministic: the offset comes from a hash of the line's own id and the
+    # strike index, so the same document always renders the same performance.
+    humanize_s: float           # +/- this much off the grid
+    touch: float                # +/- this fraction of amplitude
 
 
 @dataclass(frozen=True, slots=True)
@@ -187,4 +196,6 @@ def _line(raw: dict[str, Any], section_id: str, pitches: dict[str, float],
         until_s=float(raw["until_s"]) if "until_s" in raw else math.inf,
         accent_every=int(raw.get("accent_every", 0)),
         accent_amp=float(raw.get("accent_amp", 1.0)),
-        max_reflections=int(raw.get("max_reflections", 2)))
+        max_reflections=int(raw.get("max_reflections", 2)),
+        humanize_s=float(raw.get("humanize_s", 0.0)),
+        touch=float(raw.get("touch", 0.0)))

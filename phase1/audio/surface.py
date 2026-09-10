@@ -57,26 +57,46 @@ class Surface:
     # ---- weather -----------------------------------------------------------------------
     def wind(self, seconds: float, delay: float = 0.0, level: float = 0.11,
              gusts: int = 5) -> None:
-        """Wind over a yard: overlapping band-limited moans at different widths and pans.
+        """Wind through a lattice: band-limited noise on a corner that walks.
 
-        THIN, and this is the thinnest thing in the file. Real wind is a filter whose corner
-        moves -- a gust is not a level change, it is the sound getting brighter as it gets
-        louder, and then rougher as it finds an edge. `Voice` low-passes once, at
-        construction, and cannot sweep a corner. So a gust here is a long envelope on a fixed
-        band, and stacking three bands at different levels only approximates the colour
-        change. It will pass under a wide shot with something else on top of it. It will not
-        survive being the only thing in a frame.
+        FIXED 2026-09-10, and this method's own note used to say why it could not be. The
+        note was: *"Real wind is a filter whose corner moves -- a gust is not a level change,
+        it is the sound getting brighter as it gets louder, and then rougher as it finds an
+        edge. `Voice` low-passes once, at construction, and cannot sweep a corner."* The first
+        two sentences were right and the third has stopped being true: a moving-average width
+        may now be a profile rather than a number (see `Voice._noise`), so a gust is one voice
+        whose filter moves across it.
+
+        The level follows for free and that is the physics rather than a trick: averaging w
+        samples of white noise scales its RMS by one over root w, so narrowing the window from
+        200 samples to 60 raises the corner by a factor of three and raises the level by
+        5.2 dB in the same instant. Nothing is modulating anything. There is one filter and it
+        is moving, which is what wind is.
+
+        Kept minimal: same signature, same three-layer idea, same call sites. `gusts` is now
+        how many independent walking layers there are rather than how many envelopes.
+        `snow.py` has the open-valley version, which walks over a wider range because there is
+        nothing out there to break the flow.
         """
-        for index in range(gusts):
-            start = delay + seconds * index / (gusts + 1.0)
-            length = seconds * float(self.rng.uniform(0.45, 0.8))
+        from .snow import corner_walk                      # the shared walk; see snow.py
+        points = max(6, int(seconds / 0.30))
+        layers = max(1, min(gusts, 4))
+        # One walk heard from four places, offset -- a gust is one body of air arriving,
+        # not four independent winds. See `snow.valley_wind` for the measurement that
+        # forced this.
+        master = corner_walk(self.rng, points + 3 * layers, 40.0, 280.0, step=0.55)
+        for index in range(layers):
+            width = master[index * 3:index * 3 + points] * (1.0, 1.2, 0.85, 1.1)[index]
             pan = float(self.rng.uniform(-0.85, 0.85))
-            for width, share in ((LP_RUMBLE, 1.0), (LP_MOAN, 0.55), (LP_AIR, 0.16)):
-                self.mixer.play(Waveform.NOISE, 0.0, 0.0, length,
-                                level * share * float(self.rng.uniform(0.6, 1.0)),
-                                pan * (1.0 if width == LP_RUMBLE else 0.75),
-                                attack=length * 0.42, decay=length * 0.45,
-                                delay=start, lowpass=width)
+            share = (1.0, 0.8, 0.6, 0.45)[index]
+            ramp = min(1.1, seconds * 0.16)     # flat top: the filter sets the level, not
+            self.mixer.play(Waveform.NOISE, 0.0, 0.0, seconds,   # an envelope over the top
+                            level * share, pan,
+                            attack=ramp, decay=ramp, delay=delay + index * 0.21,
+                            lowpass=width, highpass=width * 8.0)
+        self.mixer.play(Waveform.NOISE, 0.0, 0.0, seconds, level * 0.22, 0.0,
+                        attack=min(1.6, seconds * 0.25), decay=min(1.6, seconds * 0.25),
+                        delay=delay, lowpass=master[:points] * 1.9)
 
     def rain_on_steel(self, seconds: float, delay: float = 0.0, level: float = 0.085,
                       drops_per_second: float = 26.0) -> None:
