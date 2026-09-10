@@ -1,6 +1,8 @@
 """One sounding note, rendered into a stereo buffer."""
 from __future__ import annotations
 
+import sys
+
 import numpy as np
 
 from .envelope import Envelope
@@ -9,6 +11,31 @@ from .waveform import Waveform
 
 SAMPLE_RATE: int = 44100
 _PARTIAL_FLOOR: float = 0.02   # below this a partial is inaudible and only costs a transcendental
+
+
+def set_sample_rate(rate: int) -> None:
+    """Rebind the engine's rate. Call before any `Voice` exists; the game never calls it.
+
+    The game runs at 44.1 kHz because that is the rate the device is opened at. Video wants
+    48 kHz, and the trailer's score stem is rendered offline for an editor -- so it is
+    synthesised at 48 rather than resampled to it, which is a conversion no code here would
+    have to be trusted to do. Nothing about the sound changes: every frequency in this
+    package is in Hz and every duration is in seconds. The one thing that does change is the
+    corner of `_noise`'s moving average, which is a fraction of the rate (0.44 * rate /
+    width) and therefore moves up with it; `Score.band_report` computes that corner at the
+    score's own rate rather than assuming 44.1.
+
+    Every consumer reads the module global at call time, except the two that imported the
+    constant by name, so those are rebound here. Written as one function rather than left to
+    a caller poking module attributes, because a rate change that is invisible in this
+    package is a rate change nobody will find. See `spikes/score/NOTES.md`.
+    """
+    global SAMPLE_RATE
+    SAMPLE_RATE = int(rate)
+    for name in ("phase1.audio.mixer", "phase1.view.recorder"):
+        module = sys.modules.get(name)
+        if module is not None:
+            module.SAMPLE_RATE = SAMPLE_RATE
 
 
 class Voice:

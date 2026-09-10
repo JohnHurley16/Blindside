@@ -1,0 +1,276 @@
+{
+  "name": "BLINDSIDE announcement trailer - score",
+  "note": [
+    "THE SCORE. Change a note by changing a number in this file. Nothing here is code.",
+    "",
+    "TRAILER.md section 5: the score is the sound of having control. It plays on the surface,",
+    "through Acts I and II, while the player's hands are on the machine. It is the one thing",
+    "that survives the descent at 0:50 - every diegetic layer falls away and the score narrows",
+    "and is left alone in the dark. At 1:01 it stops, over black, under card 3. It never comes",
+    "back: the last 59 seconds of this file are digital silence and that is the point.",
+    "",
+    "REGISTER. Nothing in this score may put audible energy between 400 Hz and 3 kHz, which",
+    "tuning.py reserves for everything that has to be identified by ear (heard ping 760,",
+    "own ping 620->2100, the ratchet's ring 940->2103). Every timbre below is checked by",
+    "Score.band_report before the render: ratio x pitch is where the energy actually lands,",
+    "so a wrong note is caught in the document rather than in the mix.",
+    "",
+    "TEMPO. 60 BPM, from the fiction: nine ratchet clicks at 1 Hz. Every pulse strike in this",
+    "file is on an integer second, and the accent falls every ninth. The 75-second machinery",
+    "cycle is the trailer's form, not its tempo, and is not in this file at all.",
+    "",
+    "HARMONY. Two events in two minutes. (1) At 0:50 the bed drops an octave and loses its top.",
+    "(2) At 0:57 the centre moves up a semitone, D to E flat, against a held A - a tritone -",
+    "and does not resolve before the score stops. See NOTES.md for why event 2 is at 0:57 and",
+    "not at 1:45 as TRAILER.md section 5 also says: the score has stopped by 1:45 and the same",
+    "section says three times that it never comes back."
+  ],
+
+  "sample_rate": 48000,
+  "length_s": 120.0,
+  "block_samples": 480,
+  "stop": {
+    "t_s": 61.0,
+    "ramp_s": 0.008
+  },
+
+  "pitches": {
+    "D1": 36.7081,
+    "Eb1": 38.8909,
+    "A1": 55.0,
+    "D2": 73.4162,
+    "A2": 110.0,
+    "D3": 146.8324,
+    "A3": 220.0,
+    "E4": 329.6276
+  },
+
+  "timbres": {
+    "bar": {
+      "note": "A struck bar. HAMMER_ANVIL_PARTIALS - the mast ringing after the hit. The centre.",
+      "ratios": [1.0, 2.09, 3.42],
+      "tilt": 1.4
+    },
+    "plate": {
+      "note": "HAMMER_RING_PARTIALS - the shock going into rock. Closer-spaced, so it beats.",
+      "ratios": [1.0, 1.48, 2.11],
+      "tilt": 1.2
+    },
+    "deep": {
+      "note": "The descent bed. A fourth ratio at 6.85 keeps one component near 250-380 Hz once the fundamentals are down at 37 and 55, where a laptop speaker throws away 20-29 dB. Without it the descent is inaudible on the machine most people will watch this on - measured, first render: the fold read 29 dB lower through the mixer's own 300 Hz speaker model than in absolute RMS. The tilt is 0.85 rather than the bar's 1.4 for the same reason: at tilt 1.5 the fourth partial's gain fell under Voice's _PARTIAL_FLOOR of 0.02 and was never synthesised at all, so the partial that was there to survive a laptop was the first thing thrown away. Do not raise this above about 0.9 without raising the quality of every line that uses it.",
+      "ratios": [1.0, 2.09, 3.42, 6.85],
+      "tilt": 0.85
+    },
+    "glass": {
+      "note": "A pure sine, no partials. The upper voice, and the only reason it can live at 220 and 330 Hz without putting anything in the reserved band.",
+      "ratios": [1.0],
+      "tilt": 1.0
+    },
+    "pawl": {
+      "note": "The pulse. RATCHET_F0 is 84 Hz and is called 'the body of the pawl'; this is the same object tuned to the score's centre, because the ratchet's own ring at 940-2103 Hz is forbidden here.",
+      "ratios": [1.0, 2.09, 3.42],
+      "tilt": 1.8
+    },
+    "knock": {
+      "note": "Weight under the pulse. A moving-average width of 96 corners at about 220 Hz at 48 kHz, so it is a thump and not a click - a click is broadband and would cross the reserved band on every beat. Voice._noise low-passes by moving average, which is a real filter with a poor stopband (sinc sidelobes at -13 dB), so this is the one thing in the score that puts anything at all into 400-3000 Hz. Measured at width 66 it was -48 dBFS at worst, thirty decibels under a routine ping; 96 is the same thump with less of it. Raising it further only makes the beat vaguer.",
+      "ratios": [1.0],
+      "tilt": 1.0,
+      "noise_lowpass": 96
+    }
+  },
+
+  "sections": [
+    {
+      "id": "naked",
+      "note": "0:00-0:05. Black, water, one unexplained ratchet at 0:03. The score has not started; the world has. Deliberately empty - if the score is under the ratchet then the payoff at 1:39 is a musical callback instead of a narrative one.",
+      "from_s": 0.0,
+      "to_s": 5.0,
+      "lines": []
+    },
+
+    {
+      "id": "place",
+      "note": "0:05-0:26, Act I. It enters under the headframe. One low centre, a fifth over it, weight under it, no pulse. Every attack here is three to five seconds long, which is the whole entrance: the score does not begin, it is found to have been there.",
+      "from_s": 5.0,
+      "to_s": 26.0,
+      "lines": [
+        {
+          "id": "centre", "timbre": "bar", "pitch": "D2",
+          "note": "Strikes at 0:05, 0:14.5, 0:24. The 0:24 one is under card 1.",
+          "pan": -0.28, "quality": 0.46, "quality_to": 0.54,
+          "amp": 0.44, "amp_to": 0.62,
+          "attack_s": 3.6, "duration_s": 15.0, "decay_s": 6.0,
+          "every_s": 9.5, "at_s": 0.0, "max_reflections": 2
+        },
+        {
+          "id": "fifth", "timbre": "plate", "pitch": "A2",
+          "note": "Strikes at 0:09 and 0:20, off the centre's grid so nothing lines up yet.",
+          "pan": 0.40, "quality": 0.42, "quality_to": 0.50,
+          "amp": 0.28, "amp_to": 0.42,
+          "attack_s": 4.2, "duration_s": 14.0, "decay_s": 5.5,
+          "every_s": 11.0, "at_s": 4.0, "max_reflections": 2
+        },
+        {
+          "id": "weight", "timbre": "bar", "pitch": "D1",
+          "note": "The octave under the centre. Strikes at 0:06 and 0:22.",
+          "pan": 0.0, "quality": 0.34, "quality_to": 0.40,
+          "amp": 0.26, "amp_to": 0.32,
+          "attack_s": 5.0, "duration_s": 18.0, "decay_s": 8.0,
+          "every_s": 16.0, "at_s": 1.0, "max_reflections": 2
+        }
+      ]
+    },
+
+    {
+      "id": "teaching",
+      "note": "0:26-0:50, Act II. The only warm act in the film and the only place the score is allowed to be pleasant. It tightens: the upper voice arrives, and at 0:28 so does the pulse, as the teaching stops build. D-A-E stacked fifths - open, warm, and committing to neither major nor minor, because nothing here is resolved either.",
+      "from_s": 26.0,
+      "to_s": 50.0,
+      "lines": [
+        {
+          "id": "centre", "timbre": "bar", "pitch": "D2",
+          "note": "Now on the beat grid and every 8 s: 0:26, 0:34, 0:42.",
+          "pan": -0.28, "quality": 0.50, "quality_to": 0.62,
+          "amp": 0.62, "amp_to": 0.74,
+          "attack_s": 1.6, "duration_s": 12.0, "decay_s": 5.0,
+          "every_s": 8.0, "at_s": 0.0, "max_reflections": 2
+        },
+        {
+          "id": "fifth", "timbre": "plate", "pitch": "A2",
+          "pan": 0.40, "quality": 0.46, "quality_to": 0.58,
+          "amp": 0.40, "amp_to": 0.52,
+          "attack_s": 2.0, "duration_s": 11.0, "decay_s": 4.5,
+          "every_s": 8.0, "at_s": 4.0, "max_reflections": 2
+        },
+        {
+          "id": "weight", "timbre": "bar", "pitch": "D1",
+          "note": "Held back against Act I. Warm is not sub: with this line at Act I level the power median of Act II sat at 77 Hz and the descent could only fall to 52, so the octave drop measured as two thirds of one.",
+          "pan": 0.0, "quality": 0.34, "quality_to": 0.38,
+          "amp": 0.20, "amp_to": 0.24,
+          "attack_s": 2.4, "duration_s": 16.0, "decay_s": 7.0,
+          "every_s": 12.0, "at_s": 1.0, "max_reflections": 2
+        },
+        {
+          "id": "upper", "timbre": "glass", "pitch": "A3",
+          "note": "The one upper voice section 8.1 allows. A pure sine at 220, so its only component is 220.",
+          "pan": 0.26, "quality": 0.60, "quality_to": 0.66,
+          "amp": 0.075, "amp_to": 0.115,
+          "attack_s": 2.6, "duration_s": 9.0, "decay_s": 2.9,
+          "every_s": 8.0, "at_s": 2.0, "max_reflections": 2
+        },
+        {
+          "id": "ninth", "timbre": "glass", "pitch": "E4",
+          "note": "Arrives at 0:38, twelve seconds before the shaft. The top of the film.",
+          "pan": -0.30, "quality": 0.62, "quality_to": 0.68,
+          "amp": 0.048, "amp_to": 0.082,
+          "attack_s": 3.0, "duration_s": 8.0, "decay_s": 2.5,
+          "every_s": 8.0, "at_s": 12.0, "max_reflections": 2
+        },
+        {
+          "id": "pulse", "timbre": "pawl", "pitch": "D2",
+          "note": "60 BPM from 0:28, accent every ninth beat: 0:28, 0:37, 0:46. Nine is the ratchet's count and the trailer never says so.",
+          "pan": 0.0, "quality": 0.55, "quality_to": 0.62,
+          "amp": 0.16, "amp_to": 0.30,
+          "attack_s": 0.004, "duration_s": 0.34, "decay_s": 0.10,
+          "every_s": 1.0, "at_s": 2.0,
+          "accent_every": 9, "accent_amp": 1.7, "max_reflections": 1
+        },
+        {
+          "id": "knock", "timbre": "knock", "pitch": 80.0,
+          "note": "Noise ignores the pitch; it is here so the line reads.",
+          "pan": 0.0, "quality": 0.48, "quality_to": 0.56,
+          "amp": 0.11, "amp_to": 0.19,
+          "attack_s": 0.002, "duration_s": 0.13, "decay_s": 0.038,
+          "every_s": 1.0, "at_s": 2.0,
+          "accent_every": 9, "accent_amp": 1.6, "max_reflections": 1
+        }
+      ]
+    },
+
+    {
+      "id": "descent",
+      "note": "0:50-0:57. HARMONIC EVENT 1. Everything diegetic falls away over these five seconds and the score does not. It drops an octave (D2/A2 -> D1/A1), loses its top (upper and ninth are simply not in this section, and the Act II tails decay across it), and the room opens: quality falls, so the reflections get later, duller and louder relative to the direct sound. Same centre. Same pulse. The score becomes the instrument.",
+      "from_s": 50.0,
+      "to_s": 57.0,
+      "lines": [
+        {
+          "id": "low_centre", "timbre": "deep", "pitch": "D1",
+          "pan": -0.20, "quality": 0.40, "quality_to": 0.32,
+          "amp": 0.62, "amp_to": 0.58,
+          "attack_s": 0.9, "duration_s": 16.0, "decay_s": 9.0,
+          "every_s": 6.0, "at_s": 0.0, "max_reflections": 3
+        },
+        {
+          "id": "low_fifth", "timbre": "deep", "pitch": "A1",
+          "pan": 0.22, "quality": 0.36, "quality_to": 0.30,
+          "amp": 0.44, "amp_to": 0.42,
+          "attack_s": 1.2, "duration_s": 15.0, "decay_s": 8.0,
+          "every_s": 7.0, "at_s": 0.6, "max_reflections": 3
+        },
+        {
+          "id": "pulse", "timbre": "pawl", "pitch": "D2",
+          "note": "The pulse stays at D2 rather than dropping with the bed. At 36.7 Hz it would be a movement of air rather than a beat, and the pulse is the only thing left that the viewer can hold on to. It moves away instead: quality 0.55 to 0.30 is the same object, further off, wetter and duller.",
+          "pan": 0.0, "quality": 0.55, "quality_to": 0.30,
+          "amp": 0.30, "amp_to": 0.21,
+          "attack_s": 0.004, "duration_s": 0.34, "decay_s": 0.10,
+          "every_s": 1.0, "at_s": 0.0,
+          "accent_every": 9, "accent_amp": 1.7, "max_reflections": 1
+        },
+        {
+          "id": "knock", "timbre": "knock", "pitch": 80.0,
+          "pan": 0.0, "quality": 0.44, "quality_to": 0.26,
+          "amp": 0.19, "amp_to": 0.13,
+          "attack_s": 0.002, "duration_s": 0.13, "decay_s": 0.038,
+          "every_s": 1.0, "at_s": 0.0, "max_reflections": 1
+        }
+      ]
+    },
+
+    {
+      "id": "fold",
+      "note": "0:57-1:01. HARMONIC EVENT 2. The centre moves up a semitone, D1 to E flat 1, over a held A1. E flat against A is a tritone and it is the only interval in the piece that wants to go somewhere. It is not allowed to: the score stops on it at 1:01 and there are 59 more seconds of film. The pulse stops a second early, at 1:00, which is the game's own RATCHET_BREATH_S in miniature - the held breath before the event, except that here the event is the silence.",
+      "from_s": 57.0,
+      "to_s": 61.0,
+      "lines": [
+        {
+          "id": "fold_centre", "timbre": "deep", "pitch": "Eb1",
+          "pan": -0.20, "quality": 0.30,
+          "amp": 0.60,
+          "attack_s": 0.55, "duration_s": 10.0, "decay_s": 6.5,
+          "every_s": 0.0, "at_s": 0.0, "max_reflections": 3
+        },
+        {
+          "id": "hold_fifth", "timbre": "deep", "pitch": "A1",
+          "note": "Restruck so the A is certainly under the E flat and not merely a tail.",
+          "pan": 0.22, "quality": 0.28,
+          "amp": 0.44,
+          "attack_s": 0.9, "duration_s": 9.0, "decay_s": 5.5,
+          "every_s": 0.0, "at_s": 0.0, "max_reflections": 3
+        },
+        {
+          "id": "pulse", "timbre": "pawl", "pitch": "D2",
+          "note": "0:57, 0:58, 0:59, 1:00. Then nothing for a second, then the cut.",
+          "pan": 0.0, "quality": 0.30, "quality_to": 0.26,
+          "amp": 0.20, "amp_to": 0.16,
+          "attack_s": 0.004, "duration_s": 0.34, "decay_s": 0.10,
+          "every_s": 1.0, "at_s": 0.0, "until_s": 3.2, "max_reflections": 1
+        },
+        {
+          "id": "knock", "timbre": "knock", "pitch": 80.0,
+          "pan": 0.0, "quality": 0.24, "quality_to": 0.20,
+          "amp": 0.12, "amp_to": 0.10,
+          "attack_s": 0.002, "duration_s": 0.13, "decay_s": 0.038,
+          "every_s": 1.0, "at_s": 0.0, "until_s": 3.2, "max_reflections": 1
+        }
+      ]
+    },
+
+    {
+      "id": "gone",
+      "note": "1:01-2:00. Fifty-nine seconds of digital silence, and it is a deliverable rather than an absence: the stem an editor lays down must be as long as the cut, or the score's not-coming-back is something they have to remember to do. Acts IV, V and VI are the game's own audio and nothing else. The lie at 1:47 gets the ordinary housekeeping chime and no music.",
+      "from_s": 61.0,
+      "to_s": 120.0,
+      "lines": []
+    }
+  ]
+}
