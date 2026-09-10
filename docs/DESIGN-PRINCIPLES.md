@@ -293,3 +293,54 @@ enough means.
 one, and whether the substrate is reachable in the node editor at all or only through blocks. The
 catalogue is `docs/BELIEF-CATALOGUE.md`: 100 signals in ten families, of which 85 need no new
 sensing, 35 are computed today and read by no policy, and one is refused outright.
+
+## 10. It is a world coming out of an ice age - 2026-09-09
+
+> It's a society that lives in a world that is coming out of an ice age and discovering the
+> society that existed pre ice age. So it's all monotonous and snowy and pretty, they live in a
+> valley in a somewhat futuristic town. That also explains why there are caves. That also opens
+> it so the caves have depth and aren't just flat 2D caves.
+
+**This is the largest single decision in the project and it reframes every other document.**
+Everything before it treated the setting as an abandoned iron mine with a vague past. It now has a
+period, a reason, and a shape.
+
+**What it binds.**
+- **The ancients are a pre-ice-age civilisation**, not a defunct company from a decade nobody
+  named. They are separated from the player's society by an ice age, which is why nobody ever came
+  back for the survey, why the index has no living register, and why a machine that a player finds
+  in the dark is genuinely from another world rather than merely old.
+- **The player's society is recovering, not declining.** They live in a valley in a somewhat
+  futuristic town, and they are the ones with the advanced machines. That answers §4's demand that
+  the world be futuristic enough for autonomous robots to belong in it, and it answers it better
+  than the pit-head did: this is a society with real technology, deliberately going down into an
+  older one.
+- **The surface is snow, and it is beautiful.** Monotonous, white, quiet, a valley under a large
+  sky. That is the strongest possible contrast with a black cave lit by one lamp, and it is a much
+  better contrast than an industrial yard under overcast, because it is *pretty* — the player is
+  leaving somewhere worth being.
+- **The caves have depth, and vertical is now a real axis.** Glacial systems are vertical: shafts,
+  moulins, crevasses, meltwater cutting downward. The cave stops being a flat plan of passages and
+  becomes a place with levels, drops, and things below other things. `blindside-gen` has to carry
+  height as a first-class dimension rather than as dressing, and going *deeper* becomes literal.
+- **Ice explains the water.** The mine drowned because the ice melted, the sumps are meltwater, and
+  the machinery runs because meltwater is abundant. The existing fiction's flooding and its
+  water-powered machinery both survive this change and are strengthened by it.
+
+**The reframe this opens, and it is the strongest beat available: the machinery did not never
+stop. It started again.** The ancients built it, the ice came, it froze and stood silent for as
+long as the ice lasted, and when the melt reached it the water turned the wheel and it resumed a
+survey for a client who has been gone since before the ice. That is more frightening than a
+machine that simply kept going, it explains why it is intact rather than worn to nothing, and it
+gives the player's society a reason to be here *now*. **Proposed, not decided** - it changes
+`THE-MACHINERY.md` §1 and `WHAT-HAPPENED-HERE.md` §1, both of which currently say it never stopped.
+
+**What it costs.** The pit-head as built is a wet industrial yard under grey cloud, and the
+recorded lighting recommendation is overcast. Snow changes the ground material, the light, the
+palette, the weather states and the whole first act of the trailer. `ART-DIRECTION.md` §2.1 makes
+the shaft's 12000 K the only daylight in the game, which snow-lit exteriors do not survive
+unchanged. The reconciliation is `docs/THE-ICE.md`.
+
+**What it does not settle.** How long the ice lasted, how far the melt has gone, whether the
+player's society knows what it is digging into, and whether anyone alive remembers the ancients as
+people rather than as a layer.
