@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://dp0q7dk3v2rb3"
+
+[deps]
+
+files=["res://perf/photoreal/before_frames_overcast.frame.translation", "res://perf/photoreal/before_frames_overcast.draw.translation", "res://perf/photoreal/before_frames_overcast.primitives.translation", "res://perf/photoreal/before_frames_overcast.objects.translation", "res://perf/photoreal/before_frames_overcast.video.translation", "res://perf/photoreal/before_frames_overcast.x.translation", "res://perf/photoreal/before_frames_overcast.y.translation", "res://perf/photoreal/before_frames_overcast.z.translation"]
+
+source_file="res://perf/photoreal/before_frames_overcast.csv"
+dest_files=["res://perf/photoreal/before_frames_overcast.frame.translation", "res://perf/photoreal/before_frames_overcast.draw.translation", "res://perf/photoreal/before_frames_overcast.primitives.translation", "res://perf/photoreal/before_frames_overcast.objects.translation", "res://perf/photoreal/before_frames_overcast.video.translation", "res://perf/photoreal/before_frames_overcast.x.translation", "res://perf/photoreal/before_frames_overcast.y.translation", "res://perf/photoreal/before_frames_overcast.z.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true

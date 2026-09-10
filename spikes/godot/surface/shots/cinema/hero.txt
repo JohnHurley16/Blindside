@@ -1,0 +1,6 @@
+=== HERO BOXES ===
+HERO MACHINE: surveyor, default loadout, player skin, wear 0.35, damage 0.00  (bay 3 on the charge line)
+t06_meet_the_machine     frame  86 of 120   rect  470  253   843 x  752 px
+t07_course_posts         frame  68 of  96   rect  804  373   315 x  452 px
+t12_course_alone         frame  68 of  96   rect  955  484    66 x  102 px
+t13_collar_above         frame  68 of  96   rect  802  526   118 x  133 px

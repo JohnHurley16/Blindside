@@ -21,6 +21,11 @@ const CHUNK_DETAIL := 16.0
 const SITE := 0
 const PROP := 1
 const DETAIL := 2
+## FAR - the town on the far wall, 900 m to 2.5 km away. It casts no shadow (the
+## sun's shadow range is 95 m), it is never culled by distance (it is the
+## horizon), and it is NOT chunked, because chunking a thing that is either
+## entirely in frame or entirely out of it buys nothing and costs draw calls.
+const FAR := 3
 
 var _bins: Dictionary = {}
 var _keys: Array = []
@@ -38,6 +43,8 @@ func _key(mesh_id: String, mat_id: String, bucket: int, pos: Vector3) -> String:
 	match bucket:
 		SITE:
 			return mesh_id + "|" + mat_id + "|s"
+		FAR:
+			return mesh_id + "|" + mat_id + "|f"
 		PROP:
 			return "%s|%s|p%d_%d" % [mesh_id, mat_id,
 				int(floor(pos.x / CHUNK_PROP)), int(floor(pos.z / CHUNK_PROP))]
@@ -127,6 +134,11 @@ func flush(parent: Node3D) -> Dictionary:
 		match bin.bucket:
 			SITE:
 				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+			FAR:
+				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+				# the town is 2 km long and the frustum test is per-MultiMesh, so
+				# the AABB has to be allowed to be enormous or it pops
+				mi.extra_cull_margin = 1500.0
 			PROP:
 				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 				mi.visibility_range_end = 140.0

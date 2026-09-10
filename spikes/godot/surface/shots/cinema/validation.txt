@@ -1,50 +1,60 @@
 === CINEMA validation, pit-head ===
-collision: 129072 ground tris + 4486 instances / 114222 tris, built in 667 ms
+HERO MACHINE: surveyor, default loadout, player skin, wear 0.35, damage 0.00  (bay 3 on the charge line)
+collision: 129072 ground tris + 4323 instances / 107002 tris, built in 420 ms
 
 t02_headframe_sky           EXECUTES   21mm T2.8  overcast
     trailer 2     5.0s  ease inout  height machine  handheld 0.00 deg
+    machine at home (no block: the hero is on the site)
     travel 1.25 m   peak 0.47 m/s   near clear 0.40 m   above ground 0.42-0.42 m
     fov 51.5 deg   sharp 3.93 m to 1000000.00 m   hyperfocal 5.27 m
 
 t03_yard_drift              EXECUTES   21mm T4.0  overcast
     trailer 3     4.0s  ease inout  height eye      handheld 0.00 deg
+    machine at home (no block: the hero is on the site)
     travel 1.60 m   peak 0.75 m/s   near clear 0.40 m   above ground 1.72-1.72 m
     fov 51.5 deg   sharp 2.82 m to 1000000.00 m   hyperfocal 3.70 m
 
 t04_rain_macro              EXECUTES   50mm T4.0  rain
     trailer 4     4.0s  ease inout  height floor    handheld 0.18 deg
+    machine at home (no block: the hero is on the site)
     travel 0.33 m   peak 0.15 m/s   near clear 0.40 m   above ground 0.32-0.34 m
     fov 22.9 deg   sharp 0.96 m to 1.05 m   hyperfocal 20.88 m
 
 t05_charge_line             EXECUTES   35mm T2.8  overcast
     trailer 5     4.0s  ease inout  height eye      handheld 0.00 deg
+    machine at home (no block: the hero is on the site)
     travel 1.24 m   peak 0.58 m/s   near clear 0.40 m   above ground 1.60-1.60 m
     fov 32.3 deg   sharp 4.74 m to 13.40 m   hyperfocal 14.62 m
 
-t06_bench_machine           EXECUTES   50mm T2.8  overcast
-    trailer 6     4.0s  ease inout  height eye      handheld 0.24 deg
-    travel 0.72 m   peak 0.34 m/s   near clear 0.40 m   above ground 1.55-1.55 m
-    fov 22.9 deg   sharp 2.27 m to 2.66 m   hyperfocal 29.81 m
+t06_meet_the_machine        EXECUTES   50mm T4.0  overcast
+    trailer 6     5.0s  ease inout  height machine  handheld 0.22 deg
+    machine hero surveyor/default skin=player wear=0.35 dmg=0.00 clip=idle
+    travel 0.40 m   peak 0.15 m/s   near clear 0.40 m   above ground 0.44-0.47 m
+    fov 22.9 deg   sharp 1.99 m to 2.45 m   hyperfocal 20.88 m
 
 t07_course_posts            EXECUTES   35mm T2.8  overcast
     trailer 7     4.0s  ease inout  height machine  handheld 0.22 deg
+    machine hero surveyor/default skin=player wear=0.35 dmg=0.00 clip=walk
     travel 1.40 m   peak 0.66 m/s   near clear 0.40 m   above ground 0.44-0.45 m
     fov 32.3 deg   sharp 3.08 m to 5.31 m   hyperfocal 14.62 m
 
 t12_course_alone            EXECUTES   21mm T4.0  overcast
     trailer 12    4.0s  ease inout  height crane    handheld 0.00 deg
+    machine hero surveyor/default skin=player wear=0.35 dmg=0.00 clip=walk
     travel 1.30 m   peak 0.61 m/s   near clear 0.40 m   above ground 4.16-5.51 m
     fov 51.5 deg   sharp 2.73 m to 1000000.00 m   hyperfocal 3.70 m
     crane hangs off a lighting column at 9.1 m
 
 t13_collar_above            EXECUTES   21mm T4.0  overcast
     trailer 13    4.0s  ease inout  height crane    handheld 0.00 deg
+    machine hero surveyor/default skin=player wear=0.35 dmg=0.00 clip=walk
     travel 1.10 m   peak 0.51 m/s   near clear 0.40 m   above ground 4.55-4.60 m
     fov 51.5 deg   sharp 2.66 m to 1000000.00 m   hyperfocal 3.70 m
     crane hangs off the headframe at 9.2 m
 
 t14_descending              REJECTED   21mm T2.8  overcast
     trailer 14    5.0s  ease inout  height machine  handheld 0.00 deg
+    machine hero surveyor/default skin=player wear=0.35 dmg=0.00 clip=crouch
     travel 8.00 m   peak 3.00 m/s   near clear 0.01 m   above ground 0.05-1.33 m
     fov 51.5 deg   sharp 2.97 m to 1000000.00 m   hyperfocal 5.27 m
     FAIL: body intersects geometry at t=0.00 (the 0.35 m sphere overlaps)
@@ -55,15 +65,50 @@ t14_descending              REJECTED   21mm T2.8  overcast
 
 t28_extraction_window       EXECUTES   21mm T4.0  rain
     trailer 28    3.0s  ease inout  height crane    handheld 0.00 deg
+    machine NONE -- the hero is deliberately not on the site for this shot
     travel 1.13 m   peak 0.71 m/s   near clear 0.40 m   above ground 3.15-3.20 m
     fov 51.5 deg   sharp 2.41 m to 1000000.00 m   hyperfocal 3.70 m
     crane hangs off the headframe at 6.7 m
 
 xfail_through_the_shed      REJECTED   21mm T2.8  overcast
     trailer       4.5s  ease inout  height eye      handheld 0.00 deg
+    machine at home (no block: the hero is on the site)
     travel 2.20 m   peak 0.92 m/s   near clear 0.01 m   above ground 1.60-1.60 m
     fov 51.5 deg   sharp 3.17 m to 1000000.00 m   hyperfocal 5.27 m
     FAIL: body intersects geometry at t=0.28 (the 0.35 m sphere overlaps)
     FAIL: frustum clearance falls to 0.01 m at t=0.47 (needs 0.40)
 
-9 of 11 shots execute
+xfail_wrong_machine         REJECTED   35mm T2.8  overcast
+    trailer 7     4.0s  ease inout  height machine  handheld 0.22 deg
+    machine hero hauler/bare skin=rival wear=0.70 dmg=0.00 clip=walk
+    travel 1.40 m   peak 0.66 m/s   near clear 0.40 m   above ground 0.44-0.45 m
+    fov 32.3 deg   sharp 3.08 m to 5.31 m   hyperfocal 14.62 m
+    FAIL: hero chassis is 'hauler', the hero machine's chassis is 'surveyor'
+    FAIL: hero loadout is 'bare', the hero machine's loadout is 'default'
+    FAIL: hero skin is 'rival', the hero machine's skin is 'player'
+    FAIL: hero wear is 0.700, the hero machine's wear is 0.350
+    FAIL: hero model resolves to 'hauler_bare', the hero machine is 'surveyor'
+
+xfail_into_the_machine      REJECTED   35mm T4.0  overcast
+    trailer       4.0s  ease inout  height machine  handheld 0.00 deg
+    machine hero surveyor/default skin=player wear=0.35 dmg=0.00 clip=walk
+    travel 2.20 m   peak 1.03 m/s   near clear 0.40 m   above ground 0.44-0.45 m
+    fov 32.3 deg   sharp 1.68 m to 2.48 m   hyperfocal 10.24 m
+    FAIL: camera body enters the MACHINE at t=0.59 (the 0.35 m sphere is inside its hull)
+    FAIL: body intersects geometry at t=0.59 (the 0.35 m sphere overlaps)
+
+xfail_skating_machine       REJECTED   35mm T2.8  overcast
+    trailer       4.0s  ease inout  height machine  handheld 0.22 deg
+    machine hero surveyor/default skin=player wear=0.35 dmg=0.00 clip=walk
+    travel 1.40 m   peak 0.66 m/s   near clear 0.40 m   above ground 0.44-0.45 m
+    fov 32.3 deg   sharp 3.08 m to 5.31 m   hyperfocal 14.62 m
+    FAIL: machine travels 4.00 m in 4.0 s = 1.00 m/s; the 'walk' clip is baked at 0.50 m/s and needs 2.00 m, so the feet would skate 2.00 m
+
+9 of 14 shots execute
+
+--- continuity: every shot that names the hero machine ---
+    surface/xfail_wrong_machine: hero chassis is 'hauler', the hero machine's chassis is 'surveyor'
+    surface/xfail_wrong_machine: hero loadout is 'bare', the hero machine's loadout is 'default'
+    surface/xfail_wrong_machine: hero skin is 'rival', the hero machine's skin is 'player'
+    surface/xfail_wrong_machine: hero wear is 0.700, the hero machine's wear is 0.350
+    surface/xfail_wrong_machine: hero model resolves to 'hauler_bare', the hero machine is 'surveyor'

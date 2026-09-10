@@ -78,6 +78,107 @@ func _build() -> Dictionary:
 	# ---- site bounds. Fixed; the seed does not move the world box.
 	P["site"] = {"x0": -78 * MM, "z0": -74 * MM, "x1": 96 * MM, "z1": 74 * MM}
 
+	# ---- THE VALLEY. DESIGN-PRINCIPLES 10, THE-ICE 7.2.
+	#
+	# The pit-head is no longer a yard in a field; it is a yard on the floor of a
+	# glaciated valley, at the retreat margin, with the society that owns it
+	# living on the opposite wall. Every number below is THE-ICE 7.2's, which
+	# says of itself that "the ratios are the decision, not the values".
+	#
+	# The valley runs along +x. Down-valley (-x) is the town and the rest of the
+	# world; up-valley (+x) is the glacier. The floor is 1200 m wide and the
+	# pit-head sits OFF CENTRE, near the south wall, so that the far wall - the
+	# inhabited one - is at THE-ICE's ~900 m and the near wall looms at 300 m.
+	# That is the whole composition: one wall to loom, one wall to live on.
+	#
+	# `floor_y` is the datum THE-ICE 5.4 note 6 asks for: the ONE zero the town's
+	# height above and the cave's depth below are both measured from. It is the
+	# ground the collar stands on, so it is zero here by construction.
+	P["valley"] = {
+		"floor_y": 0,
+		"near_toe": -300 * MM,        # z of the south wall's toe
+		"far_toe":   900 * MM,        # z of the north wall's toe. 1200 m of floor
+		"ridge_h":  1800 * MM,        # THE-ICE 7.2: "the smallest number that reads as massive"
+		"trim_h":    310 * MM,        # THE-ICE 3: the trimline. Where the ice stood
+		"snow_h":   1100 * MM,        # THE-ICE 3: the snowline. Where the ice is NOW
+		"bare_h":    90 * MM,         # the band below the snowline colonised by nothing
+		# THE SHADOW LINE the opposite ridge casts. GUESS, and lowered from
+		# 1500 after looking at the frames: at 1500 against an 1800 m ridge
+		# the lit band was 300 m of an 1800 m wall - a rim light, not a
+		# picture. At 1250 it is a third of the wall and it reads. The town
+		# tops out at 520 m and the floor is 0, so both stay in shadow, which
+		# is THE-ICE 2.7's actual requirement.
+		"sun_h":    1250 * MM,
+		"peak_lo":  2600 * MM,
+		"peak_hi":  3200 * MM,
+		"terminus_x": 3000 * MM,      # the glacier's snout, up-valley of the pit-head
+		"head_x":     6600 * MM,      # the cirque head wall closes the view
+		"mouth_x":   -7800 * MM,      # down-valley, where it turns out of sight
+		"moraine_h":    26 * MM,      # lateral moraines: the other thing that says glacier
+		"moraine_off":  150 * MM,
+		# THE MELTWATER RIVER. Braided rather than channelled, because that is
+		# what a river carrying a glacier's load actually does, and because a
+		# dark canal across a white valley reads as a crack in the render.
+		# `river_w` is the BRAID PLAIN - pale washed gravel and rotten shore
+		# ice - and the dark water threads inside it are a fraction of it.
+		"river_z":    -150 * MM,      # hard against the near wall, where outwash pushes it
+		"river_w":      58 * MM,
+		# the wall profile: [horizontal run beyond the toe, height above the floor].
+		# U-shaped - over-steepened below, easing above - because that is what ice
+		# does to a valley and it is why the town has to be terraced.
+		# OVER-STEEPENED AT THE BASE, which is what ice does and what the first
+		# profile did not do. 63 degrees at the toe easing to 21 at the ridge:
+		#   0-55 m     63 deg   bare rock, always. Nothing holds on this.
+		#   55-210 m   55 deg   bare rock with snow only in the gullies
+		#   210-470 m  50 deg   the trimline is in here, and so is the town
+		#   470-880 m  48 deg
+		#   880-1500 m 33 deg   the angle snow actually loads at
+		#   1500-2300  21 deg   summit slopes, white
+		# The talus apron in valley.gd covers the bottom ~130 m of it, so what a
+		# player sees from the floor is snow, then rock, then snow again, and
+		# that sequence is the whole read.
+		"wall": [[0, 0], [55 * MM, 110 * MM], [210 * MM, 330 * MM],
+			[470 * MM, 640 * MM], [880 * MM, 1100 * MM],
+			[1500 * MM, 1500 * MM], [2300 * MM, 1800 * MM]]}
+
+	# ---- the peaks. THE-ICE 2.7: the only warm light in the world is on these
+	#      and the player can never stand on it. [cx, cz, radius, height].
+	#      Nearly free (THE-ICE 7.5) - silhouette, aerial perspective, a snow
+	#      line, and nothing else - so they are hand-listed and generous.
+	#      GEOMETRY CHECK, and the first list failed it. A peak only exists if it
+	#      CLEARS THE RIDGE IN FRONT OF IT. From the floor the far ridge is
+	#      1,800 m at 3.2 km - 29 degrees of elevation - and a 3,050 m peak at
+	#      5.2 km is 30 degrees, so it cleared by one degree and was invisible in
+	#      every frame that was supposed to be about it. These are nearer, higher
+	#      or both, and the near ones sit deliberately just behind the ridge so
+	#      they read as a SECOND RANGE rather than as bumps on the first.
+	P["peaks"] = [
+		[  900 * MM,  4300 * MM, 2600 * MM, 3140 * MM],
+		[-2400 * MM,  5000 * MM, 3100 * MM, 3260 * MM],
+		[ 4200 * MM,  4100 * MM, 2400 * MM, 2960 * MM],
+		[-5300 * MM,  4600 * MM, 2900 * MM, 3060 * MM],
+		[ 1900 * MM, -4400 * MM, 2500 * MM, 3180 * MM],
+		[-1600 * MM, -5200 * MM, 3000 * MM, 3040 * MM],
+		[ 5400 * MM, -4200 * MM, 2600 * MM, 2900 * MM],
+		[-5800 * MM, -4600 * MM, 2800 * MM, 2820 * MM],
+		[ 8600 * MM,  1400 * MM, 4000 * MM, 3200 * MM],
+		[ 7600 * MM, -2400 * MM, 3000 * MM, 3020 * MM],
+		[-9000 * MM,  2200 * MM, 3600 * MM, 2880 * MM],
+		[-8400 * MM, -2600 * MM, 3200 * MM, 2760 * MM]]
+
+	# ---- THE TOWN. THE-ICE 7.3, and it is the one element that has to be built
+	#      properly, because it is the only thing in frame whose size a viewer
+	#      already knows (THE-ICE 7.2's chain: machine -> bay -> building -> town
+	#      -> ridge -> peak).
+	#
+	#      The society survived the ice ABOVE the trimline and has been walking
+	#      downhill ever since, so the stratigraphy runs DOWNWARD and gets NEWER.
+	#      That is expressed here, in the layout, as geometry rather than as a
+	#      material: era 0 is the highest terrace and it is the smallest, the
+	#      tightest and the most crowded; every terrace below it is wider, longer
+	#      and more regular than the one above.
+	P["town"] = _town(P)
+
 	# ---- the shaft. Origin. 2400 x 2000 collar (vision board guess 5).
 	P["shaft"] = {"cx": 0, "cz": 0, "w": 2400, "d": 2000,
 		"plinth_w": 5200, "plinth_d": 4600, "plinth_h": 400,
@@ -156,6 +257,15 @@ func _build() -> Dictionary:
 	# ---- haul road: gate in the west fence to the collar apron.
 	P["road"] = [[-78 * MM, 4 * MM], [-56 * MM, 3 * MM], [-40 * MM, 0], [-33 * MM, -2 * MM]]
 	P["road_w"] = 7000
+
+	# ---- THE WAY OUT, and it is the other half of THE-ICE 7.8's three descents.
+	#      The yard's own gate road continues down-valley to the foot of the
+	#      town's inclined railway. It is the leg where the whole vertical axis -
+	#      the town above, the collar below - is in one frame.
+	P["haul"] = [[-78 * MM, 4 * MM], [-260 * MM, 22 * MM], [-620 * MM, 40 * MM],
+		[-1080 * MM, 96 * MM], [-1460 * MM, 260 * MM], [-1690 * MM, 560 * MM],
+		[-1760 * MM, 830 * MM]]
+	P["haul_w"] = 9000
 
 	# ---- perimeter fence with a gate span. Layout: it is a wall.
 	# the fence encloses the yard AND the training course: the course is part of
@@ -338,6 +448,179 @@ static func on_pad_raw(P: Dictionary, x: int, z: int) -> bool:
 			return true
 	return false
 
+# -------------------------------------------------------------------- valley
+## Height above the valley floor, in mm, at horizontal distance `d` mm beyond a
+## wall toe. Integer piecewise-linear over the profile in the plan; no floats,
+## no sqrt, and the same rule the dressing layer samples so the town's terraces
+## and the wall mesh cannot disagree about where the wall is.
+func wall_h(d: int) -> int:
+	if d <= 0:
+		return 0
+	var w: Array = plan["valley"]["wall"]
+	var n := w.size()
+	var last: Array = w[n - 1]
+	if d >= int(last[0]):
+		return int(last[1])
+	for i in range(n - 1):
+		var a: Array = w[i]
+		var b: Array = w[i + 1]
+		var ad: int = a[0]
+		var bd: int = b[0]
+		if d >= ad and d < bd:
+			return int(a[1]) + ((int(b[1]) - int(a[1])) * (d - ad)) / (bd - ad)
+	return int(last[1])
+
+## The inverse: the horizontal run beyond the toe at which the wall reaches
+## height `h`. This is what puts a terrace on the wall rather than in the air.
+func wall_d(h: int) -> int:
+	var w: Array = plan["valley"]["wall"]
+	var n := w.size()
+	var last: Array = w[n - 1]
+	if h <= 0:
+		return 0
+	if h >= int(last[1]):
+		return int(last[0])
+	for i in range(n - 1):
+		var a: Array = w[i]
+		var b: Array = w[i + 1]
+		var ah: int = a[1]
+		var bh: int = b[1]
+		if h >= ah and h < bh:
+			return int(a[0]) + ((int(b[0]) - int(a[0])) * (h - ah)) / (bh - ah)
+	return int(last[0])
+
+## Static form of the same profile, so `_town()` can run during `_build()`
+## before `plan` exists. Same arithmetic; one source of truth is the array.
+static func _wall_h_of(w: Array, d: int) -> int:
+	if d <= 0:
+		return 0
+	var n := w.size()
+	var last: Array = w[n - 1]
+	if d >= int(last[0]):
+		return int(last[1])
+	for i in range(n - 1):
+		var a: Array = w[i]
+		var b: Array = w[i + 1]
+		if d >= int(a[0]) and d < int(b[0]):
+			return int(a[1]) + ((int(b[1]) - int(a[1])) * (d - int(a[0]))) / (int(b[0]) - int(a[0]))
+	return int(last[1])
+
+static func _wall_d_of(w: Array, h: int) -> int:
+	var n := w.size()
+	var last: Array = w[n - 1]
+	if h <= 0:
+		return 0
+	if h >= int(last[1]):
+		return int(last[0])
+	for i in range(n - 1):
+		var a: Array = w[i]
+		var b: Array = w[i + 1]
+		if h >= int(a[1]) and h < int(b[1]):
+			return int(a[0]) + ((int(b[0]) - int(a[0])) * (h - int(a[1]))) / (int(b[1]) - int(a[1]))
+	return int(last[0])
+
+# ---------------------------------------------------------------------- town
+## THE-ICE 7.3, and this function is the whole idea:
+##
+##   "The society survived the ice on the walls, above the trimline, and it has
+##    been walking downhill ever since ... so the town's own stratigraphy runs
+##    downward and gets newer."
+##
+## So the generator WALKS DOWNHILL. It starts at the oldest quarter (+520 m,
+## well above the trimline at +310 m) and steps down to the foot (+90 m, on
+## ground that was under ice within living memory), and every property that says
+## "newer" is a monotone function of how far it has come:
+##
+##   terrace depth   8 m  ->  34 m      a shelf you can stand on -> a shelf you
+##                                      can put a workshop and a road on
+##   terrace run    34 m  -> 330 m      a ledge -> a street
+##   vertical step  17 m  ->  34 m      stacked for shelter -> spaced for light
+##   building width  4 m  ->  17 m      a cell -> a hall
+##   stagger        high  ->  low       grown -> planned
+##
+## Nothing here says "old" or "new". The gradient IS the geometry, which is what
+## makes it legible at 900 m without a word, and it is the same instrument as
+## the mine's index running downward and getting newer.
+##
+## Integer throughout. `era` is the terrace index, 0 = oldest = highest.
+func _town(P: Dictionary) -> Dictionary:
+	var V: Dictionary = P["valley"]
+	var w: Array = V["wall"]
+	var r := IntRng.new(seed_v, 6)
+	var top_y: int = 520 * MM
+	var foot_y: int = 90 * MM
+	# the town's run along the valley. Mostly down-valley of the pit-head, so
+	# that its nearest corner is THE-ICE 7.2's ~900 m and it is a TOWN in the
+	# frame rather than a village: 2.2 km of wall, seen obliquely.
+	var tx0: int = -1560 * MM
+	var tx1: int = 180 * MM
+	var terr: Array = []
+	var ty: int = top_y
+	var era := 0
+	while ty > foot_y and era < 40:
+		# f is 0 at the oldest terrace and 1000 at the newest. Every gradient
+		# below is linear in f, which is the point: the town is one ramp.
+		var f: int = ((top_y - ty) * 1000) / (top_y - foot_y)
+		var depth: int = 10000 + (f * 20000) / 1000 + r.rng(-1100, 1100)
+		# MEASURED BY EYE AND QUADRUPLED. At 34 m the top terrace was a shelf with
+		# six houses on it, seen at 1.1 km: a speck, not a quarter. A town has to
+		# occupy real angle or the chain of known sizes (THE-ICE 7.2) has no link
+		# in it, and the whole reason the town exists is to BE that link.
+		var run: int = 150 * MM + (f * 490 * MM) / 1000 + r.rng(-18 * MM, 18 * MM)
+		# stagger: the oldest terraces wander along the wall, the newest line up.
+		var wander: int = 90 * MM - (f * 74 * MM) / 1000
+		var cx: int = (tx0 + tx1) / 2 + r.rng(-wander, wander) - (f * 90 * MM) / 1000
+		var x0: int = maxi(tx0, cx - run / 2)
+		var x1: int = mini(tx1, x0 + run)
+		if x1 - x0 < 20 * MM:
+			x0 = tx0
+			x1 = tx0 + 20 * MM
+		var d: int = _wall_d_of(w, ty)
+		# CUT AND FILL. The shelf is pushed half its depth out over the slope on
+		# a retaining wall and cut half its depth back into the hill. The front
+		# face's height is what the natural wall would have been at the front
+		# edge, and it is the thing that reads at a kilometre: a bright shelf
+		# edge with a dark face under it, seventeen times up a mountain.
+		var z_front: int = int(V["far_toe"]) + d - depth / 2
+		var z_back: int = z_front + depth
+		var face: int = ty - _wall_h_of(w, maxi(d - depth / 2, 0))
+		terr.append({"era": era, "y": ty, "x0": x0, "x1": x1,
+			"z0": z_front, "z1": z_back, "face": maxi(face, 2600),
+			"f": f,
+			# what stands on it. Oldest: many small cells, tight, walls of the
+			# same stone the shelf is cut from. Newest: few wide halls, spaced,
+			# glazed, and the roof line is one line.
+			"bw": 4600 + (f * 10600) / 1000,
+			"bd": 6000 + (f * 8000) / 1000,
+			# THE NUMBER THAT DECIDES WHETHER THIS IS A TOWN OR A STAIRCASE.
+			# A building has to be a large fraction of the terrace step above it,
+			# or every house is hidden behind the next retaining wall and all a
+			# viewer sees is shelves. At 3.6-7.8 m against a 25 m step that is
+			# exactly what happened. Two to five storeys against an 18-27 m step
+			# makes the fronts OVERLAP the face above, which is what turns a
+			# stack of ledges into one built mass - and it is also what a real
+			# hill town looks like, for the same reason.
+			"bh": 8600 + (f * 8600) / 1000,
+			"gap": 700 + (f * 3000) / 1000,
+			"pitch": 2600 - (f * 2100) / 1000,     # roofs flatten downhill
+			"glass": (f * 1000) / 1000,            # window area grows downhill
+			"jitter": 1000 - f})                   # and the plan straightens
+		ty -= 18 * MM + (f * 9 * MM) / 1000 + r.rng(-1800, 1800)
+		era += 1
+	# the inclined railway (THE-ICE 7.8 leg 1): the town's own way down to the
+	# floor, and the players' technological register made obvious. It runs from
+	# the foot terrace straight down the fall line to the haul road's head.
+	var foot_d: int = _wall_d_of(w, foot_y)
+	var inc: Array = [[-1760 * MM, int(V["far_toe"]) + foot_d, foot_y],
+		[-1760 * MM, int(V["far_toe"]) + foot_d / 2, foot_y / 3],
+		[-1760 * MM, int(V["far_toe"]), 0]]
+	return {"x0": tx0, "x1": tx1, "top_y": top_y, "foot_y": foot_y,
+		"terraces": terr, "incline": inc,
+		# the upper quarter's own landmark: the one thing on the wall that is
+		# older than the town and taller than it. THE-ICE says nothing about it;
+		# it is here because a skyline needs one vertical. See VALLEY.md guesses.
+		"tower": {"x": -820 * MM, "y": 520 * MM, "h": 26 * MM}}
+
 # ------------------------------------------------------------------ course
 ## A branching corridor grown eastward from the root on an 1800 mm module.
 func _course() -> Dictionary:
@@ -403,8 +686,14 @@ func _course() -> Dictionary:
 ## The layout hash goes into the replay. Any dressing change must leave it alone.
 func _hash(P: Dictionary) -> int:
 	var h := 146959810393466560
-	var keys: Array = ["seed", "site", "shaft", "headframe", "pads", "buildings",
-		"zones", "course", "spoil", "road", "fence", "columns", "poles",
+	# VALLEY PASS: the plan gained "valley", "peaks", "town" and "haul". A client
+	# that disagrees about where the wall is, where the town is, or which way a
+	# machine leaves the yard disagrees about the hash - which is the correct
+	# behaviour and is the same event as the walkway rule in NOTES 2.1.16 and the
+	# stands rule in ORDER 4.
+	var keys: Array = ["seed", "site", "valley", "peaks", "town", "shaft",
+		"headframe", "pads", "buildings",
+		"zones", "course", "spoil", "road", "haul", "fence", "columns", "poles",
 		"masts", "stations", "gantry", "walkways", "clear_r", "clear_rects",
 		"ranks", "stands"]
 	for k in keys:

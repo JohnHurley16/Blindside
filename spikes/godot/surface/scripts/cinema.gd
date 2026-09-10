@@ -108,6 +108,11 @@ const CRANE_REACH: float = 12.0
 var world3d: World3D
 var body: SphereShape3D
 var L: SurfaceLayout
+## The machines, so that the shot's OWN machine is standing where the shot puts
+## it while the camera is being tested against it. Without this a shot is
+## validated against a machine parked somewhere else, which is worse than not
+## testing at all because it reads as a pass.
+var fleet: Fleet
 var static_root: StaticBody3D
 var collision_tris: int = 0
 var collision_props: int = 0
@@ -499,12 +504,33 @@ func _focus_dist(a, from: Vector3) -> float:
 # ---------------------------------------------------------------------------
 # validation
 # ---------------------------------------------------------------------------
+## MASK 3, NOT 1, AND THE 2 IS THE MACHINES. TRAILER 8 forbids passing through
+## "not rock, not a prop, not a machine, not the ground". While every machine on
+## the site was a batched box it was in layer 1 with the rest of the props and
+## the rule held by accident. The real chassis are skinned meshes with no body,
+## so `fleet.gd` gives each one a hull proxy on layer 2 and every test that asks
+## "is the camera inside something" asks about both layers. The tests that ask
+## "where is the FLOOR" stay on mask 1, so a ray dropped under the rig can never
+## land on the back of a machine.
+const SOLID_MASK: int = 1 | Fleet.MACHINE_LAYER
+
+## Layer 2 only, and no ground exemption: nothing on layer 2 is the floor.
+func _in_machine(p: Vector3) -> bool:
+	var q := PhysicsShapeQueryParameters3D.new()
+	q.shape = body
+	q.transform = Transform3D(Basis.IDENTITY, p)
+	q.margin = QUERY_MARGIN
+	q.collision_mask = Fleet.MACHINE_LAYER
+	q.collide_with_areas = false
+	return _ss().collide_shape(q, 2).size() > 0
+
+
 func _overlaps(p: Vector3) -> bool:
 	var q := PhysicsShapeQueryParameters3D.new()
 	q.shape = body
 	q.transform = Transform3D(Basis.IDENTITY, p)
 	q.margin = QUERY_MARGIN
-	q.collision_mask = 1
+	q.collision_mask = SOLID_MASK
 	q.collide_with_areas = false
 	var pts: PackedVector3Array = _ss().collide_shape(q, 24)
 	if pts.size() == 0:
@@ -558,7 +584,7 @@ func _frustum_clear(p: Vector3, bs: Basis, lens_mm: float) -> float:
 		for sy in [-1.0, 0.0, 1.0]:
 			var d: Vector3 = (-bs.z + bs.x * (ht * sx) + bs.y * (vt * sy)).normalized()
 			var q := PhysicsRayQueryParameters3D.create(p, p + d * NEAR_CLEAR)
-			q.collision_mask = 1
+			q.collision_mask = SOLID_MASK
 			var hit: Dictionary = _ss().intersect_ray(q)
 			if hit.is_empty():
 				continue
@@ -645,11 +671,57 @@ func crane_mount(p: Vector3, y: float) -> Array:
 		return [-1.0, ""]
 	return [best, who]
 
+## THE MACHINE'S OWN RULE, and it is as hard as any of the camera's.
+##
+## The walk clips are baked IN PLACE: `motion.py` plants the feet in world
+## space and the exporter strips the body's travel, so the stance feet slide
+## backwards under the hull at exactly the gait's speed. Move the node forward
+## at that same speed and the feet are stationary on the ground. NOTES section
+## 5: "any other speed and it skates."
+##
+## A shot says where the machine starts and where it ends and how long it
+## lasts, so it has already fixed the speed, and the speed is checkable. This
+## is the check. It is a FAIL and not a warning because a machine moonwalking
+## across a trailer shot is the most legible possible tell that the walk is a
+## texture rather than a gait.
+func skate_check(shot: Dictionary) -> Array[String]:
+	var out: Array[String] = []
+	var m: Dictionary = Hero.block(shot)
+	if m.is_empty() or String(m.get("role", "")) != "hero":
+		return out
+	var cl: String = String(m.get("clip", "idle"))
+	if cl != "walk" and cl != "trot":
+		return out
+	var at = m.get("at", null)
+	if not (at is Dictionary) or not (at as Dictionary).has("from"):
+		out.append("machine clip is '%s' but its `at` is a hold: a walking machine that does not travel skates on the spot" % cl)
+		return out
+	var d: float = resolve(at["from"]).distance_to(resolve(at["to"]))
+	var v: float = Book.speed(String(m.get("chassis", "surveyor")), cl)
+	var want: float = v * float(shot.get("len_s", 4.0))
+	if absf(d - want) > 0.15:
+		out.append(("machine travels %.2f m in %.1f s = %.2f m/s; the '%s' clip " +
+			"is baked at %.2f m/s and needs %.2f m, so the feet would skate %.2f m")
+			% [d, float(shot.get("len_s", 4.0)), d / maxf(float(shot.get("len_s", 4.0)), 0.01),
+				cl, v, want, d - want])
+	return out
+
+
 # Returns {ok, fail: [String], warn: [String], stats: {...}}
 func validate(shot: Dictionary) -> Dictionary:
 	var fail: Array = []
 	var warn: Array = []
 	var nm: String = String(shot.get("name", "?"))
+
+	# 0 -- CONTINUITY. TRAILER 11.1: "the loadout and skin have to be part of the
+	# shot definition and validated, in the same way the camera is". So it is in
+	# the same list, it carries the value that caused it, and a shot that names
+	# the wrong machine is REJECTED and not rendered -- exactly what happens to a
+	# camera that would fly through a wall. Nothing here corrects the shot.
+	for h in Hero.validate(shot):
+		fail.append(h)
+	for h2 in skate_check(shot):
+		fail.append(h2)
 	var ease: String = String(shot.get("ease", "inout"))
 	var lens: float = float(shot["lens_mm"])
 	var dur: float = float(shot["len_s"])
@@ -670,13 +742,19 @@ func validate(shot: Dictionary) -> Dictionary:
 	var h_hi: float = -99.0
 	var buried_t: float = -1.0
 	var buried_n: int = 0
+	var mach_over: float = -1.0
 	for i in range(SAMPLES + 1):
 		var tn: float = float(i) / float(SAMPLES)
+		# the machine first: it is one of the solids the camera may not enter
+		if fleet != null:
+			fleet.hero_pose(shot, tn, tn * float(shot.get("len_s", 4.0)))
 		var ps: Dictionary = pose(shot, tn)
 		pts.append(ps)
 		var p: Vector3 = ps["pos"]
 		if _overlaps(p) and worst_over < 0.0:
 			worst_over = tn
+		if mach_over < 0.0 and _in_machine(p):
+			mach_over = tn
 		var c: float = _frustum_clear(p, ps["basis"], lens)
 		if c < mn_clear:
 			mn_clear = c
@@ -695,6 +773,13 @@ func validate(shot: Dictionary) -> Dictionary:
 	if buried_t >= 0.0:
 		fail.append("camera is inside solid geometry at t=%.2f (%d of 6 axis rays hit a back face)" % [
 			buried_t, buried_n])
+
+	# 1a -- the machine, named. `_overlaps` would report this as "geometry",
+	# which is true and useless: a camera that ends up inside the thing the
+	# trailer is about is a different mistake from one that clips a fence, and
+	# the report should say which happened.
+	if mach_over >= 0.0:
+		fail.append("camera body enters the MACHINE at t=%.2f (the 0.35 m sphere is inside its hull)" % mach_over)
 
 	# 1 -- body sweep
 	var breach: float = _path_breach(pts)

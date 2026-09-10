@@ -1,0 +1,38 @@
+=== Blindside surface spike ===
+adapter        : NVIDIA GeForce RTX 3080 Laptop GPU
+api            : 1.4.312 (NVIDIA)
+godot          : 4.7.2-stable (official)
+seed           : 20260908
+layout hash    : 701635322695612
+layout ms      : 2.22
+valley ms      : 4934.43  (208712 tris, 107424 verts)
+town ms        : 493.20  (20 terraces, 501 buildings)
+ground ms      : 1512.46  (129072 tris, 65095 verts)
+inherited ms   : 63.10
+brought ms     : 12.96
+scatter ms     : 874.14
+flush ms       : 77.04
+fleet ms       : 787.95  (18 machines, 391940 tris)
+TOTAL GEN ms   : 7969.53
+prop instances : 56425
+multimeshes    : 1474
+mm triangles   : 2019972
+decals         : 87
+mode           : vshots   light: overcast
+pom            : 1.0   sky: realtime   ssao: true
+vshot v01_valley_wide  day  fps=7.0 draws=133 prims=1494544
+vshot v02_town_distant  day  fps=84.0 draws=191 prims=1289790
+vshot v03_town_close  day  fps=71.0 draws=23 prims=1012532
+vshot v04_peaks  firstlight  fps=53.0 draws=23 prims=1012532
+vshot v05_floor_yard  day  fps=75.0 draws=476 prims=1930281
+vshot v06_snow_macro  day  fps=69.0 draws=184 prims=1284817
+vshot v07_machine_snow  day  fps=45.0 draws=441 prims=1717849
+vshot v08_way_down  dusk  fps=46.0 draws=828 prims=2790907
+vshot v09_trimline  day  fps=53.0 draws=86 prims=915100
+vshot v10_trailer_open  firstlight  fps=72.0 draws=90 prims=1431388
+vshot v11_haul_road  day  fps=89.0 draws=23 prims=1012532
+vshot v12_glacier  day  fps=82.0 draws=106 prims=1066961
+vshot v13_town_dusk  dusk  fps=77.0 draws=23 prims=1012532
+vshot v14_course_snow  day  fps=45.0 draws=266 prims=1433813
+vshot v15_collar_town  day  fps=41.0 draws=499 prims=1874338
+vshot v16_snowfall  snowfall  fps=45.0 draws=514 prims=1918654

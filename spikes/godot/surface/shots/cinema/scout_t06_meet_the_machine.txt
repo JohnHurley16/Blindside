@@ -1,0 +1,16 @@
+=== CINEMA scout: t06_meet_the_machine, move shifted in its own frame ===
+rows are `o` (right of the axis), columns are `a` (along it), in metres
+       -2.0 -1.6 -1.2 -0.8 -0.4  0.0  0.4  0.8  1.2  1.6  2.0
+ -2.0   b    s    s    s    b    b    b    b    b    b    b  
+ -1.6   b    s    s    s    b    b    b    b    b    b    b  
+ -1.2   .    s    s    s    b    b    b    b    b    b    b  
+ -0.8   .    .    s    s    b    b    b    b    b    b    b  
+ -0.4   b    b    b    b    b    b    b    b    b    b    b  
+  0.0   b    b    b    b    b    b    b    b    b    b    b  
+  0.4   b    b    .    b    b    b    b    b    b    b    b  
+  0.8   .    .    .    .    .    .    .    .    .    .    .  
+  1.2   .    .    .    .    .    .    .    .    .    .    .  
+  1.6   .    .    .    .    .    .    .    .    .    .    .  
+  2.0   b    .    .    .    .    .    .    .    .    .    .  
+
+47 of 121 offsets accept this shot

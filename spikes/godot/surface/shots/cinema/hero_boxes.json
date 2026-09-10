@@ -1,0 +1,78 @@
+{
+  "fps": 24.0,
+  "hero": {
+    "chassis": "surveyor",
+    "damage": 0.0,
+    "loadout": "default",
+    "model": "surveyor",
+    "skin": "player",
+    "wear": 0.35
+  },
+  "project": "surface",
+  "shots": [
+    {
+      "dir": "shots/cinema/seq/t06_meet_the_machine",
+      "frame": 86,
+      "frames": 120,
+      "len_s": 5.0,
+      "lens_mm": 50.0,
+      "machine": "hero surveyor/default skin=player wear=0.35 dmg=0.00 clip=idle",
+      "name": "t06_meet_the_machine",
+      "rect": [
+        470.074035644531,
+        252.714614868164,
+        843.026062011719,
+        751.778503417969
+      ],
+      "trailer": "6"
+    },
+    {
+      "dir": "shots/cinema/seq/t07_course_posts",
+      "frame": 68,
+      "frames": 96,
+      "len_s": 4.0,
+      "lens_mm": 35.0,
+      "machine": "hero surveyor/default skin=player wear=0.35 dmg=0.00 clip=walk",
+      "name": "t07_course_posts",
+      "rect": [
+        804.076538085938,
+        372.999694824219,
+        315.239868164063,
+        452.392028808594
+      ],
+      "trailer": "7"
+    },
+    {
+      "dir": "shots/cinema/seq/t12_course_alone",
+      "frame": 68,
+      "frames": 96,
+      "len_s": 4.0,
+      "lens_mm": 21.0,
+      "machine": "hero surveyor/default skin=player wear=0.35 dmg=0.00 clip=walk",
+      "name": "t12_course_alone",
+      "rect": [
+        955.361694335938,
+        484.091583251953,
+        65.5199584960938,
+        101.569183349609
+      ],
+      "trailer": "12"
+    },
+    {
+      "dir": "shots/cinema/seq/t13_collar_above",
+      "frame": 68,
+      "frames": 96,
+      "len_s": 4.0,
+      "lens_mm": 21.0,
+      "machine": "hero surveyor/default skin=player wear=0.35 dmg=0.00 clip=walk",
+      "name": "t13_collar_above",
+      "rect": [
+        801.813110351563,
+        525.5625,
+        118.351013183594,
+        132.641906738281
+      ],
+      "trailer": "13"
+    }
+  ]
+}

@@ -34,6 +34,8 @@ var cinema := ""
 var fx := "all"
 var rig: CameraRig
 var grade: CinemaGrade
+## the real machines (TRAILER 11.2). See scripts/fleet.gd and res://machines/.
+var fleet: Fleet
 
 var stats := {}
 var frame_times: Array[float] = []
@@ -103,6 +105,31 @@ var OSHOTS := [
 	{"n": "o07_margins",      "p": Vector3(14.0, 1.60, -30.5),"t": Vector3(24.0, 0.80, -26.0),"fov": 56, "l": "overcast"},
 ]
 
+## ---------------------------------------------------------------- VALLEY
+## DESIGN-PRINCIPLES 10 and THE-ICE 7. Fourteen frames into shots/valley/,
+## captured by --mode=vshots. The list is chosen to be FALSIFIABLE rather than
+## flattering: it has to show the valley at scale, the town near enough to read
+## as buildings, the trimline as a line, snow at macro where it can fail, and
+## one frame that would open the trailer.
+var VSHOTS := [
+	{"n": "v01_valley_wide",   "p": Vector3(150, 5.6, 44),    "t": Vector3(-1500, 250, 640), "fov": 66, "l": "day"},
+	{"n": "v02_town_distant",  "p": Vector3(2.0, 3.1, 21.0),  "t": Vector3(-840, 300, 1150), "fov": 48, "l": "day"},
+	{"n": "v03_town_close",    "p": Vector3(-120, 26.0, 6.0), "t": Vector3(-880, 296, 1130), "fov": 19, "l": "day"},
+	{"n": "v04_peaks",         "p": Vector3(-40, 7.0, 120.0), "t": Vector3(-2300, 1900, 4700),"fov": 38, "l": "firstlight"},
+	{"n": "v05_floor_yard",    "p": Vector3(26.0, 2.30, 27.0),"t": Vector3(-26.0, 2.6, -4.0),"fov": 62, "l": "day"},
+	{"n": "v06_snow_macro",    "p": Vector3(9.4, 0.34, 22.0), "t": Vector3(11.9, -0.26, 24.6),"fov": 42, "l": "day"},
+	{"n": "v07_machine_snow",  "p": Vector3(-9.4, 0.86, 6.4), "t": Vector3(-6.4, 0.40, 2.1), "fov": 46, "l": "day"},
+	{"n": "v08_way_down",      "p": Vector3(6.6, 2.55, -5.0), "t": Vector3(-0.4, 0.05, 0.6), "fov": 58, "l": "dusk"},
+	{"n": "v09_trimline",      "p": Vector3(30.0, 6.0, 520.0),"t": Vector3(-10.0, 250, -560),"fov": 33, "l": "day"},
+	{"n": "v10_trailer_open",  "p": Vector3(238, 6.8, -58.0), "t": Vector3(-1480, 360, 740), "fov": 58, "l": "firstlight"},
+	{"n": "v11_haul_road",     "p": Vector3(-92.0, 3.4, 8.0), "t": Vector3(-1010, 130, 520), "fov": 46, "l": "day"},
+	{"n": "v12_glacier",       "p": Vector3(64.0, 7.5, 2.0),  "t": Vector3(2900, 150, -70),  "fov": 44, "l": "day"},
+	{"n": "v13_town_dusk",     "p": Vector3(-170, 11.0, 34.0),"t": Vector3(-900, 300, 1150), "fov": 27, "l": "dusk"},
+	{"n": "v14_course_snow",   "p": Vector3(30.5, 1.58, 6.0), "t": Vector3(50.0, 0.85, -1.5),"fov": 62, "l": "day"},
+	{"n": "v15_collar_town",   "p": Vector3(-5.6, 1.55, 4.6), "t": Vector3(0.6, 0.35, -0.4), "fov": 56, "l": "day"},
+	{"n": "v16_snowfall",      "p": Vector3(-9.2, 1.52, 3.0), "t": Vector3(0.8, 0.55, -0.4), "fov": 60, "l": "snowfall"},
+]
+
 ## the camera path used by --mode=bench, chosen to hit every density regime
 var PATH := [
 	Vector3(-56, 14, 44), Vector3(-30, 4, 22), Vector3(-14, 1.7, 9),
@@ -115,6 +142,11 @@ var PATH := [
 func _ready() -> void:
 	_parse_args()
 	RenderingServer.global_shader_parameter_add("g_wet", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 0.3)
+	# THE-ICE 7.4: "a `g_snow` copies [the g_wet pattern], so snow accumulation as
+	# a season lever costs one uniform". It does, and the same paragraph's warning
+	# holds - wet and snow are not independent sliders and weather.gd sets both
+	# from one preset rather than exposing two knobs that fight.
+	RenderingServer.global_shader_parameter_add("g_snow", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 1.0)
 	DisplayServer.window_set_size(Vector2i(1920, 1080))
 	_log("=== Blindside surface spike ===")
 	_log("adapter        : %s" % RenderingServer.get_video_adapter_name())
@@ -128,6 +160,20 @@ func _ready() -> void:
 	var t_layout := float(Time.get_ticks_usec() - t0) / 1000.0
 	_log("layout hash    : %d" % L.plan["hash"])
 	_log("layout ms      : %.2f" % t_layout)
+
+	# ---------------- THE VALLEY (DESIGN-PRINCIPLES 10). Built FIRST because
+	# every other dressing file may ask it where the landform is, and because
+	# the pit-head's own mesh draws on top of it.
+	var tv := Time.get_ticks_usec()
+	var vstats := Valley.build(L, self)
+	var t_valley := float(Time.get_ticks_usec() - tv) / 1000.0
+
+	B = Batcher.new()
+	Valley.erratics(L, B)
+	var tt := Time.get_ticks_usec()
+	var T := Town.new(L, B)
+	T.build()
+	var t_town := float(Time.get_ticks_usec() - tt) / 1000.0
 
 	# ---------------- DRESSING (floats allowed, client side)
 	var t1 := Time.get_ticks_usec()
@@ -152,10 +198,15 @@ func _ready() -> void:
 		for c in get_children():
 			if c is MeshInstance3D and c.name == "Ground":
 				(c.material_override as ShaderMaterial).set_shader_parameter("dbg", dbg)
+		# the valley takes the same switch: --dbg=1 shows (cover, above_trim,
+		# above_snow) as RGB, which is the only honest way to ask "is the snow
+		# mask doing what I think it is" rather than judging it through fog,
+		# aerial perspective and a tone curve.
+		for m in Mats.valleys():
+			m.set_shader_parameter("dbg", dbg)
 	var t_ground := float(Time.get_ticks_usec() - t1) / 1000.0
 
 	var t2 := Time.get_ticks_usec()
-	B = Batcher.new()
 	var D := Dressing.new(L, B)
 	D.build()
 	var t_inherited := float(Time.get_ticks_usec() - t2) / 1000.0
@@ -173,6 +224,15 @@ func _ready() -> void:
 	var t5 := Time.get_ticks_usec()
 	var fstats := B.flush(self)
 	var t_flush := float(Time.get_ticks_usec() - t5) / 1000.0
+
+	# ---------------- THE MACHINES, out of the shared machine layer.
+	# props.gd recorded where each one stands; this puts a real chassis there.
+	# It is after the flush because a Machine is a skinned MeshInstance3D with
+	# its own two draw calls and never goes through the batcher.
+	var t6 := Time.get_ticks_usec()
+	fleet = Fleet.new()
+	fleet.build(self, L, P.machine_slots)
+	var t_fleet := float(Time.get_ticks_usec() - t6) / 1000.0
 
 	if dbg == 10:
 		var rows: Array = []
@@ -203,6 +263,16 @@ func _ready() -> void:
 				c.material_override = sm
 				_log("ground aabb %s" % str(c.mesh.get_aabb()))
 				_log("surfaces %d  format %d" % [c.mesh.get_surface_count(), c.mesh.surface_get_format(0)])
+	# --dbg=20 hides the valley mesh, --dbg=21 the town, so the cost of the two
+	# new large things can be priced separately against the same pass. Without
+	# this the only honest statement about the frame-rate delta is "it went
+	# down", which is not a measurement.
+	if dbg == 20 or dbg == 21:
+		for c in get_children():
+			if dbg == 20 and c is MeshInstance3D and c.name == "Valley":
+				c.visible = false
+			if dbg == 21 and c is MultiMeshInstance3D and c.get_meta("bucket", 0) == Batcher.FAR:
+				c.visible = false
 	if dbg == 14:
 		for c in get_children():
 			if c is MultiMeshInstance3D:
@@ -241,19 +311,27 @@ func _ready() -> void:
 		W.sun.shadow_enabled = false
 
 	cam = Camera3D.new()
-	cam.far = 900.0
-	cam.near = 0.05
+	# The valley is sixteen kilometres across. Godot 4's Forward+ renderer uses a
+	# reversed-Z depth buffer, which is what makes a 0.08 : 17000 ratio a
+	# non-event; on a conventional depth buffer this range is where z-fighting
+	# lives. The pit-head still needs a near plane a hand's breadth off the deck
+	# for the underfoot frames, so the ratio has to be taken rather than avoided.
+	cam.far = Valley.REACH + 1000.0
+	cam.near = 0.08
 	add_child(cam)
 	cam.position = Vector3(-52, 15.5, 41)
 	cam.look_at(Vector3(2, 6, -2))
 	cam.current = true
 
-	var total := t_layout + t_ground + t_inherited + t_brought + t_scatter + t_flush
+	var total := t_layout + t_valley + t_town + t_ground + t_inherited + t_brought + t_scatter + t_flush
+	_log("valley ms      : %.2f  (%d tris, %d verts)" % [t_valley, vstats["tris"], vstats["verts"]])
+	_log("town ms        : %.2f  (%d terraces, %d buildings)" % [t_town, T.n_terraces, T.n_buildings])
 	_log("ground ms      : %.2f  (%d tris, %d verts)" % [t_ground, gstats["tris"], gstats["verts"]])
 	_log("inherited ms   : %.2f" % t_inherited)
 	_log("brought ms     : %.2f" % t_brought)
 	_log("scatter ms     : %.2f" % t_scatter)
 	_log("flush ms       : %.2f" % t_flush)
+	_log("fleet ms       : %.2f  (%d machines, %d tris)" % [t_fleet, fleet.all.size(), fleet.tri_total])
 	_log("TOTAL GEN ms   : %.2f" % total)
 	_log("prop instances : %d" % fstats["instances"])
 	_log("multimeshes    : %d" % fstats["multimeshes"])
@@ -272,6 +350,8 @@ func _ready() -> void:
 		_run_pshots()
 	elif mode == "oshots":
 		_run_oshots()
+	elif mode == "vshots":
+		_run_vshots()
 	elif mode == "bench":
 		set_process(true)
 
@@ -286,6 +366,7 @@ func _run_cinema() -> void:
 	rig = CameraRig.new()
 	rig.build_collision(self, L)
 	rig.ready_space(self)
+	rig.fleet = fleet
 	_log("cinema collis : %d ground tris + %d instances / %d tris in %.0f ms"
 		% [rig.collision_ground_tris, rig.collision_props, rig.collision_tris, rig.build_ms])
 	grade = CinemaGrade.new()
@@ -294,6 +375,7 @@ func _run_cinema() -> void:
 	await get_tree().physics_frame
 	await RenderingServer.frame_post_draw
 	var sh := Shoot.new(self, cam, W, rig, grade)
+	sh.fleet = fleet
 	sh.load_shots(ProjectSettings.globalize_path("res://shots_cinema.json"))
 	var m := CinemaGrade.parse(fx)
 	match cinema:
@@ -302,6 +384,7 @@ func _run_cinema() -> void:
 		"probe":    sh.run_probe(only_shot)
 		"scout":    sh.run_scout(only_shot, 5.0, 1.0)
 		"scoutf":   sh.run_scout(only_shot, 2.0, 0.4)
+		"hero":     sh.run_hero(only_shot)
 		"seq":      await sh.run_seq(only_shot, m)
 		"pairs":    await sh.run_pairs(only_shot)
 		"stack":    await sh.run_stack(_stack_names())
@@ -420,6 +503,28 @@ func _run_pshots() -> void:
 			int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),
 			int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME))])
 	_write_log("pshots_%s.txt" % tag)
+	get_tree().quit()
+
+func _run_vshots() -> void:
+	var dir := ProjectSettings.globalize_path("res://shots/valley/")
+	DirAccess.make_dir_recursive_absolute(dir)
+	for s in VSHOTS:
+		if only_shot != "" and s["n"] != only_shot:
+			continue
+		W.apply(s["l"])
+		cam.fov = s["fov"]
+		cam.position = s["p"]
+		cam.look_at(s["t"])
+		W.rain.global_position = cam.position + Vector3(0, 6, 0)
+		for i in 72:
+			await RenderingServer.frame_post_draw
+		var img := get_viewport().get_texture().get_image()
+		img.save_png(dir + str(s["n"]) + ".png")
+		_log("vshot %s  %s  fps=%.1f draws=%d prims=%d" % [s["n"], s["l"],
+			Performance.get_monitor(Performance.TIME_FPS),
+			int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),
+			int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME))])
+	_write_log("vshots.txt")
 	get_tree().quit()
 
 func _run_oshots() -> void:

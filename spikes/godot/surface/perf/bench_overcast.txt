@@ -3,31 +3,32 @@ adapter        : NVIDIA GeForce RTX 3080 Laptop GPU
 api            : 1.4.312 (NVIDIA)
 godot          : 4.7.2-stable (official)
 seed           : 20260908
-layout hash    : 1889570882374975
-layout ms      : 1.15
-ground ms      : 1295.83  (129072 tris, 65095 verts)
-inherited ms   : 66.60
-brought ms     : 24.29
-scatter ms     : 1629.61
-flush ms       : 65.34
-TOTAL GEN ms   : 3082.83
-prop instances : 84864
-multimeshes    : 1464
-mm triangles   : 3351932
-decals         : 89
+layout hash    : 190631341776686
+layout ms      : 1.96
+ground ms      : 1579.96  (129072 tris, 65095 verts)
+inherited ms   : 61.32
+brought ms     : 12.43
+scatter ms     : 994.96
+flush ms       : 56.16
+fleet ms       : 814.00  (18 machines, 391940 tris)
+TOTAL GEN ms   : 2706.79
+prop instances : 51042
+multimeshes    : 1295
+mm triangles   : 1891922
+decals         : 82
 mode           : bench   light: overcast
-pom            : 0.0   sky: realtime   ssao: false
+pom            : 1.0   sky: realtime   ssao: true
 
 --- sustained, overcast light, 1920x1080, camera moving ---
-frames         : 4077 over 40.0 s
-mean frame     : 9.57 ms   (104.5 fps)
+frames         : 3728 over 40.0 s
+mean frame     : 10.46 ms   (95.6 fps)
 median frame   : 10.00 ms   (100.0 fps)
-p95 frame      : 12.50 ms   (80.0 fps)
-p99 frame      : 12.96 ms   (77.1 fps)
-worst frame    : 14.26 ms   (70.1 fps)
-draw calls max : 927
-primitives max : 2443915
-objects max    : 927
-video mem      : 214.1 MB
-gen ms         : 3082.83
-instances      : 84864
+p95 frame      : 15.28 ms   (65.5 fps)
+p99 frame      : 15.97 ms   (62.6 fps)
+worst frame    : 16.67 ms   (60.0 fps)
+draw calls max : 744
+primitives max : 2312083
+objects max    : 744
+video mem      : 326.2 MB
+gen ms         : 2706.79
+instances      : 51042

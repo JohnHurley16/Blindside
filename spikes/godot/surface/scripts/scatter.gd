@@ -58,7 +58,7 @@ func kcol(lo: float = 0.7, hi: float = 1.5) -> Color:
 func build(parent: Node3D) -> void:
 	_gravel()
 	_pad_chippings()
-	_weeds()
+	_drifts()
 	_fixings()
 	_litter()
 	_ground_cables()
@@ -184,94 +184,140 @@ func _perimeter(x0: float, z0: float, x1: float, z1: float, t: float, e: float) 
 	t -= d
 	return Vector2(x0 - e, clampf(z1 - t, z0, z1))
 
-# =================================================================== weeds
-## RULE, REWRITTEN FOR DESIGN-PRINCIPLES 7: "weeds ... belong in the margins only
-## - behind buildings, along fences, in corners nothing crosses. Growing through
-## the middle of a working apron says nobody has walked there in a year."
+# =================================================================== drifts
+## RULE, REWRITTEN AGAIN FOR THE ICE. The weeds are gone - THE-ICE 7.4: "also
+## gone: the puddles (ice, or buried), the weeds in the margins, and the overcast
+## lighting rig" - and what replaces them is the thing THE-ICE 7.4 names as the
+## expensive half of snow:
 ##
-## The old rule seeded 2.2 tufts per metre of EVERY slab joint across all 3 224
-## m2 of hardstanding, so the yard grew grass through the ground its machines are
-## walked over. It now grows in three places: the outer 2.6 m of the pad, the
-## unpaved ground beyond it, and an unbroken line at the foot of the fence.
-## Somebody swept this yard this week.
-func _weeds() -> void:
+##   "Snow's silhouette is the known open weakness - materials/NOTES.md 7.4: 'a
+##    flat plane with a heightfield on it is still a flat plane. POM gives
+##    apparent depth and it works well ... but the silhouette is unchanged, so at
+##    grazing the ground shows a clean straight edge.' DRIFTS AND SNOW BANKING
+##    AGAINST OBJECTS ARE EXACTLY THE CASE PARALLAX CANNOT DO."
+##
+## They are, so they are geometry. And the placement rule did not have to be
+## invented: the weed rule already knew where the margins are - the fence line,
+## behind the buildings, the outer band of the pad, the ground nothing crosses -
+## because DESIGN-PRINCIPLES 7 taught it that. The same three placements now
+## carry snow banks instead of grass, which is what "re-point it, do not
+## re-invent it" means in practice.
+##
+## AND IT STILL OBEYS "DENSITY IS ORDER, NOT SCATTER", by a route the weeds
+## never could. Every drift answers "who put it there and why" with ONE answer -
+## THE WIND - so every drift on the site shares one axis, and that shared axis is
+## read instantly as a cause. A field of randomly rotated snow lumps would be the
+## scrapyard failure in white. Nothing here takes a random yaw.
+const WIND := Vector2(0.94, 0.34)
+
+func _drift(pos: Vector3, along: float, l: float, w: float, h: float, salt: int) -> void:
+	var m: String = ["rock", "rock2", "rock3"][salt % 3]
+	B.detail(m, "snow", Batcher.xf(pos + Vector3(0, h * 0.30, 0),
+		Vector3(l, h, w), along), kcol(0.94, 1.06))
+
+## the yaw whose local +X points along a world XZ direction
+static func _yaw_of(d: Vector2) -> float:
+	return -atan2(d.y, d.x)
+
+func _drifts() -> void:
+	var wy := _yaw_of(WIND.normalized())
 	var p: Dictionary = L.plan["pads"][0]
 	var x0 := float(p["x0"]) / 1000.0
 	var z0 := float(p["z0"]) / 1000.0
 	var x1 := float(p["x1"]) / 1000.0
 	var z1 := float(p["z1"]) / 1000.0
-	var mod := float(L.plan["slab_module"]) / 1000.0
-	# joints, but only in the margin band and only where nothing crosses
-	var jx := ceilf(x0 / mod) * mod
-	while jx < x1:
-		var m := int((z1 - z0) * 1.4)
-		for k in m:
-			var z := r.randf_range(z0, z1)
-			var jjx := jx + r.randf_range(-0.06, 0.06)
-			if not margin(jjx, z) or swept(jjx, z) or in_stand(jjx, z):
-				continue
-			var s := r.randf_range(0.10, 0.30)
-			B.detail("weed", "weed", Batcher.xf(Vector3(jjx, gh(jjx, z) + s * 0.36, z),
-				Vector3(s * 1.4, s, s * 1.4), r.randf() * TAU), kcol(0.55, 1.25))
-		jx += mod
-	var jz := ceilf(z0 / mod) * mod
-	while jz < z1:
-		var m2 := int((x1 - x0) * 1.4)
-		for k2 in m2:
-			var x2 := r.randf_range(x0, x1)
-			var jjz := jz + r.randf_range(-0.06, 0.06)
-			if not margin(x2, jjz) or swept(x2, jjz) or in_stand(x2, jjz):
-				continue
-			var s2 := r.randf_range(0.10, 0.30)
-			B.detail("weed", "weed", Batcher.xf(Vector3(x2, gh(x2, jjz) + s2 * 0.36, jjz),
-				Vector3(s2 * 1.4, s2, s2 * 1.4), r.randf() * TAU), kcol(0.55, 1.25))
-		jz += mod
-	# open ground: off the concrete only, and thinned hard near the collar
-	var rad := 70.0
-	var n := int(PI * rad * rad * 0.22)
-	for i in n:
-		var a := r.randf() * TAU
-		var d := sqrt(r.randf()) * rad
-		var x3 := cos(a) * d
-		var z3 := sin(a) * d
-		if on_pad(x3, z3) or swept(x3, z3):
-			continue
-		if d < 16.0 and r.randf() < 0.82:
-			continue
-		var s3 := r.randf_range(0.14, 0.55)
-		B.detail("weed", "weed", Batcher.xf(Vector3(x3, gh(x3, z3) + s3 * 0.36, z3),
-			Vector3(s3 * 1.3, s3, s3 * 1.3), r.randf() * TAU), kcol(0.5, 1.3))
-	# at the foot of the perimeter fence: an unbroken line of it. This is the
-	# margin the frame is meant to notice.
+
+	# --- 1. AT THE FOOT OF THE PERIMETER FENCE. A fence is a snow fence whether
+	# anybody meant it to be or not: it stalls the wind and the load drops out
+	# on the lee side in one continuous bank. This is the margin the frame is
+	# meant to notice, and it is now a metre of white instead of a line of grass.
 	var pts: Array = L.plan["fence"]
 	for i2 in range(pts.size() - 1):
 		var a2 := Vector2(float(pts[i2][0]) / 1000.0, float(pts[i2][1]) / 1000.0)
 		var b2 := Vector2(float(pts[i2 + 1][0]) / 1000.0, float(pts[i2 + 1][1]) / 1000.0)
-		var n2 := int(a2.distance_to(b2) * 2.6)
+		var run := b2 - a2
+		var rl := run.length()
+		if rl < 0.5:
+			continue
+		var dir := run / rl
+		var nrm := Vector2(-dir.y, dir.x)
+		# the bank is on the lee side, and which side that is depends on the run
+		var lee: float = 1.0 if nrm.dot(WIND) > 0.0 else -1.0
+		var ryaw := _yaw_of(dir)
+		var n2 := int(rl / 2.2)
 		for k3 in n2:
 			var t := (float(k3) + 0.5) / float(n2)
 			var pp: Vector2 = a2.lerp(b2, t)
-			var s4 := r.randf_range(0.18, 0.62)
-			var ox := r.randf_range(-0.55, 0.55)
-			var oz := r.randf_range(-0.55, 0.55)
-			if swept(pp.x + ox, pp.y + oz):
+			var off := nrm * lee * r.randf_range(0.55, 1.5)
+			var q := pp + off
+			if swept(q.x, q.y):
 				continue
-			B.detail("weed", "weed", Batcher.xf(Vector3(pp.x + ox, gh(pp.x + ox, pp.y + oz) + s4 * 0.36, pp.y + oz),
-				Vector3(s4 * 1.3, s4, s4 * 1.3), r.randf() * TAU), kcol(0.5, 1.25))
-	# and behind the buildings, where nothing crosses
+			var hgt := r.randf_range(0.30, 0.95)
+			_drift(Vector3(q.x, gh(q.x, q.y), q.y), ryaw,
+				r.randf_range(2.4, 4.4), r.randf_range(1.4, 2.8), hgt, k3)
+
+	# --- 2. AGAINST THE BUILDINGS. Same rule, and the walls are square to the
+	# site grid, so the banks are too. A drift with a straight edge against a
+	# wall and a feathered tail away from it is the whole shape.
 	for b in L.plan["buildings"]:
 		var bx0 := float(b["x0"]) / 1000.0
 		var bz0 := float(b["z0"]) / 1000.0
 		var bx1 := float(b["x1"]) / 1000.0
 		var bz1 := float(b["z1"]) / 1000.0
 		var per := 2.0 * ((bx1 - bx0) + (bz1 - bz0))
-		for k4 in int(per * 1.6):
-			var q := _perimeter(bx0, bz0, bx1, bz1, r.randf() * per, r.randf_range(0.15, 1.1))
-			if swept(q.x, q.y) or in_stand(q.x, q.y):
+		for k4 in int(per * 0.55):
+			var q2 := _perimeter(bx0, bz0, bx1, bz1, r.randf() * per, r.randf_range(0.35, 1.5))
+			if swept(q2.x, q2.y) or in_stand(q2.x, q2.y):
 				continue
-			var s5 := r.randf_range(0.12, 0.42)
-			B.detail("weed", "weed", Batcher.xf(Vector3(q.x, gh(q.x, q.y) + s5 * 0.36, q.y),
-				Vector3(s5 * 1.3, s5, s5 * 1.3), r.randf() * TAU), kcol(0.5, 1.25))
+			# square to the wall it is against, not to the wind: a wall wins
+			var horiz := absf(q2.x - bx0) < 0.9 or absf(q2.x - bx1) < 0.9
+			_drift(Vector3(q2.x, gh(q2.x, q2.y), q2.y), 0.0 if horiz else PI * 0.5,
+				r.randf_range(1.8, 3.6), r.randf_range(1.1, 2.2),
+				r.randf_range(0.25, 0.80), k4)
+
+	# --- 3. THE OPEN MARGIN. Long, low, all one way, and the only thing that
+	# varies is size. This is the one that makes a wide frame read as WIND.
+	var rad := 74.0
+	var n := int(PI * rad * rad * 0.020)
+	for i in n:
+		var a := r.randf() * TAU
+		var d := sqrt(r.randf()) * rad
+		var x3 := cos(a) * d
+		var z3 := sin(a) * d
+		if swept(x3, z3) or in_stand(x3, z3):
+			continue
+		# thinned hard over the swept ground near the collar, exactly as the
+		# weeds were, and for exactly the same reason: that ground is worked
+		if d < 15.0 and r.randf() < 0.86:
+			continue
+		if on_pad(x3, z3) and r.randf() < 0.72:
+			continue
+		var sc := r.randf_range(0.55, 1.9)
+		_drift(Vector3(x3, gh(x3, z3), z3), wy + r.randf_range(-0.10, 0.10),
+			sc * r.randf_range(3.2, 7.0), sc * r.randf_range(1.3, 2.4),
+			sc * r.randf_range(0.16, 0.42), i)
+
+	# --- 4. LAST YEAR'S STEMS, and this is a deliberate retention rather than a
+	# leftover. THE-ICE says the weeds go, and green weeds in a working margin
+	# do go. Dead stems standing out of a snow bank are a different object: they
+	# are the only fine dark thing in a white margin, they are the cheapest scale
+	# cue in the frame, and a perfectly clean snowfield is the thing that reads
+	# as a render. Twelve per cent of the old count, at the fence line only.
+	for i3 in range(pts.size() - 1):
+		var a3 := Vector2(float(pts[i3][0]) / 1000.0, float(pts[i3][1]) / 1000.0)
+		var b3 := Vector2(float(pts[i3 + 1][0]) / 1000.0, float(pts[i3 + 1][1]) / 1000.0)
+		var n3 := int(a3.distance_to(b3) * 0.32)
+		for k5 in n3:
+			var t2 := (float(k5) + 0.5) / float(n3)
+			var pp2: Vector2 = a3.lerp(b3, t2)
+			var ox := r.randf_range(-0.9, 0.9)
+			var oz := r.randf_range(-0.9, 0.9)
+			if swept(pp2.x + ox, pp2.y + oz):
+				continue
+			var s4 := r.randf_range(0.22, 0.52)
+			B.detail("weed", "timber", Batcher.xf(
+				Vector3(pp2.x + ox, gh(pp2.x + ox, pp2.y + oz) + s4 * 0.20, pp2.y + oz),
+				Vector3(s4 * 0.7, s4, s4 * 0.7), r.randf() * TAU), kcol(0.5, 0.9))
 
 # ================================================================= fixings
 ## RULE. Where something was bolted, something was dropped. Nuts, washers,
@@ -396,8 +442,15 @@ func _build_decals(parent: Node3D) -> void:
 			d.size = Vector3(s, 2.0, s * r.randf_range(0.7, 1.3))
 			d.position = Vector3(x, gh(x, z) + 0.6, z)
 			d.rotation.y = r.randf() * TAU
-			d.modulate = Color(0.10, 0.09, 0.085, 1.0)
-			d.albedo_mix = r.randf_range(0.55, 0.95)
+			# UNDER SNOW A STAIN IS NOT BLACK. The yard's oil is still there and
+			# it is still where the work is, but it is under a hand of snow, so
+			# what shows is a grey bruise where the pad has been walked and the
+			# cover is thin - not the 0.10 near-black that read as holes punched
+			# in the snowfield. `g_snow` is not readable from GDScript in a game
+			# build (the getter is editor-only), so this follows the preset the
+			# same way `Weather.wet` does.
+			d.modulate = Color(0.30, 0.30, 0.315, 1.0)
+			d.albedo_mix = r.randf_range(0.22, 0.46)
 			d.distance_fade_enabled = true
 			d.distance_fade_begin = 40.0
 			d.distance_fade_length = 12.0
@@ -419,8 +472,12 @@ func _build_decals(parent: Node3D) -> void:
 			d2.size = Vector3(2.6, 1.6, 3.2)
 			d2.position = Vector3(pp.x, gh(pp.x, pp.y) + 0.5, pp.y)
 			d2.rotation.y = atan2((b - a).y, (b - a).x) + PI * 0.5
-			d2.modulate = Color(0.14, 0.115, 0.085, 1.0)
-			d2.albedo_mix = r.randf_range(0.35, 0.7)
+			# A TRACK IN SNOW IS COMPACTED SNOW, which is DARKER AND BLUER than
+			# the snow beside it because the light gets further into it before it
+			# comes back out - the same path-length rule as everything else here,
+			# used as evidence of traffic. It is not a mud smear.
+			d2.modulate = Color(0.40, 0.435, 0.50, 1.0)
+			d2.albedo_mix = r.randf_range(0.30, 0.55)
 			d2.distance_fade_enabled = true
 			d2.distance_fade_begin = 35.0
 			d2.distance_fade_length = 12.0

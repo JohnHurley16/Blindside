@@ -3,3 +3,7 @@
 shots/**/*.import
 perf/*.import
 perf/*.translation
+
+# The machine layer is a JUNCTION to ../machines/machines -- one physical copy,
+# three res:// names. Tracked once, at its real home. See machines/link.sh.
+machines/

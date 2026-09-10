@@ -17,6 +17,10 @@ var L: SurfaceLayout
 var B: Batcher
 var r: RandomNumberGenerator
 var lights: Array = []      # [pos, colour, energy, range] for the dusk preset
+## Where a machine STANDS. Filled by _machines(); Fleet turns each entry into a
+## real chassis out of the shared machine layer. Until 2026-09-09 this file also
+## BUILT the machine, out of 34 batched boxes -- see the note over _walker().
+var machine_slots: Array = []
 
 func _init(p_L: SurfaceLayout, p_B: Batcher) -> void:
 	L = p_L
@@ -1101,66 +1105,19 @@ func _machines() -> void:
 		p1.y = gh(p1.x, p1.z)
 		_walker(p1, 0.0, "stand", 0.45)
 
+## RECORD where a machine stands. It does not build one.
+##
+## This used to be a parametric quadruped: 34 batched instances, a hull, a head,
+## four three-segment legs, and a flank strip. It was a stand-in built before the
+## Blender rig had a glTF exporter, and TRAILER 11.2 is the bill for it -- every
+## machine in the rough cut is this box animal and the designer spotted it in one
+## frame ("the dog isnt even the right model"). The real chassis now arrive from
+## agent_model through the shared machine layer, so all this does is say WHERE.
+##
+## The placement rules above are unchanged and they are the part worth keeping:
+## every machine on this site stands somewhere a machine would be STOOD.
 func _walker(base: Vector3, yaw: float, pose: String, wear: float) -> void:
-	var ride := 0.32
-	if pose == "dock":
-		ride = 0.20
-	elif pose == "cradle":
-		ride = 0.30
-	var bas := Basis.from_euler(Vector3(0, yaw, 0))
-	var fw := bas * Vector3(1, 0, 0)
-	var sd := bas * Vector3(0, 0, 1)
-	var hull := base + Vector3(0, ride + 0.085, 0)
-	var shell := Color(1, 1, 1).lerp(Color(0.55, 0.5, 0.45), wear * 0.5)
-	# hull: pale shell over a graphite chassis (the value inversion)
-	B.prop("casebox", "bone", Batcher.xf(hull, Vector3(0.60, 0.115, 0.235), yaw), shell)
-	B.prop("casebox", "plastic", Batcher.xf(hull - Vector3(0, 0.085, 0), Vector3(0.58, 0.075, 0.225), yaw), Color(0.8, 0.8, 0.8))
-	# flank strips - identity by area, not intensity (ART-DIRECTION 4.3)
-	for s in [-1.0, 1.0]:
-		B.add("box", "bone", Batcher.xf(hull + sd * s * 0.121, Vector3(0.32, 0.016, 0.004), yaw), Color(1, 1, 1), Batcher.PROP, true)
-	# deck modules
-	var mods := [Vector3(0.16, 0.055, 0.11), Vector3(0.10, 0.075, 0.09), Vector3(0.20, 0.04, 0.05)]
-	for k in mods.size():
-		B.prop("casebox", "kitgrey", Batcher.xf(hull + fw * (-0.16 + 0.16 * float(k)) + Vector3(0, 0.085, 0), mods[k], yaw), Color(0.9, 0.9, 0.9))
-	# beacon rack: four tubes on the deck
-	for k in 4:
-		B.detail("cyl", "alu", Batcher.xf(hull + fw * -0.22 + sd * (-0.06 + 0.04 * float(k)) + Vector3(0, 0.10, 0),
-			Vector3(0.028, 0.10, 0.028), yaw), Color(1, 1, 1))
-	# recovery handle: the one clean thing (ART-DIRECTION 6.2)
-	for s2 in [-1.0, 1.0]:
-		B.detail("cyl", "alu", Batcher.xf(hull + fw * -0.05 + sd * s2 * 0.07 + Vector3(0, 0.09, 0), Vector3(0.016, 0.07, 0.016), yaw), Color(1, 1, 1))
-	B.detail("cyl", "rubber", Batcher.xf(hull + fw * -0.05 + Vector3(0, 0.125, 0), Vector3(0.022, 0.16, 0.022), yaw, 0.0, PI * 0.5), Color(1, 1, 1))
-	# neck and head
-	var neck := hull + fw * 0.30 + Vector3(0, 0.02, 0)
-	B.prop("cyl", "plastic", Batcher.xf(neck, Vector3(0.05, 0.13, 0.05), yaw, 0.0, 0.4), Color(0.9, 0.9, 0.9))
-	var head := neck + fw * 0.055 + Vector3(0, 0.085, 0)
-	B.prop("casebox", "bone", Batcher.xf(head, Vector3(0.13, 0.10, 0.145), yaw), shell)
-	B.add("box", "amber", Batcher.xf(head + fw * 0.066, Vector3(0.004, 0.022, 0.10), yaw), Color(1, 1, 1), Batcher.PROP, true)
-	B.detail("cyl", "glass", Batcher.xf(head + fw * 0.066 + Vector3(0, -0.03, 0), Vector3(0.05, 0.012, 0.05), yaw, 0.0, PI * 0.5), Color(1, 1, 1))
-	# legs
-	var legs := [[0.22, 0.10], [0.22, -0.10], [-0.22, 0.10], [-0.22, -0.10]]
-	for li in legs.size():
-		var lg: Array = legs[li]
-		var hip: Vector3 = hull + fw * lg[0] + sd * lg[1] - Vector3(0, 0.03, 0)
-		var spread := 0.0
-		if pose == "dock":
-			spread = 0.06
-		var knee: Vector3 = hip + Vector3(sign(lg[1]) * (0.05 + spread), -ride * 0.55, 0) * 0.0 + fw * (0.02 * signf(lg[0])) + Vector3(0, -ride * 0.5, 0) + sd * signf(lg[1]) * (0.04 + spread)
-		var foot := Vector3(hip.x, base.y + 0.02, hip.z) + sd * signf(lg[1]) * (0.02 + spread * 1.5) + fw * (0.03 * signf(lg[0]))
-		B.detail("cyl", "plastic", Batcher.xf(hip, Vector3(0.075, 0.06, 0.075), yaw, 0.0, PI * 0.5), Color(0.85, 0.85, 0.85))
-		B.detail("box", "kitgrey", Batcher.beam_xf(hip, knee, 0.045, 0.055), Color(0.9, 0.9, 0.9))
-		B.detail("box", "plastic", Batcher.beam_xf(knee, foot, 0.032, 0.038), Color(0.6, 0.55, 0.5).lerp(Color(0.32, 0.26, 0.18), wear))
-		B.detail("cyl", "rubber", Batcher.xf(foot, Vector3(0.05, 0.035, 0.05)), Color(1, 1, 1))
-	# charge cable, if docked
-	if pose == "dock":
-		var port := hull + fw * -0.25 + sd * 0.10
-		var prev := port
-		for k in 5:
-			var t := float(k + 1) / 5.0
-			var p := port.lerp(Vector3(base.x, base.y + 0.9, base.z - 1.1), t)
-			p.y += sin(t * PI) * 0.12
-			B.detail("cyl6", "rubber", Batcher.beam_xf(prev, p, 0.014, 0.014), Color(0.9, 0.9, 0.9))
-			prev = p
+	machine_slots.append({"pos": base, "yaw": yaw, "pose": pose, "wear": wear})
 
 func _cradle(p: Vector3) -> void:
 	# a yellow service cradle: a frame that holds a machine at working height
@@ -1178,35 +1135,11 @@ func _trestle(p: Vector3) -> void:
 		B.prop("angle", "galv", Batcher.xf(p + Vector3(s * 0.5, 0.31, 0.3), Vector3(0.06, 0.62, 0.06), 0.0, 0.0, s * 0.12), kcol())
 	B.prop("box", "timber", Batcher.xf(p + Vector3(0, 0.62, 0), Vector3(1.2, 0.05, 0.8)), kcol(0.6, 1.0))
 
-## a wreck: belly down, rolled, one leg gone below the knee, a shed panel beside
-## it, and every emissive dark. ART-DIRECTION 6.2.
+## a wreck: recorded, not built. ART-DIRECTION 6.2 and NOTES 11.9 -- ride at the
+## crouch clip, rolled, every emissive dead, the retro still returning.
 func _wreck(p: Vector3, yaw: float) -> void:
-	var roll := 0.42
-	var bas := Basis.from_euler(Vector3(0, yaw, roll))
-	var fw := bas * Vector3(1, 0, 0)
-	var sd := bas * Vector3(0, 0, 1)
-	var mud := Color(0.30, 0.24, 0.17)
-	B.prop("casebox", "bone", Batcher.xf(p, Vector3(0.60, 0.115, 0.235), yaw, 0.0, roll), mud)
-	B.prop("casebox", "plastic", Batcher.xf(p - bas * Vector3(0, 0.085, 0), Vector3(0.58, 0.075, 0.225), yaw, 0.0, roll), Color(0.5, 0.5, 0.5))
-	# the shed panel, on the deck beside it
-	B.prop("casebox", "bone", Batcher.xf(p + Vector3(0.5, -0.55, 0.3), Vector3(0.34, 0.02, 0.20), yaw + 0.9, 0.0, 0.08), mud * 1.2)
-	# legs: three folded, one missing below the knee
-	var legs := [[0.22, 0.10], [0.22, -0.10], [-0.22, 0.10], [-0.22, -0.10]]
-	for li in legs.size():
-		var lg: Array = legs[li]
-		var hip: Vector3 = p + fw * lg[0] + sd * lg[1]
-		var knee: Vector3 = hip + fw * (0.10 * signf(lg[0])) - Vector3(0, 0.10, 0) + sd * signf(lg[1]) * 0.14
-		B.detail("box", "kitgrey", Batcher.beam_xf(hip, knee, 0.045, 0.055), mud)
-		if li == 1:
-			continue
-		var foot: Vector3 = knee + fw * (0.14 * signf(lg[0])) + sd * signf(lg[1]) * 0.10 - Vector3(0, 0.06, 0)
-		B.detail("box", "plastic", Batcher.beam_xf(knee, foot, 0.032, 0.038), mud * 0.7)
-	# the recovery handle: the only clean thing on it
-	B.detail("cyl", "rubber", Batcher.xf(p + fw * -0.05 + bas * Vector3(0, 0.125, 0), Vector3(0.022, 0.16, 0.022), yaw, 0.0, PI * 0.5 + roll), Color(1.3, 1.3, 1.3))
+	machine_slots.append({"pos": p, "yaw": yaw, "pose": "wreck", "wear": 0.85})
 
-# ================================================================= signage
-## RULE. Signs on the 1.2 m module wherever a register meets another: at the
-## gate, on the pen, at the collar, on the bay. Pale plate on a galvanised post.
 func _signage() -> void:
 	var spots := [Vector3(-33.0, 0, 5.0), Vector3(-33.0, 0, 2.0), Vector3(-6.0, 0, 4.6),
 		Vector3(6.4, 0, 3.4), Vector3(-11.5, 0, 3.2), Vector3(31.0, 0, 2.2),

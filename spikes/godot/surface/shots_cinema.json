@@ -173,50 +173,79 @@
     "focus": {
       "from": 7.0,
       "to": 8.4
-    }
+    },
+    "_machine_note": "No hero block, so the machine stands at home on the cradle outside the service bay. Its dock bay (Hero.DOCK_BAY = 3) is the empty one in this frame with its cable coiled -- because at 0:18 it is already on the bench, and at 0:22 we meet it there. This is the only beat where the hero's ABSENCE is the shot."
   },
   {
-    "name": "t06_bench_machine",
+    "name": "t06_meet_the_machine",
     "trailer": "6",
     "light": "overcast",
-    "len_s": 4.0,
+    "_why": "TRAILER 11.1, and this is the second version of it. It was t06_bench_machine: four seconds of a machine on a trestle inside the service bay, dark, half the body behind a bench leg. The card at 0:46 then says you cannot drive IT and the pronoun has nothing to point at. The FIRST attempt at a replacement kept it on the hoist cradle, in daylight, whole body, head turning -- and it still read as equipment, because a thing standing on a table is a thing being worked on. So it came off the table. THE CAMERA IS AT MACHINE HEIGHT, 0.45 m, level with its head: you have to crouch to meet it, which is the difference between looking at a tool and looking at an animal. 1.7 m away on a 50 mm, so the body fills three-fifths of the frame and the feet are in it. FIVE SECONDS, the longest the treatment allows, and 0.39 m of push -- the slowest move in the cut, 0.15 m/s at its peak. AND ITS HEAD MOVES: it starts turned away and down at its own flank, where the work is, and comes round to the lens over the last two seconds. That turn is the shot. T4 rather than T2.8 because at 1.7 m a 50 mm wide open is 11 cm deep and the sonar bar would be sharp with the eye already soft.",
+    "len_s": 5.0,
     "lens_mm": 50.0,
-    "tstop": 2.8,
+    "tstop": 4.0,
     "ease": "inout",
-    "handheld_deg": 0.24,
-    "height": "eye",
+    "handheld_deg": 0.22,
+    "height": "machine",
     "seed": 6,
     "move": {
       "from": {
-        "at": "b:service_bay",
-        "a": 1.9,
-        "o": -0.5,
-        "u": 1.55
+        "at": "z:muster",
+        "a": 1.84,
+        "o": -4.64,
+        "u": 0.47
       },
       "to": {
-        "at": "b:service_bay",
-        "a": 1.25,
-        "o": -0.8,
-        "u": 1.55
+        "at": "z:muster",
+        "a": 1.59,
+        "o": -4.33,
+        "u": 0.44
       }
     },
     "look": {
       "from": {
-        "at": "b:service_bay",
+        "at": "z:muster",
         "a": 0.0,
-        "o": -1.9,
-        "u": 0.88
+        "o": -2.55,
+        "u": 0.34
       },
       "to": {
-        "at": "b:service_bay",
-        "a": -0.1,
-        "o": -1.9,
-        "u": 0.86
+        "at": "z:muster",
+        "a": 0.0,
+        "o": -2.55,
+        "u": 0.36
       }
     },
     "focus": {
-      "from": 2.45,
-      "to": 1.95
+      "from": 2.9,
+      "to": 2.5
+    },
+    "machine": {
+      "role": "hero",
+      "chassis": "surveyor",
+      "loadout": "default",
+      "skin": "player",
+      "wear": 0.35,
+      "damage": 0.0,
+      "clip": "idle",
+      "lamp": false,
+      "at": {
+        "at": "z:muster",
+        "a": 0.0,
+        "o": -2.4,
+        "u": 0.0
+      },
+      "yaw": 90.0,
+      "head": [
+        [
+          32.0,
+          -20.0
+        ],
+        [
+          -40.0,
+          3.0
+        ]
+      ]
     }
   },
   {
@@ -261,7 +290,43 @@
     "focus": {
       "from": 3.9,
       "to": 3.2
-    }
+    },
+    "machine": {
+      "role": "hero",
+      "chassis": "surveyor",
+      "loadout": "default",
+      "skin": "player",
+      "wear": 0.35,
+      "damage": 0.0,
+      "clip": "walk",
+      "lamp": false,
+      "at": {
+        "from": {
+          "at": "course:3",
+          "a": -1.6,
+          "o": 0.0,
+          "u": 0.0
+        },
+        "to": {
+          "at": "course:3",
+          "a": 0.4,
+          "o": 0.0,
+          "u": 0.0
+        }
+      },
+      "yaw": "path",
+      "head": [
+        [
+          -8.0,
+          -4.0
+        ],
+        [
+          10.0,
+          -6.0
+        ]
+      ]
+    },
+    "_machine_note": "2.0 m in 4.0 s = 0.50 m/s, which is exactly what the walk clip was baked at, so the planted feet do not skate. The head casts left to right across the move: it is reading the posts, not posing."
   },
   {
     "name": "t12_course_alone",
@@ -305,7 +370,37 @@
     "focus": {
       "from": 10.5,
       "to": 10.5
-    }
+    },
+    "machine": {
+      "role": "hero",
+      "chassis": "surveyor",
+      "loadout": "default",
+      "skin": "player",
+      "wear": 0.35,
+      "damage": 0.0,
+      "clip": "walk",
+      "lamp": false,
+      "at": {
+        "from": {
+          "at": "course:3",
+          "a": -1.0,
+          "o": 0.0,
+          "u": 0.0
+        },
+        "to": {
+          "at": "course:3",
+          "a": 1.0,
+          "o": 0.0,
+          "u": 0.0
+        }
+      },
+      "yaw": "path",
+      "head": [
+        0.0,
+        -5.0
+      ]
+    },
+    "_machine_note": "The card at 0:46 lands over this. About 10 m away on a 21 mm lens is roughly 60 px of machine, which NOTES 10's legibility ladder puts well above the 34 px where the chassis class stops reading -- so it is small in frame and still recognisably the same machine."
   },
   {
     "name": "t13_collar_above",
@@ -349,7 +444,43 @@
     "focus": {
       "from": 9.6,
       "to": 9.0
-    }
+    },
+    "machine": {
+      "role": "hero",
+      "chassis": "surveyor",
+      "loadout": "default",
+      "skin": "player",
+      "wear": 0.35,
+      "damage": 0.0,
+      "clip": "walk",
+      "lamp": true,
+      "at": {
+        "from": {
+          "at": "collar",
+          "a": -3.4,
+          "o": -0.2,
+          "u": 0.0
+        },
+        "to": {
+          "at": "collar",
+          "a": -1.4,
+          "o": -0.2,
+          "u": 0.0
+        }
+      },
+      "yaw": "path",
+      "head": [
+        [
+          6.0,
+          -8.0
+        ],
+        [
+          0.0,
+          -14.0
+        ]
+      ]
+    },
+    "_machine_note": "It walks the last two metres to the collar and stops with its head down, looking into the shaft. The lamp comes ON here and stays on for the rest of the trailer: this is the frame where it stops being a thing in a yard and starts being a thing going underground."
   },
   {
     "name": "t14_descending",
@@ -390,6 +521,26 @@
     "focus": {
       "from": 6.8,
       "to": 14.8
+    },
+    "machine": {
+      "role": "hero",
+      "chassis": "surveyor",
+      "loadout": "default",
+      "skin": "player",
+      "wear": 0.35,
+      "damage": 0.0,
+      "clip": "crouch",
+      "lamp": true,
+      "at": [
+        0.0,
+        -0.9,
+        0.0
+      ],
+      "yaw": 0.0,
+      "head": [
+        0.0,
+        -6.0
+      ]
     }
   },
   {
@@ -434,7 +585,11 @@
     "focus": {
       "from": 7.0,
       "to": 6.4
-    }
+    },
+    "machine": {
+      "role": "none"
+    },
+    "_machine_note": "role none, and it is the most load-bearing line in this file. The shot is the empty shaft in the rain and the question is whether it came back. Without this the default puts the hero at home on the cradle, and a Surveyor standing in the yard behind an empty shaft answers the question the trailer ends on."
   },
   {
     "name": "xfail_through_the_shed",
@@ -479,6 +634,215 @@
     "focus": {
       "from": 8.0,
       "to": 6.0
+    }
+  },
+  {
+    "name": "xfail_wrong_machine",
+    "trailer": "7",
+    "light": "overcast",
+    "_why": "authored to fail, and it fails on CONTINUITY rather than on the camera. Everything about the camera is legal. It claims trailer beat 7, which TRAILER 3 says is the hero walking the course, and then names a worn rival Hauler with the boom taken off. Four fields are wrong and the report has to say which four and what each of them actually is. This is the check TRAILER 11.1 says does not exist.",
+    "len_s": 4.0,
+    "lens_mm": 35.0,
+    "tstop": 2.8,
+    "ease": "inout",
+    "handheld_deg": 0.22,
+    "height": "machine",
+    "seed": 97,
+    "move": {
+      "from": {
+        "at": "course:3",
+        "a": -4.2,
+        "o": 0.0,
+        "u": 0.45
+      },
+      "to": {
+        "at": "course:3",
+        "a": -2.8,
+        "o": 0.0,
+        "u": 0.45
+      }
+    },
+    "look": {
+      "from": {
+        "at": "course:3",
+        "a": -0.4,
+        "o": 0.0,
+        "u": 0.35
+      },
+      "to": {
+        "at": "course:3",
+        "a": 0.3,
+        "o": 0.0,
+        "u": 0.35
+      }
+    },
+    "focus": {
+      "from": 3.9,
+      "to": 3.2
+    },
+    "machine": {
+      "role": "hero",
+      "chassis": "hauler",
+      "loadout": "bare",
+      "skin": "rival",
+      "wear": 0.7,
+      "damage": 0.0,
+      "clip": "walk",
+      "at": {
+        "from": {
+          "at": "course:3",
+          "a": -2.0,
+          "o": 0.0,
+          "u": 0.0
+        },
+        "to": {
+          "at": "course:3",
+          "a": 0.0,
+          "o": 0.0,
+          "u": 0.0
+        }
+      },
+      "yaw": "path"
+    }
+  },
+  {
+    "name": "xfail_into_the_machine",
+    "trailer": "",
+    "light": "overcast",
+    "_why": "authored to fail, and it proves the machines are SOLID to the camera. A 2.2 m push down the course straight into the hero as it walks it. While every machine on the site was a batched box it was in the collision layer by accident; a real chassis is a skinned mesh with no body, so fleet.gd gives each one a hull proxy on layer 2 and the rig's clearance queries widened to mask 3. If this shot ever EXECUTES, that wiring has come undone. Note the camera is at MACHINE height: at eye height it would sail over a 0.5 m machine without touching it, which is a real property of a rig that is four times the height of its subject.",
+    "len_s": 4.0,
+    "lens_mm": 35.0,
+    "tstop": 4.0,
+    "ease": "inout",
+    "handheld_deg": 0.0,
+    "height": "machine",
+    "seed": 98,
+    "move": {
+      "from": {
+        "at": "course:3",
+        "a": -2.0,
+        "o": 0.0,
+        "u": 0.45
+      },
+      "to": {
+        "at": "course:3",
+        "a": 0.2,
+        "o": 0.0,
+        "u": 0.45
+      }
+    },
+    "look": {
+      "from": {
+        "at": "course:3",
+        "a": 0.0,
+        "o": 0.0,
+        "u": 0.35
+      },
+      "to": {
+        "at": "course:3",
+        "a": 0.6,
+        "o": 0.0,
+        "u": 0.35
+      }
+    },
+    "focus": {
+      "from": 2.0,
+      "to": 0.6
+    },
+    "machine": {
+      "role": "hero",
+      "chassis": "surveyor",
+      "loadout": "default",
+      "skin": "player",
+      "wear": 0.35,
+      "damage": 0.0,
+      "clip": "walk",
+      "lamp": false,
+      "at": {
+        "from": {
+          "at": "course:3",
+          "a": -1.6,
+          "o": 0.0,
+          "u": 0.0
+        },
+        "to": {
+          "at": "course:3",
+          "a": 0.4,
+          "o": 0.0,
+          "u": 0.0
+        }
+      },
+      "yaw": "path"
+    }
+  },
+  {
+    "name": "xfail_skating_machine",
+    "trailer": "",
+    "light": "overcast",
+    "_why": "authored to fail on the MACHINE's own rule rather than the camera's. Identical to t07 except that the machine is asked to cover 4.0 m in the same 4.0 s. The walk clip is baked at 0.50 m/s (NOTES 5), so the planted feet would slide two metres across the ground -- the most legible possible tell that a gait is a texture. The rig computes the speed the shot has asked for and rejects it.",
+    "len_s": 4.0,
+    "lens_mm": 35.0,
+    "tstop": 2.8,
+    "ease": "inout",
+    "handheld_deg": 0.22,
+    "height": "machine",
+    "seed": 96,
+    "move": {
+      "from": {
+        "at": "course:3",
+        "a": -4.2,
+        "o": 0.0,
+        "u": 0.45
+      },
+      "to": {
+        "at": "course:3",
+        "a": -2.8,
+        "o": 0.0,
+        "u": 0.45
+      }
+    },
+    "look": {
+      "from": {
+        "at": "course:3",
+        "a": -0.4,
+        "o": 0.0,
+        "u": 0.35
+      },
+      "to": {
+        "at": "course:3",
+        "a": 0.3,
+        "o": 0.0,
+        "u": 0.35
+      }
+    },
+    "focus": {
+      "from": 3.9,
+      "to": 3.2
+    },
+    "machine": {
+      "role": "hero",
+      "chassis": "surveyor",
+      "loadout": "default",
+      "skin": "player",
+      "wear": 0.35,
+      "damage": 0.0,
+      "clip": "walk",
+      "lamp": false,
+      "at": {
+        "from": {
+          "at": "course:3",
+          "a": -2.6,
+          "o": 0.0,
+          "u": 0.0
+        },
+        "to": {
+          "at": "course:3",
+          "a": 1.4,
+          "o": 0.0,
+          "u": 0.0
+        }
+      },
+      "yaw": "path"
     }
   }
 ]

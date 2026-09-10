@@ -24,6 +24,7 @@ var cam: Camera3D
 var W: Weather
 var rig: CameraRig
 var grade: CinemaGrade
+var fleet: Fleet
 var shots: Array = []
 var lines: Array[String] = []
 
@@ -31,7 +32,28 @@ var lines: Array[String] = []
 # radiance and the rain particles have settled before the shutter opens
 const SETTLE_FIRST: int = 72
 const SETTLE_STEP: int = 8
-const SEQ_FRAMES: int = 24
+
+# ---------------------------------------------------------------------------
+# HOW LONG A SHOT IS -- TRAILER 11.3
+# ---------------------------------------------------------------------------
+# It used to be 24 frames for every shot regardless of `len_s`, which is one
+# second at 24 fps. The designer's note on the rough cut: "The rough cuts of 1
+# second footage is very jarring." It is not a rough-cut artefact, it is the
+# capture: a 4-second push rendered as 24 frames is a 4x speed-up, so the eye
+# never arrives anywhere and the whole cut reads as a strobe.
+#
+# A shot is now `len_s` seconds long at CUT_FPS, which is 72 frames for a 3 s
+# shot and 120 for a 5 s one -- the numbers 11.3 asks for. 24 fps rather than
+# the 60 the capture rule names is a deliberate separation: 60 fps is the rate
+# the MOTION BLUR is computed against (`prev_tn_for`), because that is the
+# shutter the finished shot has; 24 is the rate the frames are CUT at. Raising
+# CUT_FPS costs render time linearly and buys nothing the cut can use.
+const CUT_FPS: float = 24.0
+
+## Frames for one shot, at its own duration. Never fewer than 24, so a HOLD
+## still gets a second of film.
+static func seq_frames(shot: Dictionary) -> int:
+	return maxi(24, int(round(float(shot.get("len_s", 1.0)) * CUT_FPS)))
 
 func _init(p_root: Node3D, p_cam: Camera3D, p_W: Weather, p_rig: CameraRig,
 		p_grade: CinemaGrade) -> void:
@@ -84,6 +106,10 @@ func dir_for(sub: String) -> String:
 ## the scene settle, so "last frame" is the same pose and the blur would be
 ## exactly zero.
 func pose_cam(shot: Dictionary, tn: float, mask_v: int, prev_tn: float = -1.0) -> Dictionary:
+	# The machine moves with the camera and on the SHOT's clock, so the gait
+	# phase at frame i is the phase a real 0.50 m/s walk would be at i/24 s.
+	if fleet != null:
+		fleet.hero_pose(shot, tn, tn * float(shot.get("len_s", 4.0)))
 	var ps: Dictionary = rig.pose(shot, tn)
 	cam.global_transform = Transform3D(ps["basis"], ps["pos"])
 	cam.keep_aspect = Camera3D.KEEP_HEIGHT
@@ -128,6 +154,7 @@ func grab(path: String) -> void:
 # ---------------------------------------------------------------------------
 func run_validate() -> void:
 	log_line("=== CINEMA validation, pit-head ===")
+	log_line(Hero.banner())
 	log_line("collision: %d ground tris + %d instances / %d tris, built in %.0f ms"
 		% [rig.collision_ground_tris, rig.collision_props, rig.collision_tris, rig.build_ms])
 	log_line("")
@@ -143,6 +170,7 @@ func run_validate() -> void:
 			% [String(s.get("trailer", "-")), float(s["len_s"]),
 				String(s.get("ease", "inout")), String(s.get("height", "eye")),
 				float(s.get("handheld_deg", 0.0))])
+		log_line("    machine %s" % Hero.describe(Hero.block(s)))
 		log_line("    travel %.2f m   peak %.2f m/s   near clear %.2f m   above ground %.2f-%.2f m"
 			% [st["travel"], st["vmax"], st["clear"], st["h_lo"], st["h_hi"]])
 		var far_s: String = "inf" if float(d[1]) > 1e6 else ("%.2f" % float(d[1]))
@@ -160,6 +188,13 @@ func run_validate() -> void:
 		if v["ok"]:
 			okn += 1
 	log_line("%d of %d shots execute" % [okn, shots.size()])
+	log_line("")
+	log_line("--- continuity: every shot that names the hero machine ---")
+	var au: Array[String] = Hero.audit(shots, "surface")
+	if au.is_empty():
+		log_line("    one machine, in every shot that has one.")
+	for a in au:
+		log_line("    " + a)
 	write("validation.txt")
 
 # ---------------------------------------------------------------------------
@@ -181,9 +216,11 @@ func run_seq(only: String, mask_v: int) -> void:
 			continue
 		var d := dir_for("seq/" + nm + "/")
 		set_light(s)
+		var nf: int = seq_frames(s)
+		var t_shot: int = Time.get_ticks_msec()
 		var steps: Array = []
-		for i in range(SEQ_FRAMES):
-			var tn: float = float(i) / float(SEQ_FRAMES - 1)
+		for i in range(nf):
+			var tn: float = float(i) / float(nf - 1)
 			var ps: Dictionary = pose_cam(s, tn, mask_v, prev_tn_for(s, tn))
 			await settle(SETTLE_FIRST if i == 0 else SETTLE_STEP)
 			grab(d + "%03d.png" % i)
@@ -191,9 +228,87 @@ func run_seq(only: String, mask_v: int) -> void:
 		var mm: Array = []
 		for i in range(steps.size() - 1):
 			mm.append("%.1f" % ((steps[i] as Vector3).distance_to(steps[i + 1]) * 1000.0))
-		log_line("%s  %d frames, per-frame step in mm:" % [nm, SEQ_FRAMES])
+		var el: float = float(Time.get_ticks_msec() - t_shot) / 1000.0
+		log_line("%s  %.1f s at %.0f fps = %d frames  %s  [%.1f s to render, %.2f s/frame]"
+			% [nm, float(s["len_s"]), CUT_FPS, nf, Hero.describe(Hero.block(s)),
+				el, el / float(nf)])
+		log_line("    per-frame step in mm:")
 		log_line("    " + " ".join(mm))
 	write("sequences.txt")
+
+# ---------------------------------------------------------------------------
+# hero -- where the machine IS on screen, in every shot that has one
+# ---------------------------------------------------------------------------
+## Writes shots/cinema/hero_boxes.json: for every shot that names the hero, the
+## frame index to look at and the pixel rectangle the machine occupies in it.
+##
+## This exists so the continuity contact sheet is a MEASUREMENT rather than a
+## hand-cropped montage. Fourteen shots out of two projects, each cropped to
+## the machine's own bounding box and scaled to one height, is a picture in
+## which a wrong chassis, a wrong livery or a wrong loadout is visible at a
+## glance -- which is the only way anyone will actually check it.
+##
+## It renders nothing, so it costs about a second.
+func run_hero(only: String) -> void:
+	var out: Dictionary = {"project": "surface", "hero": Hero.SPEC,
+		"fps": CUT_FPS, "shots": []}
+	log_line("=== HERO BOXES ===")
+	log_line(Hero.banner())
+	for s in shots:
+		var nm: String = String(s["name"])
+		if only != "" and nm != only:
+			continue
+		if not Hero.is_hero(s):
+			continue
+		if nm.begins_with("x") or s.has("_same_camera_as"):
+			continue
+		if not rig.validate(s)["ok"]:
+			continue
+		var nf: int = seq_frames(s)
+		# 0.72 through: past the ease-in, and for shot 6 it is where the head
+		# has come round.
+		var fi: int = int(round(0.72 * float(nf - 1)))
+		var tn: float = float(fi) / float(nf - 1)
+		pose_cam(s, tn, 0)
+		var r: Rect2 = hero_rect()
+		out["shots"].append({"name": nm, "trailer": String(s.get("trailer", "")),
+			"dir": "shots/cinema/seq/%s" % nm, "frame": fi, "frames": nf,
+			"lens_mm": float(s["lens_mm"]), "len_s": float(s["len_s"]),
+			"machine": Hero.describe(Hero.block(s)),
+			"rect": [r.position.x, r.position.y, r.size.x, r.size.y]})
+		log_line("%-24s frame %3d of %3d   rect %4.0f %4.0f  %4.0f x %4.0f px"
+			% [nm, fi, nf, r.position.x, r.position.y, r.size.x, r.size.y])
+	var f := FileAccess.open(ProjectSettings.globalize_path(
+		"res://shots/cinema/hero_boxes.json"), FileAccess.WRITE)
+	if f:
+		f.store_string(JSON.stringify(out, "  "))
+		f.close()
+	write("hero.txt")
+
+
+## The machine's screen rectangle: the eight corners of its mesh AABB, in the
+## camera's own projection. The AABB is the REST pose's, so it is generous by
+## whatever a leg in swing adds -- which is the right way to be wrong for a
+## crop.
+func hero_rect() -> Rect2:
+	var m: Machine = fleet.hero
+	var ab: AABB = m.mi.get_aabb()
+	var xf: Transform3D = m.mi.global_transform
+	var lo := Vector2(1e9, 1e9)
+	var hi := Vector2(-1e9, -1e9)
+	for i in range(8):
+		var c: Vector3 = xf * (ab.position + Vector3(
+			ab.size.x * float(i & 1), ab.size.y * float((i >> 1) & 1),
+			ab.size.z * float((i >> 2) & 1)))
+		if cam.is_position_behind(c):
+			continue
+		var q: Vector2 = cam.unproject_position(c)
+		lo = Vector2(minf(lo.x, q.x), minf(lo.y, q.y))
+		hi = Vector2(maxf(hi.x, q.x), maxf(hi.y, q.y))
+	if hi.x < lo.x:
+		return Rect2(0, 0, 0, 0)
+	return Rect2(lo, hi - lo)
+
 
 # ---------------------------------------------------------------------------
 # pairs -- cumulative, in TRAILER 9's order, from one identical camera
