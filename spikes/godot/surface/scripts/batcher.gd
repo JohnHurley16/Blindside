@@ -31,6 +31,19 @@ var _bins: Dictionary = {}
 var _keys: Array = []
 var total_instances := 0
 
+## THE CARRIER TAG. Set it, add some instances, clear it, and those instances
+## land in bins of their own rather than in the site's shared ones.
+##
+## It exists for exactly one reason and it is TRAILER shot 14. A shot may be
+## CARRIED by a moving thing (`cinema.gd`'s mount frame), and a carrier that
+## does not move is the difference between a camera riding a cage and a camera
+## falling through one. A MultiMeshInstance3D is a node, so moving the node
+## moves every instance in it -- but only if the carrier's instances are not
+## mixed in with the shaft lining's. One string does that.
+##
+## It is NOT a general grouping mechanism and nothing else uses it.
+var tag: String = ""
+
 class Bin extends RefCounted:
 	var mesh_id: String
 	var mat_id: String
@@ -38,8 +51,12 @@ class Bin extends RefCounted:
 	var xf := PackedFloat32Array()
 	var n := 0
 	var emissive := false
+	var tag := ""
 
 func _key(mesh_id: String, mat_id: String, bucket: int, pos: Vector3) -> String:
+	if tag != "":
+		# a carrier is one object: never chunked, never split by bucket
+		return mesh_id + "|" + mat_id + "|c#" + tag
 	match bucket:
 		SITE:
 			return mesh_id + "|" + mat_id + "|s"
@@ -64,6 +81,7 @@ func add(mesh_id: String, mat_id: String, xform: Transform3D, col: Color = Color
 		bin.mat_id = mat_id
 		bin.bucket = bucket
 		bin.emissive = emissive
+		bin.tag = tag
 		_bins[k] = bin
 		_keys.append(k)
 	var b := xform.basis
@@ -131,6 +149,8 @@ func flush(parent: Node3D) -> Dictionary:
 		mi.material_override = Mats.get_mat(bin.mat_id) if not bin.emissive else Mats.emissive_of(bin.mat_id, 2.4)
 		mi.name = k.replace("|", "_")
 		mi.set_meta("bucket", bin.bucket)
+		if bin.tag != "":
+			mi.set_meta("carrier", bin.tag)
 		match bin.bucket:
 			SITE:
 				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON

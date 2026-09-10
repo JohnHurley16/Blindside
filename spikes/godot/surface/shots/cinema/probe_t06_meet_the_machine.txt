@@ -1,0 +1,33 @@
+=== CINEMA probe: t06_meet_the_machine ===
+t=0.00  pos   41.25    0.47    7.15   ground   0.02  floor_under   0.45  buried 0
+t=0.25  pos   41.29    0.47    7.13   ground   0.02  floor_under   0.45  buried 0
+      contact   41.68    0.47    7.13   dy  +0.00   BREACH
+      overlaps shape 100 -> box_iron_p1_0
+t=0.50  pos   41.42    0.45    7.07   ground  -0.01  floor_under   0.45  buried 0
+      contact   41.68    0.45    7.07   dy  +0.00   BREACH
+      contact   41.68    0.65    7.26   dy  +0.21   BREACH
+      overlaps shape 100 -> box_iron_p1_0
+t=0.75  pos   41.56    0.42    7.01   ground  -0.02  floor_under   0.45  buried 0
+      contact   41.68    0.42    6.66   dy  -0.00   BREACH
+      contact   41.68    0.42    6.66   dy  -0.00   BREACH
+      contact   41.70    0.43    6.66   dy  +0.00   BREACH
+      contact   41.68    0.42    7.01   dy  +0.00   BREACH
+      contact   41.68    0.68    7.24   dy  +0.25   BREACH
+      contact   41.65    0.40    6.68   dy  -0.02   BREACH
+      contact   41.65    0.42    6.72   dy  +0.00   BREACH
+      contact   41.65    0.42    6.72   dy  -0.00   BREACH
+      contact   41.71    0.43    6.72   dy  +0.01   BREACH
+      overlaps shape 100 -> box_iron_p1_0
+      overlaps shape 101 -> box_timber_p1_0
+t=1.00  pos   41.60    0.42    7.00   ground  -0.03  floor_under   0.45  buried 0
+      contact   41.68    0.42    6.66   dy  -0.00   BREACH
+      contact   41.68    0.42    6.66   dy  +0.00   BREACH
+      contact   41.70    0.42    6.66   dy  +0.00   BREACH
+      contact   41.68    0.42    7.00   dy  +0.00   BREACH
+      contact   41.68    0.68    7.23   dy  +0.26   BREACH
+      contact   41.65    0.40    6.68   dy  -0.02   BREACH
+      contact   41.65    0.42    6.72   dy  +0.00   BREACH
+      contact   41.65    0.42    6.72   dy  +0.00   BREACH
+      contact   41.71    0.43    6.72   dy  +0.01   BREACH
+      overlaps shape 100 -> box_iron_p1_0
+      overlaps shape 101 -> box_timber_p1_0

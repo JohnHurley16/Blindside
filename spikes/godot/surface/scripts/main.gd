@@ -385,6 +385,7 @@ func _run_cinema() -> void:
 		"scout":    sh.run_scout(only_shot, 5.0, 1.0)
 		"scoutf":   sh.run_scout(only_shot, 2.0, 0.4)
 		"hero":     sh.run_hero(only_shot)
+		"look":     await sh.run_look(only_shot, m)
 		"seq":      await sh.run_seq(only_shot, m)
 		"pairs":    await sh.run_pairs(only_shot)
 		"stack":    await sh.run_stack(_stack_names())

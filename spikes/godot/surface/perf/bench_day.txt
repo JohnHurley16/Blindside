@@ -4,33 +4,33 @@ api            : 1.4.312 (NVIDIA)
 godot          : 4.7.2-stable (official)
 seed           : 20260908
 layout hash    : 701635322695612
-layout ms      : 4.67
-valley ms      : 5301.31  (208712 tris, 107424 verts)
-town ms        : 490.79  (20 terraces, 501 buildings)
-ground ms      : 1603.02  (129072 tris, 65095 verts)
-inherited ms   : 66.88
-brought ms     : 14.89
-scatter ms     : 921.13
-flush ms       : 78.08
-fleet ms       : 777.07  (18 machines, 391940 tris)
-TOTAL GEN ms   : 8480.76
+layout ms      : 2.18
+valley ms      : 4975.31  (208712 tris, 107424 verts)
+town ms        : 469.11  (20 terraces, 501 buildings)
+ground ms      : 1522.30  (129072 tris, 65095 verts)
+inherited ms   : 61.99
+brought ms     : 12.92
+scatter ms     : 895.49
+flush ms       : 77.59
+fleet ms       : 783.27  (18 machines, 391940 tris)
+TOTAL GEN ms   : 8016.89
 prop instances : 56425
-multimeshes    : 1474
+multimeshes    : 1476
 mm triangles   : 2019972
 decals         : 87
 mode           : bench   light: day
-pom            : 1.0   sky: realtime   ssao: false
+pom            : 1.0   sky: realtime   ssao: true
 
 --- sustained, day light, 1920x1080, camera moving ---
-frames         : 1670 over 25.0 s
-mean frame     : 14.37 ms   (69.6 fps)
-median frame   : 14.29 ms   (70.0 fps)
-p95 frame      : 18.06 ms   (55.4 fps)
-p99 frame      : 18.06 ms   (55.4 fps)
-worst frame    : 23.68 ms   (42.2 fps)
-draw calls max : 729
-primitives max : 2502463
-objects max    : 729
-video mem      : 296.5 MB
-gen ms         : 8480.76
+frames         : 2755 over 45.0 s
+mean frame     : 15.97 ms   (62.6 fps)
+median frame   : 15.28 ms   (65.5 fps)
+p95 frame      : 24.24 ms   (41.3 fps)
+p99 frame      : 25.00 ms   (40.0 fps)
+worst frame    : 27.64 ms   (36.2 fps)
+draw calls max : 741
+primitives max : 2658354
+objects max    : 741
+video mem      : 333.6 MB
+gen ms         : 8016.89
 instances      : 56425

@@ -278,6 +278,12 @@ func _collar_and_shaft() -> void:
 ## galvanised open frame on a four-rope bridle to a single rope, floor of
 ## grating so a machine standing in it reads from below. Vision board guess 6.
 func _cage(y0: float) -> void:
+	# THE CAGE IS A CARRIER. Everything in this function goes into bins of its
+	# own so that the cinematic layer can MOVE it: TRAILER shot 14 is a camera
+	# riding the cage down the shaft, and a cage batched in with the shaft lining
+	# is a cage that cannot descend. Nothing else about it changes -- same
+	# meshes, same materials, same place.
+	B.tag = "cage"
 	var S: Dictionary = L.plan["shaft"]
 	var w := float(S["w"]) / 2000.0 - 0.22
 	var d := float(S["d"]) / 2000.0 - 0.22
@@ -297,6 +303,7 @@ func _cage(y0: float) -> void:
 			B.add("cyl6", "steel", Batcher.beam_xf(Vector3(sx2 * w, fy + ch, sz3 * d),
 				Vector3(0, fy + ch + 1.3, 0), 0.014, 0.014), kcol(0.5, 0.8))
 	B.add("cyl6", "steel", Batcher.xf(Vector3(0, fy + ch + 1.9, 0), Vector3(0.05, 1.2, 0.05)), kcol(0.5, 0.8))
+	B.tag = ""
 
 ## RULE. The modern winch: a skid-mounted drum on a cast pad the old engine used
 ## to sit on, with a control box and a bollard fairlead. THE BROUGHT, at the one

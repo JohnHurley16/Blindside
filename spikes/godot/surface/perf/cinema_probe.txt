@@ -3,18 +3,21 @@ adapter        : NVIDIA GeForce RTX 3080 Laptop GPU
 api            : 1.4.312 (NVIDIA)
 godot          : 4.7.2-stable (official)
 seed           : 20260908
-layout hash    : 190631341776686
-layout ms      : 2.11
-ground ms      : 1980.97  (129072 tris, 65095 verts)
-inherited ms   : 79.74
-brought ms     : 19.18
-scatter ms     : 1235.41
-flush ms       : 83.73
-TOTAL GEN ms   : 3401.14
-prop instances : 51617
-multimeshes    : 1347
-mm triangles   : 1912470
-decals         : 82
+layout hash    : 701635322695612
+layout ms      : 2.40
+valley ms      : 4806.96  (208712 tris, 107424 verts)
+town ms        : 448.94  (20 terraces, 501 buildings)
+ground ms      : 1466.23  (129072 tris, 65095 verts)
+inherited ms   : 62.06
+brought ms     : 12.88
+scatter ms     : 864.37
+flush ms       : 83.72
+fleet ms       : 763.58  (18 machines, 391940 tris)
+TOTAL GEN ms   : 7747.56
+prop instances : 56425
+multimeshes    : 1476
+mm triangles   : 2019972
+decals         : 87
 mode           : cinema   light: overcast
 pom            : 1.0   sky: realtime   ssao: true
-cinema collis : 129072 ground tris + 4486 instances / 114222 tris in 590 ms
+cinema collis : 129072 ground tris + 13354 instances / 265006 tris in 599 ms

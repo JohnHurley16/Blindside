@@ -110,6 +110,8 @@ func pose_cam(shot: Dictionary, tn: float, mask_v: int, prev_tn: float = -1.0) -
 	# phase at frame i is the phase a real 0.50 m/s walk would be at i/24 s.
 	if fleet != null:
 		fleet.hero_pose(shot, tn, tn * float(shot.get("len_s", 4.0)))
+	# and the thing the camera is riding, if it is riding one
+	rig.carry(shot, tn)
 	var ps: Dictionary = rig.pose(shot, tn)
 	cam.global_transform = Transform3D(ps["basis"], ps["pos"])
 	cam.keep_aspect = Camera3D.KEEP_HEIGHT
@@ -171,8 +173,14 @@ func run_validate() -> void:
 				String(s.get("ease", "inout")), String(s.get("height", "eye")),
 				float(s.get("handheld_deg", 0.0))])
 		log_line("    machine %s" % Hero.describe(Hero.block(s)))
-		log_line("    travel %.2f m   peak %.2f m/s   near clear %.2f m   above ground %.2f-%.2f m"
-			% [st["travel"], st["vmax"], st["clear"], st["h_lo"], st["h_hi"]])
+		if bool(st.get("mounted", false)):
+			log_line("    MOUNTED on %s: it moves %.2f m at up to %.2f m/s and the camera is bolted to it"
+				% [st["m_what"], st["m_travel"], st["m_vmax"]])
+			log_line("    travel %.2f m in the mount's frame   peak %.2f m/s   near clear %.2f m   above the deck %.2f-%.2f m"
+				% [st["travel"], st["vmax"], st["clear"], st["h_lo"], st["h_hi"]])
+		else:
+			log_line("    travel %.2f m   peak %.2f m/s   near clear %.2f m   above ground %.2f-%.2f m"
+				% [st["travel"], st["vmax"], st["clear"], st["h_lo"], st["h_hi"]])
 		var far_s: String = "inf" if float(d[1]) > 1e6 else ("%.2f" % float(d[1]))
 		log_line("    fov %.1f deg   sharp %.2f m to %s m   hyperfocal %.2f m"
 			% [st["fov"], float(d[0]), far_s, float(d[2])])
@@ -237,6 +245,41 @@ func run_seq(only: String, mask_v: int) -> void:
 	write("sequences.txt")
 
 # ---------------------------------------------------------------------------
+# look -- three frames a shot, for FRAMING, and nothing else
+# ---------------------------------------------------------------------------
+## CINEMA.md 7.5: "the rig can make a shot correct. It cannot make it good", and
+## the workflow that works is places -> scout -> probe -> A PERSON LOOKS AT THE
+## FRAME. A 120-frame sequence costs 72 seconds and answers a question that
+## three frames answer for two. This renders t = 0.06, 0.5 and 0.94 of every
+## shot with the full stack, REJECTED ONES INCLUDED and labelled, because a
+## rejection is usually a framing problem wearing a rule's costume.
+##
+## It is a scouting tool. Nothing it writes is a deliverable.
+func run_look(only: String, mask_v: int) -> void:
+	log_line("=== CINEMA look, fx = %s ===" % CinemaGrade.mask_str(mask_v))
+	var d := dir_for("look/")
+	for s in shots:
+		var nm: String = String(s["name"])
+		if only != "" and nm != only:
+			continue
+		if nm.begins_with("x"):
+			continue
+		var v: Dictionary = rig.validate(s)
+		set_light(s)
+		var t0: int = Time.get_ticks_msec()
+		var i := 0
+		for tn in [0.06, 0.50, 0.94]:
+			pose_cam(s, float(tn), mask_v, prev_tn_for(s, float(tn)))
+			await settle(SETTLE_FIRST if i == 0 else SETTLE_STEP)
+			grab(d + "%s_%d.png" % [nm, i])
+			i += 1
+		log_line("%-26s %s  %.1f s to look" % [nm, "        " if v["ok"] else "REJECTED",
+			float(Time.get_ticks_msec() - t0) / 1000.0])
+		for fl in v["fail"]:
+			log_line("    FAIL: %s" % fl)
+	write("look.txt")
+
+# ---------------------------------------------------------------------------
 # hero -- where the machine IS on screen, in every shot that has one
 # ---------------------------------------------------------------------------
 ## Writes shots/cinema/hero_boxes.json: for every shot that names the hero, the
@@ -271,6 +314,17 @@ func run_hero(only: String) -> void:
 		var tn: float = float(fi) / float(nf - 1)
 		pose_cam(s, tn, 0)
 		var r: Rect2 = hero_rect()
+		# A HERO CAN BE IN THE SHOT AND NOT IN THE FRAME, and shot 14 is the
+		# case: the machine is standing 0.9 m from the lens on the same cage
+		# deck, and the camera is looking straight up the shaft past it. That is
+		# continuity, not a picture -- so it is REPORTED and left out of the
+		# contact sheet, because a crop of an off-screen rectangle is a
+		# comparison of nothing against the machine in every other shot.
+		var vp: Vector2 = Vector2(root.get_viewport().get_visible_rect().size)
+		if not r.intersects(Rect2(Vector2.ZERO, vp)):
+			log_line("%-24s frame %3d of %3d   IN THE SHOT, NOT IN THE FRAME (rect %.0f %.0f)"
+				% [nm, fi, nf, r.position.x, r.position.y])
+			continue
 		out["shots"].append({"name": nm, "trailer": String(s.get("trailer", "")),
 			"dir": "shots/cinema/seq/%s" % nm, "frame": fi, "frames": nf,
 			"lens_mm": float(s["lens_mm"]), "len_s": float(s["len_s"]),

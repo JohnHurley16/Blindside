@@ -233,6 +233,28 @@ func hero_pose(shot: Dictionary, tn: float, tsec: float) -> void:
 	var p: Vector3 = hero_home.origin
 	var yaw: float = hero_home.basis.get_euler().y
 	var travel: Vector3 = Vector3.ZERO
+	# A MOUNTED SHOT PLACES ITS MACHINE IN THE MOUNT'S FRAME TOO. Shot 14 is the
+	# camera and the machine standing on the same descending cage deck, and a
+	# machine placed by the site anchor while the camera is placed by the mount
+	# is a machine standing in the yard while the camera is nine metres down a
+	# shaft. There is also no ground in a shaft, so the terrain solver is off.
+	if CameraRig.has_mount(shot):
+		var org: Vector3 = rg.mount_at(shot, tn)
+		p = org + (CameraRig._local(at) if at != null else Vector3.ZERO)
+		var ym = m.get("yaw", null)
+		hero.global_position = p
+		hero.rotation = Vector3(0, deg_to_rad(float(ym)) if ym != null else 0.0, 0)
+		hero.ground = Callable()
+		var hdm = m.get("head", null)
+		if hdm is Array and (hdm as Array).size() == 2 and not (hdm[0] is Array):
+			hero.look_at_local(float(hdm[0]), float(hdm[1]))
+		_t = tsec
+		hero.t = _t
+		hero.anim.seek(_t, true)
+		hero._post_pose()
+		hero.body_y = p.y
+		hero._settled = true
+		return
 	if at is Dictionary and (at as Dictionary).has("from"):
 		var a: Vector3 = _anchor(at["from"])
 		var b: Vector3 = _anchor(at["to"])

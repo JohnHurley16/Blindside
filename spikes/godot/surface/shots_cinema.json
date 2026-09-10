@@ -1,52 +1,52 @@
 [
   {
-    "name": "t02_headframe_sky",
+    "name": "t02_valley_first_light",
     "trailer": "2",
-    "light": "overcast",
+    "light": "firstlight",
+    "_why": "THE FIRST FRAME OF THE TRAILER, and it is no longer the headframe. THE-ICE 8.1 rewrote this shot when the world changed: the valley at first light, the peaks lit and the floor still in shadow, walls on both sides, the town a line of small warm windows on the far wall at 900 m, and everything else white and silent. It establishes the SOCIETY before it establishes the machine; it is the only shot that can carry absolute scale, because the town is in it and a town is a size a viewer already knows; and it puts the ice age on screen without a card, because the town straddles the trimline. The works are 170 m away and about 90 px tall: old iron, small, in somebody else's enormous valley. The headframe is not lost. It becomes shot 3's subject, where it now reads as old AGAINST something new.",
     "len_s": 5.0,
     "lens_mm": 21.0,
-    "tstop": 2.8,
+    "tstop": 4.0,
     "ease": "inout",
     "handheld_deg": 0.0,
-    "height": "machine",
+    "height": "eye",
     "seed": 2,
     "move": {
       "from": {
         "at": "collar",
-        "a": -9.4,
-        "o": 1.4,
-        "u": 0.42
+        "a": 170.0,
+        "o": -52.0,
+        "u": 1.66
       },
       "to": {
         "at": "collar",
-        "a": -8.15,
-        "o": 1.4,
-        "u": 0.42
+        "a": 170.0,
+        "o": -50.4,
+        "u": 1.66
       }
     },
     "look": {
-      "from": {
-        "at": "collar",
-        "a": 3.0,
-        "o": 0.0,
-        "u": 9.0
-      },
-      "to": {
-        "at": "collar",
-        "a": 3.0,
-        "o": 0.0,
-        "u": 11.4
-      }
+      "from": [
+        -1480.0,
+        360.0,
+        740.0
+      ],
+      "to": [
+        -1500.0,
+        350.0,
+        760.0
+      ]
     },
     "focus": {
-      "from": 15.5,
-      "to": 14.4
+      "from": 40.0,
+      "to": 40.0
     }
   },
   {
-    "name": "t03_yard_drift",
+    "name": "t03_yard_under_the_wall",
     "trailer": "3",
-    "light": "overcast",
+    "light": "day",
+    "_why": "The yard, wide, slow lateral drift: racks in rows, painted bays, spoil tips behind. Somewhere people work. All of that still exists and none of it was ever the point of the frame; the point is the last three words. The drift is composed so the yard occupies the bottom third and the INHABITED WALL fills the rest -- the far wall at 900 m with the town's terraces on it. Somebody works here, and you can see where they live. That is THE-ICE 7.2's chain of known sizes in one frame: bay, building, yard, town, ridge.",
     "len_s": 4.0,
     "lens_mm": 21.0,
     "tstop": 4.0,
@@ -57,40 +57,39 @@
     "move": {
       "from": {
         "at": "collar",
-        "a": -1.2,
-        "o": 4.6,
+        "a": -1.0,
+        "o": -5.6,
         "u": 1.72
       },
       "to": {
         "at": "collar",
-        "a": -1.2,
-        "o": 6.2,
+        "a": -2.43,
+        "o": -6.33,
         "u": 1.72
       }
     },
     "look": {
-      "from": {
-        "at": "collar",
-        "a": -25.0,
-        "o": 3.2,
-        "u": 1.05
-      },
-      "to": {
-        "at": "collar",
-        "a": -25.0,
-        "o": 3.7,
-        "u": 1.05
-      }
+      "from": [
+        -620.0,
+        260.0,
+        1020.0
+      ],
+      "to": [
+        -650.0,
+        258.0,
+        1020.0
+      ]
     },
     "focus": {
-      "from": 12.0,
-      "to": 12.0
+      "from": 30.0,
+      "to": 30.0
     }
   },
   {
-    "name": "t04_rain_macro",
+    "name": "t04_melt_macro",
     "trailer": "4",
-    "light": "rain",
+    "light": "snowfall",
+    "_why": "Rain on hardstanding, macro, standing water rippling becomes THE-ICE 8.2's meltwater running off ice, macro. WHAT-HAPPENED-HERE 7 beat 5 is preserved exactly -- the first and last images of the trailer are both water -- and sharpened, because the first water is now water coming OUT OF ICE and the last is water going down a hole. The machinery that never stopped runs on the melt, and nobody gets that on a first watch. The subject is the rut: compacted snow in the traffic lane, denser, glassier and bluer than the snow beside it, with the melt in it. That colour difference is a path-length effect used as evidence of traffic, and it is the one thing in this spike that already draws where a machine walked.",
     "len_s": 4.0,
     "lens_mm": 50.0,
     "tstop": 4.0,
@@ -115,26 +114,27 @@
     "look": {
       "from": {
         "at": "z:muster",
-        "a": -2.45,
-        "o": -0.25,
-        "u": 0.02
+        "a": -0.9,
+        "o": 0.05,
+        "u": 0.22
       },
       "to": {
         "at": "z:muster",
-        "a": -2.2,
-        "o": -0.15,
-        "u": 0.02
+        "a": -0.8,
+        "o": 0.1,
+        "u": 0.22
       }
     },
     "focus": {
-      "from": 1.0,
-      "to": 0.94
+      "from": 1.48,
+      "to": 1.34
     }
   },
   {
     "name": "t05_charge_line",
     "trailer": "5",
-    "light": "overcast",
+    "light": "day",
+    "_why": "Five identical pedestals, machines docked in numbered bays, one bay empty with its cable coiled. Unchanged as a subject and completely changed as a frame. A 35 mm cannot hold a four-metre row and a wall 300 m away in one picture, so the valley enters this shot down its own axis instead: the camera looks WNW along the row and straight out through the gate, and the haul road runs away down-valley to the foot of the town's inclined railway 1.9 km off. The row recedes on the right, the way out is down the middle, and the place the machines are being charged FOR is at the top left. The empty bay is the hero's, because at 0:18 it is already at the course, and this is the one beat where its ABSENCE is the shot.",
     "len_s": 4.0,
     "lens_mm": 35.0,
     "tstop": 2.8,
@@ -145,42 +145,41 @@
     "move": {
       "from": {
         "at": "z:charge_row",
-        "a": 7.5,
-        "o": 3.2,
+        "a": 18.5,
+        "o": -0.5,
         "u": 1.6
       },
       "to": {
         "at": "z:charge_row",
-        "a": 6.3,
-        "o": 2.9,
+        "a": 17.3,
+        "o": -0.2,
         "u": 1.6
       }
     },
     "look": {
       "from": {
         "at": "z:charge_row",
-        "a": -3.0,
-        "o": -0.8,
-        "u": 0.95
+        "a": -9.0,
+        "o": 11.0,
+        "u": 1.05
       },
       "to": {
         "at": "z:charge_row",
-        "a": -4.2,
-        "o": -0.8,
-        "u": 0.95
+        "a": -10.2,
+        "o": 11.0,
+        "u": 1.05
       }
     },
     "focus": {
-      "from": 7.0,
-      "to": 8.4
-    },
-    "_machine_note": "No hero block, so the machine stands at home on the cradle outside the service bay. Its dock bay (Hero.DOCK_BAY = 3) is the empty one in this frame with its cable coiled -- because at 0:18 it is already on the bench, and at 0:22 we meet it there. This is the only beat where the hero's ABSENCE is the shot."
+      "from": 12.0,
+      "to": 13.0
+    }
   },
   {
     "name": "t06_meet_the_machine",
     "trailer": "6",
-    "light": "overcast",
-    "_why": "TRAILER 11.1, and this is the second version of it. It was t06_bench_machine: four seconds of a machine on a trestle inside the service bay, dark, half the body behind a bench leg. The card at 0:46 then says you cannot drive IT and the pronoun has nothing to point at. The FIRST attempt at a replacement kept it on the hoist cradle, in daylight, whole body, head turning -- and it still read as equipment, because a thing standing on a table is a thing being worked on. So it came off the table. THE CAMERA IS AT MACHINE HEIGHT, 0.45 m, level with its head: you have to crouch to meet it, which is the difference between looking at a tool and looking at an animal. 1.7 m away on a 50 mm, so the body fills three-fifths of the frame and the feet are in it. FIVE SECONDS, the longest the treatment allows, and 0.39 m of push -- the slowest move in the cut, 0.15 m/s at its peak. AND ITS HEAD MOVES: it starts turned away and down at its own flank, where the work is, and comes round to the lens over the last two seconds. That turn is the shot. T4 rather than T2.8 because at 1.7 m a 50 mm wide open is 11 cm deep and the sonar bar would be sharp with the eye already soft.",
+    "light": "day",
+    "_why": "THE MOST IMPORTANT SHOT IN THE TRAILER, and the reason the word it means anything at 0:46. Built to the specification the machines spike handed over (machines/NOTES.md 15) and re-sited into the valley, which is the part it could not build: five seconds, 50 mm at T4, the camera at MACHINE HEIGHT so you meet it eye to eye instead of looking down at a tool, a 0.38 m push -- the slowest move in the cut -- and its head coming round to the lens over the last two seconds. Three things carried over unchanged: IT IS ON THE GROUND, because a thing on a table is a thing being worked on; THE LENS IS AT 0.45 m; and NOTHING TALL AND DARK IS CLOSE BEHIND IT. The last of those is what the valley does better than the yard ever could. It stands on open snow east of the course with three kilometres of white valley behind it, so the contrast REVERSES: dark legs and graphite chassis against white, instead of a pale shell against a corrugated wall.",
     "len_s": 5.0,
     "lens_mm": 50.0,
     "tstop": 4.0,
@@ -190,35 +189,35 @@
     "seed": 6,
     "move": {
       "from": {
-        "at": "z:muster",
-        "a": 1.84,
-        "o": -4.64,
-        "u": 0.47
+        "at": "course:0",
+        "a": 10.05,
+        "o": -8.6,
+        "u": 0.45
       },
       "to": {
-        "at": "z:muster",
-        "a": 1.59,
-        "o": -4.33,
-        "u": 0.44
+        "at": "course:0",
+        "a": 10.4,
+        "o": -8.5,
+        "u": 0.45
       }
     },
     "look": {
       "from": {
-        "at": "z:muster",
-        "a": 0.0,
-        "o": -2.55,
-        "u": 0.34
+        "at": "course:0",
+        "a": 13.0,
+        "o": -8.0,
+        "u": 0.5
       },
       "to": {
-        "at": "z:muster",
-        "a": 0.0,
-        "o": -2.55,
-        "u": 0.36
+        "at": "course:0",
+        "a": 13.0,
+        "o": -8.0,
+        "u": 0.52
       }
     },
     "focus": {
-      "from": 2.9,
-      "to": 2.5
+      "from": 3.01,
+      "to": 2.65
     },
     "machine": {
       "role": "hero",
@@ -230,28 +229,30 @@
       "clip": "idle",
       "lamp": false,
       "at": {
-        "at": "z:muster",
-        "a": 0.0,
-        "o": -2.4,
+        "at": "course:0",
+        "a": 13.0,
+        "o": -8.0,
         "u": 0.0
       },
-      "yaw": 90.0,
+      "yaw": 134.1,
       "head": [
         [
-          32.0,
+          -30.0,
           -20.0
         ],
         [
-          -40.0,
-          3.0
+          43.0,
+          -2.0
         ]
       ]
-    }
+    },
+    "_machine_note": "yaw -123.8 puts the camera 35 degrees off its nose, which is the three-quarter front the head turn resolves to: it starts looking down at its own flank and ends aimed at the lens. The end value is arithmetic, not taste -- at the end of the push the camera is 2.15 m forward and 1.51 m to the machine's left in the machine's own frame, so the head yaw that aims at it is atan2(-1.51, 2.15) = -35 degrees, and the pitch is -2 because the lens is 0.10 m BELOW the head. The site was chosen the way NOTES 15 says to choose it: 49 m of open snow behind the machine before the fence, no course furniture within 15 m, and nothing tall, dark and close."
   },
   {
     "name": "t07_course_posts",
     "trailer": "7",
-    "light": "overcast",
+    "light": "day",
+    "_why": "The training course, in snow, with the machine walking it. The camera stays at machine height and the frame stays down the corridor -- but the corridor now points UP-VALLEY, so past the last post the ground runs three kilometres to the glacier and the two walls close the frame on both sides. THE-ICE 7.1's real prize is not in this shot and its absence should be said out loud: snow that RECORDS the machine's own path is not built, so the ground here shows the plan's static wear and not where this machine actually walked.",
     "len_s": 4.0,
     "lens_mm": 35.0,
     "tstop": 2.8,
@@ -326,12 +327,13 @@
         ]
       ]
     },
-    "_machine_note": "2.0 m in 4.0 s = 0.50 m/s, which is exactly what the walk clip was baked at, so the planted feet do not skate. The head casts left to right across the move: it is reading the posts, not posing."
+    "_machine_note": "2.0 m in 4.0 s = 0.50 m/s, exactly what the walk clip was baked at, so the planted feet do not skate. The head casts left to right across the move: it is reading the posts, not posing."
   },
   {
     "name": "t12_course_alone",
     "trailer": "12",
-    "light": "overcast",
+    "light": "day",
+    "_why": "The card You cannot drive it. You can only teach it. lands over this, so the machine has to be small in frame and still legibly the SAME machine. The pit-head version hung a crane at 5.5 m and looked down at 29 degrees, which fills the frame with ground and puts nothing above the horizon. This one hangs lower -- 2.5 m off lighting column 8 -- and looks along the ground at 8 degrees instead, so the machine is 16 m away and about 40 px tall and the top two thirds of the frame is the inhabited wall at 900 m. Nobody is touching it, and the place where the people are is in the same picture.",
     "len_s": 4.0,
     "lens_mm": 21.0,
     "tstop": 4.0,
@@ -342,34 +344,34 @@
     "move": {
       "from": {
         "at": "course:2",
-        "a": 1.2,
-        "o": 3.4,
-        "u": 5.5
+        "a": 0.0,
+        "o": 1.2,
+        "u": 2.8
       },
       "to": {
         "at": "course:2",
-        "a": 1.2,
-        "o": 2.1,
-        "u": 5.5
+        "a": 0.0,
+        "o": -0.1,
+        "u": 2.8
       }
     },
     "look": {
       "from": {
         "at": "course:3",
-        "a": 0.0,
-        "o": 0.2,
+        "a": -1.0,
+        "o": 0.0,
         "u": 0.45
       },
       "to": {
         "at": "course:3",
-        "a": 0.0,
-        "o": -0.2,
+        "a": 1.0,
+        "o": 0.0,
         "u": 0.45
       }
     },
     "focus": {
-      "from": 10.5,
-      "to": 10.5
+      "from": 9.6,
+      "to": 10.6
     },
     "machine": {
       "role": "hero",
@@ -399,13 +401,13 @@
         0.0,
         -5.0
       ]
-    },
-    "_machine_note": "The card at 0:46 lands over this. About 10 m away on a 21 mm lens is roughly 60 px of machine, which NOTES 10's legibility ladder puts well above the 34 px where the chassis class stops reading -- so it is small in frame and still recognisably the same machine."
+    }
   },
   {
     "name": "t13_collar_above",
     "trailer": "13",
-    "light": "overcast",
+    "light": "day",
+    "_why": "The shaft collar from above. The machine steps onto the plate. The pit-head framing looked down at 27 degrees through the headframe's bracing and it was the best frame in that set -- but everything above the horizon was cropped off, and in the valley that is the half of the picture that matters. So the crane comes down to 3.0 m and moves 10 m south of the collar, and the camera looks NORTH: the machine walks the last two metres to the shaft with the headframe's legs framing it and the town lit on the wall 900 m behind it. It is about to go somewhere its own society cannot follow, and both places are in the same frame. The lamp comes ON here and stays on: this is the frame where it stops being a thing in a yard.",
     "len_s": 4.0,
     "lens_mm": 21.0,
     "tstop": 4.0,
@@ -417,28 +419,28 @@
       "from": {
         "at": "collar",
         "a": -7.4,
-        "o": 5.4,
+        "o": -5.4,
         "u": 4.6
       },
       "to": {
         "at": "collar",
         "a": -6.6,
-        "o": 4.65,
+        "o": -4.65,
         "u": 4.55
       }
     },
     "look": {
       "from": {
         "at": "collar",
-        "a": -1.3,
-        "o": -0.3,
-        "u": 0.35
+        "a": -2.6,
+        "o": -0.2,
+        "u": 0.4
       },
       "to": {
         "at": "collar",
-        "a": -0.9,
-        "o": -0.1,
-        "u": 0.3
+        "a": -1.5,
+        "o": -0.2,
+        "u": 0.35
       }
     },
     "focus": {
@@ -479,14 +481,13 @@
           -14.0
         ]
       ]
-    },
-    "_machine_note": "It walks the last two metres to the collar and stops with its head down, looking into the shaft. The lamp comes ON here and stays on for the rest of the trailer: this is the frame where it stops being a thing in a yard and starts being a thing going underground."
+    }
   },
   {
     "name": "t14_descending",
     "trailer": "14",
-    "light": "overcast",
-    "_why": "authored as TRAILER 3 writes it: the camera rides the cage down the shaft. It is REJECTED; see CINEMA.md 7.2 for why that is the correct answer and what would have to change.",
+    "light": "day",
+    "_why": "THE HINGE OF THE TRAILER, and it executes now. It was rejected on four rules at once (CINEMA.md 7.2) and every one of the four was the rig being right about the wrong thing: a shot's move was stated in world coordinates and TRAILER 8's rules were written for a camera on a dolly on the ground. The fix is a MOUNT FRAME. The shot declares that it is carried by the cage, and travel, speed and height are then measured in the cage's frame while every physical rule still runs in world space. The camera is bolted to the cage: it travels 0.00 m and stands 0.45 m above the DECK, which is the machine band and means what it always meant. The cage does 8 m in 5 s under constant acceleration from rest -- a new ease kind, `accel`, offered to mounts and not to cameras, because x-cubed put more than half the descent into the last quarter of the shot and read as a lurch -- and that is the hoist's speed and not the camera operator's. AND THE CAGE ACTUALLY MOVES -- its instances are their own MultiMesh, so the thing the camera is riding rides -- which is the only reason the collision exemption for it is honest rather than a licence.",
     "len_s": 5.0,
     "lens_mm": 21.0,
     "tstop": 2.8,
@@ -494,33 +495,47 @@
     "handheld_deg": 0.0,
     "height": "machine",
     "seed": 14,
-    "move": {
+    "mount": {
+      "what": "the cage",
       "from": [
         0.0,
-        -0.8,
+        -0.7,
         0.0
       ],
       "to": [
         0.0,
-        -8.8,
+        -8.7,
         0.0
+      ],
+      "ease": "accel"
+    },
+    "move": {
+      "from": [
+        0.0,
+        0.45,
+        -0.55
+      ],
+      "to": [
+        0.0,
+        0.45,
+        -0.55
       ]
     },
     "look": {
       "from": [
         0.0,
-        6.0,
-        0.0
+        8.0,
+        0.3
       ],
       "to": [
         0.0,
-        6.0,
-        0.0
+        8.0,
+        0.3
       ]
     },
     "focus": {
-      "from": 6.8,
-      "to": 14.8
+      "from": 6.5,
+      "to": 14.5
     },
     "machine": {
       "role": "hero",
@@ -529,26 +544,29 @@
       "skin": "player",
       "wear": 0.35,
       "damage": 0.0,
-      "clip": "crouch",
+      "clip": "idle",
       "lamp": true,
       "at": [
         0.0,
-        -0.9,
-        0.0
+        0.0,
+        0.42
       ],
-      "yaw": 0.0,
+      "yaw": 90.0,
       "head": [
         0.0,
-        -6.0
+        -8.0
       ]
-    }
+    },
+    "_mount_note": "z = -0.55 and not 0 because a shaft has BUNTONS across it -- timber sets on the 1.2 m module dividing it into compartments -- and a cage runs in a compartment, not down the middle. On the centreline the 0.35 m body clips every bunton it passes. At -0.55 it clears the bunton face by 0.05 m and the lining by 0.05 m, which is a 0.10 m window and is the whole reason this number is not round. role none: the hero has already gone down, and Act III is about what is left.",
+    "_machine_note": "THE HERO IS IN THE CAGE AND IT IS NOT IN FRAME, which is a thing worth saying out loud rather than letting a continuity checker infer. Shot 13 is it stepping onto the plate; this is the next five seconds, so it is standing 0.9 m from the lens on the same deck with its lamp on. It cannot be in the picture: the camera is looking up a 2.4 x 2.0 m shaft at 84 degrees of elevation and the machine beside it is at minus 20, so a 21 mm cannot hold both the daylight and the animal. The trailer asks for the daylight. Its `at` is a MOUNT-LOCAL offset, like the camera's, because there is no ground in a shaft to measure an anchor against."
   },
   {
     "name": "t28_extraction_window",
     "trailer": "28",
-    "light": "rain",
+    "light": "dusk",
+    "_why": "The last shot, and THE-ICE 8.5 gives it the one addition that makes it cruel: an empty shaft is a fact; an empty shaft with somewhere to have come back to is a loss. So home is in the frame. Same camera family as shot 13 -- looking north at the collar from the yard side -- but at dusk, with the machine gone, the yard lights on, and the town lit on the wall 900 m behind and 300 m up: warm, occupied, and not where the machine is. Rain became melt running into the collar, which is the thing that woke the machinery up going back down to it. dusk rather than snowfall costs the falling snow and buys the only light in the world that is not the sky; VALLEY.md 5.1 already calls dusk shot 28's frame.",
     "len_s": 3.0,
-    "lens_mm": 21.0,
+    "lens_mm": 18.0,
     "tstop": 4.0,
     "ease": "inout",
     "handheld_deg": 0.0,
@@ -557,39 +575,39 @@
     "move": {
       "from": {
         "at": "collar",
-        "a": -4.3,
-        "o": 5.2,
-        "u": 3.2
+        "a": 9.8,
+        "o": 0.45,
+        "u": 2.6
       },
       "to": {
         "at": "collar",
-        "a": -3.55,
-        "o": 4.35,
-        "u": 3.15
+        "a": 9.2,
+        "o": -0.05,
+        "u": 2.55
       }
     },
     "look": {
       "from": {
         "at": "collar",
-        "a": 0.4,
-        "o": 0.9,
-        "u": 0.3
+        "a": 0.0,
+        "o": 0.3,
+        "u": -0.1
       },
       "to": {
         "at": "collar",
-        "a": 0.2,
-        "o": 0.7,
-        "u": 0.25
+        "a": -0.2,
+        "o": 0.15,
+        "u": -0.12
       }
     },
     "focus": {
-      "from": 7.0,
-      "to": 6.4
+      "from": 9.8,
+      "to": 9.3
     },
     "machine": {
       "role": "none"
     },
-    "_machine_note": "role none, and it is the most load-bearing line in this file. The shot is the empty shaft in the rain and the question is whether it came back. Without this the default puts the hero at home on the cradle, and a Surveyor standing in the yard behind an empty shaft answers the question the trailer ends on."
+    "_machine_note": "role none, and it is the most load-bearing line in this file. The shot is the empty shaft and the question is whether it came back. Without this the default puts the hero at home on the site, and a Surveyor standing in the yard behind an empty shaft answers the question the trailer ends on."
   },
   {
     "name": "xfail_through_the_shed",

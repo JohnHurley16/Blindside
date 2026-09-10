@@ -1,0 +1,11 @@
+=== CINEMA look, fx = all ===
+t02_valley_first_light               2.6 s to look
+t03_yard_under_the_wall              2.8 s to look
+t04_melt_macro                       2.9 s to look
+t05_charge_line                      2.5 s to look
+t06_meet_the_machine                 2.5 s to look
+t07_course_posts                     2.6 s to look
+t12_course_alone                     3.0 s to look
+t13_collar_above                     2.8 s to look
+t14_descending                       2.6 s to look
+t28_extraction_window                3.5 s to look

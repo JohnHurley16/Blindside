@@ -75,57 +75,72 @@ mast:stack                 23.00      0.00    -19.00     1.00   0.00   0.00     
 
 --- resolved shot anchors ---
 t02_headframe_sky
-    move from     -9.40     0.59     0.00   ground   0.17  above   0.08
-    move to       -8.15     0.58     0.00   ground   0.16  above   0.07
+    move from     -9.40     0.58     1.40   ground   0.16  above   0.42
+    move to       -8.15     0.58     1.40   ground   0.16  above   0.42
     look from      3.00     9.16     0.00   ground   0.16  above   5.27
     look to        3.00    11.56     0.00   ground   0.16  above   7.67
 t03_yard_drift
-    move from     -1.20     1.88     6.10   ground   0.16  above   1.72
-    move to       -1.20     1.88     7.70   ground   0.16  above   1.72
-    look from    -25.00     1.17     6.40   ground   0.17  above   1.00
-    look to      -25.00     1.17     6.90   ground   0.17  above   1.00
+    move from     -1.20     1.88     4.60   ground   0.16  above   1.72
+    move to       -1.20     1.88     6.20   ground   0.16  above   1.72
+    look from    -25.00     1.22     3.20   ground   0.17  above   1.05
+    look to      -25.00     1.22     3.70   ground   0.17  above   1.05
 t04_rain_macro
-    move from     -5.90     0.53     3.50   ground   0.17  above   0.36
-    move to       -5.58     0.51     3.56   ground   0.17  above   0.34
-    look from     -5.35     0.16     3.58   ground   0.16  above   0.00
-    look to       -5.00     0.16     3.64   ground   0.16  above   0.00
+    move from     -8.45     0.51     2.95   ground   0.17  above   0.34
+    move to       -8.13     0.49     3.01   ground   0.17  above   0.32
+    look from     -8.95     0.19     3.75   ground   0.17  above   0.02
+    look to       -8.70     0.19     3.85   ground   0.17  above   0.02
 t05_charge_line
     move from    -13.50     1.77    10.20   ground   0.17  above   1.60
     move to      -14.70     1.76     9.90   ground   0.16  above   1.60
     look from    -24.00     1.13     6.20   ground   0.18  above   0.80
     look to      -25.20     1.12     6.20   ground   0.17  above   0.79
-t06_bench_machine
-    move from    -17.45     0.65    -4.75   ground   0.15  above   0.50
-    move to      -18.05     0.66    -5.05   ground   0.16  above   0.50
-    look from    -19.00     0.94    -4.90   ground   0.16  above   0.08
-    look to      -19.30     0.90    -4.90   ground   0.16  above   0.04
+t06_meet_the_machine
+    move from     -4.66     0.63    -0.64   ground   0.16  above   0.47
+    move to       -4.91     0.59    -0.33   ground   0.15  above   0.44
+    look from     -6.50     0.50     1.45   ground   0.16  above   0.34
+    look to       -6.50     0.52     1.45   ground   0.16  above   0.36
 t07_course_posts
     move from     48.00     0.19     0.00   ground  -0.26  above   0.45
     move to       49.40     0.25     0.00   ground  -0.20  above   0.45
     look from     51.80     0.19     0.00   ground  -0.16  above   0.35
     look to       52.50     0.21     0.00   ground  -0.14  above   0.35
 t12_course_alone
-    move from     30.00     5.66     1.60   ground   0.16  above   5.50
-    move to       30.00     5.66     0.20   ground   0.16  above   5.50
-    look from     45.00     0.13     0.60   ground  -0.47  above   0.60
-    look to       45.00     0.15    -0.20   ground  -0.45  above   0.60
+    move from     43.80     4.99     3.40   ground  -0.51  above   5.50
+    move to       43.80     4.95     2.10   ground  -0.55  above   5.50
+    look from     52.20     0.29     0.20   ground  -0.16  above   0.45
+    look to       52.20     0.30    -0.20   ground  -0.15  above   0.45
 t13_collar_above
-    move from     -5.20     4.76     3.90   ground   0.16  above   4.60
-    move to       -4.30     4.76     3.20   ground   0.16  above   4.49
-    look from     -3.40     0.71    -0.90   ground   0.16  above   0.55
-    look to       -2.60     0.56    -0.70   ground   0.16  above  -0.00
+    move from     -7.40     4.77     5.40   ground   0.17  above   4.60
+    move to       -6.60     4.72     4.65   ground   0.17  above   4.55
+    look from     -1.30     0.51    -0.30   ground   0.16  above   0.07
+    look to       -0.90     0.46    -0.10   ground   0.16  above  -0.02
 t14_descending
     move from      0.00    -0.80     0.00   ground   0.16  above   0.10
     move to        0.00    -8.80     0.00   ground   0.16  above  -1.00
     look from      0.00     6.00     0.00   ground   0.16  above   2.95
     look to        0.00     6.00     0.00   ground   0.16  above   2.95
 t28_extraction_window
-    move from     -2.40     2.51     3.80   ground   0.16  above   2.35
-    move to       -1.60     2.46     3.00   ground   0.16  above   0.56
-    look from      0.00     0.21     1.40   ground   0.16  above  -1.00
-    look to        0.20     0.18     1.20   ground   0.16  above   0.49
+    move from     -4.30     3.36     5.20   ground   0.16  above   3.20
+    move to       -3.55     3.31     4.35   ground   0.16  above   3.15
+    look from      0.40     0.46     0.90   ground   0.16  above  -1.00
+    look to        0.20     0.41     0.70   ground   0.16  above   1.32
 xfail_through_the_shed
     move from      5.00     1.77   -15.00   ground   0.17  above   1.60
     move to        7.20     1.77   -15.00   ground   0.17  above   1.60
     look from     13.50     3.17   -15.00   ground   0.17  above   2.02
     look to       13.50     3.17   -15.00   ground   0.17  above   2.02
+xfail_wrong_machine
+    move from     48.00     0.19     0.00   ground  -0.26  above   0.45
+    move to       49.40     0.25     0.00   ground  -0.20  above   0.45
+    look from     51.80     0.19     0.00   ground  -0.16  above   0.35
+    look to       52.50     0.21     0.00   ground  -0.14  above   0.35
+xfail_into_the_machine
+    move from     50.20     0.26     0.00   ground  -0.19  above   0.45
+    move to       52.40     0.30     0.00   ground  -0.15  above   0.45
+    look from     52.20     0.19     0.00   ground  -0.16  above   0.35
+    look to       52.80     0.22     0.00   ground  -0.13  above   0.35
+xfail_skating_machine
+    move from     48.00     0.19     0.00   ground  -0.26  above   0.45
+    move to       49.40     0.25     0.00   ground  -0.20  above   0.45
+    look from     51.80     0.19     0.00   ground  -0.16  above   0.35
+    look to       52.50     0.21     0.00   ground  -0.14  above   0.35

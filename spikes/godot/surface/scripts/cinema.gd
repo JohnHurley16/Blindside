@@ -119,6 +119,10 @@ var collision_props: int = 0
 var collision_ground_tris: int = 0
 var build_ms: float = 0.0
 
+## the MultiMeshInstance3Ds tagged as carriers, kept out of the collision bake
+## and moved by `carry()`
+var carriers: Array[MultiMeshInstance3D] = []
+
 var _tri_cache: Dictionary = {}
 ## shape index -> the MultiMeshInstance3D it was baked from, so a rejection can
 ## name the object that caused it rather than a number
@@ -159,6 +163,17 @@ func build_collision(root: Node3D, p_L: SurfaceLayout) -> void:
 		elif c is MultiMeshInstance3D:
 			var bucket: int = int(c.get_meta("bucket", Batcher.DETAIL))
 			if bucket == Batcher.DETAIL:
+				continue
+			# A CARRIER IS NOT AN OBSTACLE TO THE CAMERA IT CARRIES, and this is
+			# the one exemption in the whole rig that is not about the ground.
+			# The cage moves with the camera bolted to it, so their relative
+			# position never changes and no query between them can ever mean
+			# anything. Leaving it in the bake would reject shot 14 for the
+			# camera being where it is standing -- the same mistake as the cave's
+			# swept test rejecting a rig for resting on the floor.
+			# It is only sound BECAUSE the carrier really moves: see `carry()`.
+			if String(c.get_meta("carrier", "")) != "":
+				carriers.append(c)
 				continue
 			var mm: MultiMesh = (c as MultiMeshInstance3D).multimesh
 			if mm == null or mm.mesh == null or mm.instance_count == 0:
@@ -412,6 +427,17 @@ static func ease_u(kind: String, t: float) -> float:
 			return x * x * x * (x * (x * 6.0 - 15.0) + 10.0)
 		"in":
 			return x * x * x
+		# CONSTANT ACCELERATION FROM REST, and it exists for MOUNTS ONLY.
+		# A hoist cage leaves the collar under a constant pull and is still
+		# gaining when the shot cuts. `in` (x cubed) is the wrong curve for that
+		# by a wide margin -- it puts more than half of an 8 m descent into the
+		# last quarter of the shot, which reads as a lurch rather than as a
+		# departure. x squared is what a cage actually does. It is NOT offered
+		# to a camera move: TRAILER 8's easing rule is about a body with mass
+		# being pushed by a person, and a person does not accelerate all the way
+		# to the cut.
+		"accel":
+			return x * x
 		"out":
 			var y: float = 1.0 - x
 			return 1.0 - y * y * y
@@ -458,11 +484,87 @@ static func dof_limits(lens_mm: float, tstop: float, focus_m: float) -> Array:
 	return [near_mm * 0.001, far_mm * 0.001, H * 0.001]
 
 # ---------------------------------------------------------------------------
+# THE MOUNT FRAME -- a shot may declare that it is CARRIED
+# ---------------------------------------------------------------------------
+# CINEMA.md 7.2 and TRAILER 11: shot 14 is a camera riding the cage down the
+# shaft, and it was rejected on four rules at once, every one of them correct
+# and every one of them wrong about this shot. The reason is one sentence: A
+# SHOT'S MOVE IS STATED IN WORLD COORDINATES, and TRAILER 8's rules were written
+# for a camera on a dolly on the ground.
+#
+#   "travels 8.00 m; a shot that must go further is two shots"  -- a rule about
+#       a camera TRAVELLING. A camera bolted to a descending cage travels 0 m;
+#       the world moves past it.
+#   "height 'machine' wants 0.28-0.56 m above the ground"       -- there is no
+#       ground inside a shaft. There is a DECK, and the lens is 0.45 m above it.
+#   "peak speed 3.00 m/s exceeds 1.20"                          -- 1.2 m/s is
+#       how fast a person pushes a dolly. It is not how fast a hoist runs, and
+#       the speed of the hoist is not the camera department's decision.
+#
+# So a shot may carry a `mount`:
+#
+#     "mount": {"what": "cage",
+#               "from": [0, -0.70, 0], "to": [0, -8.70, 0], "ease": "in"}
+#
+# and then:
+#
+#   * `move` and `look` are OFFSETS IN THE MOUNT'S FRAME, in metres, and are
+#     written as plain [x, y, z]. A mount frame is axis-aligned with the world:
+#     a cage hangs on a rope and does not rotate, and pretending otherwise would
+#     invent a facing nobody asked for.
+#   * TRAVEL and SPEED are measured on the camera's motion RELATIVE TO THE
+#     MOUNT. A bolted camera scores zero on both, which is the truth.
+#   * HEIGHT is measured above the MOUNT'S OWN ORIGIN, which is its deck. The
+#     four bands are unchanged, so `machine` still means 0.28-0.56 m and still
+#     means "as high off the floor as the thing being photographed".
+#   * EVERY PHYSICAL RULE IS UNCHANGED AND STILL RUNS IN WORLD SPACE: the body
+#     sweep, the near-plane clearance and the buried test are facts about where
+#     the lens actually is, and a mount is not a licence to fly through a wall.
+#   * the mount's OWN speed is reported and NOT capped. A cage does what a cage
+#     does; the rule it has to satisfy is that a real thing could carry a camera
+#     at that speed, and a winding cage is exactly such a thing.
+#
+# This is the general form CINEMA.md 11.1 asked for -- "a shot may declare that
+# it is carried by a moving thing" -- and it is what shots 17 and 22 will need
+# the day the camera follows a walking machine.
+static func has_mount(shot: Dictionary) -> bool:
+	return shot.has("mount") and (shot["mount"] is Dictionary)
+
+## The carrier's own origin at normalised time `tn`, in world space.
+func mount_at(shot: Dictionary, tn: float) -> Vector3:
+	var M: Dictionary = shot["mount"]
+	var mu: float = ease_u(String(M.get("ease", "inout")), tn)
+	return resolve(M["from"]).lerp(resolve(M["to"]), mu)
+
+## Move the carrier's instances so the thing the camera is riding actually
+## rides. Without this the exemption in `build_collision` would be a lie.
+func carry(shot: Dictionary, tn: float) -> void:
+	if carriers.is_empty():
+		return
+	var d := Vector3.ZERO
+	if has_mount(shot):
+		d = mount_at(shot, tn) - mount_at(shot, 0.0)
+	for c in carriers:
+		c.position = d
+
+## An offset in a mount's frame. Always a plain [x, y, z] in metres: a mount has
+## no ground to measure `u` from and no axis to measure `a` along, so the site
+## anchor's vocabulary does not apply inside one and is refused rather than
+## quietly reinterpreted.
+static func _local(a) -> Vector3:
+	if a is Array:
+		return Vector3(float(a[0]), float(a[1]), float(a[2]))
+	push_error("CINEMA: a mounted shot's anchors are [x,y,z] offsets in the mount's frame")
+	return Vector3.ZERO
+
+# ---------------------------------------------------------------------------
 # the pose at a normalised time
 # ---------------------------------------------------------------------------
 func pose(shot: Dictionary, tn: float) -> Dictionary:
 	var u: float = ease_u(String(shot.get("ease", "inout")), tn)
 	var mv: Dictionary = shot["move"]
+	if has_mount(shot):
+		return _pose_mounted(shot, tn, u)
 	var a: Vector3 = resolve(mv["from"])
 	var b: Vector3 = resolve(mv["to"])
 	var p: Vector3
@@ -500,6 +602,33 @@ func _focus_dist(a, from: Vector3) -> float:
 	if a is float or a is int:
 		return float(a)
 	return from.distance_to(resolve(a))
+
+## The same arithmetic as `pose`, with the mount's origin added to everything
+## and the anchors read as local offsets. It is a separate function rather than
+## a branch inside `pose` because every line of it means something different.
+func _pose_mounted(shot: Dictionary, tn: float, u: float) -> Dictionary:
+	var org: Vector3 = mount_at(shot, tn)
+	var mv: Dictionary = shot["move"]
+	var p: Vector3 = org + _local(mv["from"]).lerp(_local(mv["to"]), u)
+	var lk: Dictionary = shot["look"]
+	var tgt: Vector3 = org + _local(lk["from"]).lerp(_local(lk["to"]), u)
+	var dir: Vector3 = tgt - p
+	if dir.length() < 0.01:
+		dir = Vector3(0, 0, -1)
+	dir = dir.normalized()
+	var basis := Basis.from_euler(Vector3(asin(clampf(dir.y, -1.0, 1.0)),
+		atan2(-dir.x, -dir.z), 0.0))
+	var hd: float = float(shot.get("handheld_deg", 0.0))
+	if hd > 0.0:
+		var hh: Vector3 = handheld(int(shot.get("seed", 11)), tn * float(shot["len_s"]), hd)
+		basis = Basis.from_euler(Vector3(asin(clampf(dir.y, -1.0, 1.0)) + hh.x,
+			atan2(-dir.x, -dir.z) + hh.y, hh.z))
+	var focus: float = p.distance_to(tgt)
+	if shot.has("focus"):
+		var fo: Dictionary = shot["focus"]
+		focus = lerp(float(fo.get("from", focus)), float(fo.get("to", focus)), u)
+	return {"pos": p, "basis": basis, "focus": focus, "lens": float(shot["lens_mm"]),
+			"tstop": float(shot.get("tstop", 2.8))}
 
 # ---------------------------------------------------------------------------
 # validation
@@ -734,6 +863,7 @@ func validate(shot: Dictionary) -> Dictionary:
 	if not ((lens >= 18.0 and lens <= 24.0) or (lens >= 35.0 and lens <= 50.0) or lens >= 85.0):
 		warn.append("lens %.0f mm is outside the committed bands (18-24 / 35-50 / 85+)" % lens)
 
+	var mounted: bool = has_mount(shot)
 	var pts: Array = []
 	var mn_clear: float = 99.0
 	var mn_clear_t: float = 0.0
@@ -748,6 +878,7 @@ func validate(shot: Dictionary) -> Dictionary:
 		# the machine first: it is one of the solids the camera may not enter
 		if fleet != null:
 			fleet.hero_pose(shot, tn, tn * float(shot.get("len_s", 4.0)))
+		carry(shot, tn)
 		var ps: Dictionary = pose(shot, tn)
 		pts.append(ps)
 		var p: Vector3 = ps["pos"]
@@ -759,7 +890,10 @@ func validate(shot: Dictionary) -> Dictionary:
 		if c < mn_clear:
 			mn_clear = c
 			mn_clear_t = tn
-		var fh: float = floor_under(p)
+		# THE HEIGHT A RULE IS MEASURED AGAINST. Normally the rendered ground
+		# under the lens; inside a mount, the mount's own deck, because there is
+		# no ground in a shaft and the lens is standing on something else.
+		var fh: float = (p.y - mount_at(shot, tn).y) if mounted else floor_under(p)
 		if fh >= 0.0:
 			h_lo = minf(h_lo, fh)
 			h_hi = maxf(h_hi, fh)
@@ -805,7 +939,7 @@ func validate(shot: Dictionary) -> Dictionary:
 		if h_lo < float(band[0]) or h_hi > float(band[1]):
 			fail.append("height '%s' wants %.2f-%.2f m; the move runs %.2f-%.2f m above the ground" % [
 				hr, band[0], band[1], h_lo, h_hi])
-		if hr == "crane":
+		if hr == "crane" and not mounted:
 			mount = crane_mount((pts[0]["pos"] as Vector3), (pts[0]["pos"] as Vector3).y)
 			if float(mount[0]) < 0.0:
 				fail.append("crane at %.2f m has nothing on the site tall enough to hang from" % h_hi)
@@ -813,10 +947,25 @@ func validate(shot: Dictionary) -> Dictionary:
 				fail.append("crane at %.2f m: the nearest thing tall enough to hang from is %s at %.1f m (reach %.1f)" % [
 					h_hi, mount[1], mount[0], CRANE_REACH])
 
-	# 4 -- travel, 6 -- speed
+	# 4 -- travel, 6 -- speed. IN THE MOUNT'S FRAME when there is one: a camera
+	# bolted to a descending cage travels 0 m and the world moves past it, and
+	# measuring that motion as a dolly move is what rejected shot 14.
 	var travel: float = 0.0
-	for i in range(pts.size() - 1):
-		travel += (pts[i]["pos"] as Vector3).distance_to(pts[i + 1]["pos"])
+	var m_travel: float = 0.0
+	var m_vmax: float = 0.0
+	if mounted:
+		var ma: Vector3 = _local(shot["move"]["from"])
+		var mb: Vector3 = _local(shot["move"]["to"])
+		travel = ma.distance_to(mb)
+		var M: Dictionary = shot["mount"]
+		m_travel = resolve(M["from"]).distance_to(resolve(M["to"]))
+		var mpk: float = 0.0
+		for i in range(SAMPLES + 1):
+			mpk = maxf(mpk, ease_dudt(String(M.get("ease", "inout")), float(i) / float(SAMPLES)))
+		m_vmax = m_travel * mpk / maxf(dur, 0.1)
+	else:
+		for i in range(pts.size() - 1):
+			travel += (pts[i]["pos"] as Vector3).distance_to(pts[i + 1]["pos"])
 	if travel > MAX_TRAVEL:
 		fail.append("travels %.2f m; a shot that must go further is two shots (max %.1f)" % [
 			travel, MAX_TRAVEL])
@@ -826,17 +975,19 @@ func validate(shot: Dictionary) -> Dictionary:
 	var vmax: float = travel * peak / maxf(dur, 0.1)
 	if vmax > MAX_SPEED:
 		fail.append("peak speed %.2f m/s exceeds %.2f" % [vmax, MAX_SPEED])
-	if travel < MIN_TRAVEL and travel > 0.001:
+	if travel < MIN_TRAVEL and travel > 0.001 and not mounted:
 		warn.append("travels only %.2f m -- is this meant to be a HOLD?" % travel)
 	# TRAILER 7: "Nothing on the surface moves ... every surface shot has a
 	# camera move so the frame is not static". On the surface that is not a
 	# style note, it is the only thing hiding a still yard, so a surface shot
 	# with no move at all is a warning even inside the HOLD allowance.
-	if travel < 0.001:
+	if travel < 0.001 and not mounted:
 		warn.append("no camera move at all: TRAILER 7 requires one on every surface shot")
 
 	return {"ok": fail.is_empty(), "fail": fail, "warn": warn, "name": nm,
 		"stats": {"travel": travel, "vmax": vmax, "clear": mn_clear,
+			"mounted": mounted, "m_travel": m_travel, "m_vmax": m_vmax,
+			"m_what": String(shot.get("mount", {}).get("what", "")) if mounted else "",
 			"h_lo": h_lo, "h_hi": h_hi, "mount": mount,
 			"fov": fov_for(lens), "dof": dof_limits(lens, float(shot.get("tstop", 2.8)),
 				float(pts[0]["focus"]))}}
