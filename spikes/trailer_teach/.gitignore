@@ -1,0 +1,7 @@
+# Frame sequences, as everywhere else in spikes/: hundreds of megabytes of
+# intermediates that regenerate. `capture.py` rebuilds raw/, `grade.py all` rebuilds
+# seq/ from it, and both are deterministic.
+raw/
+seq/
+_look/
+__pycache__/

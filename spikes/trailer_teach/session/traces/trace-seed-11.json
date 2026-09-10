@@ -1,0 +1,158 @@
+{
+ "seed": 11,
+ "enabled_predicates": [
+  "deposit_remaining",
+  "carrying_cargo",
+  "time_elapsed_exceeds",
+  "uncertainty_exceeds",
+  "fix_jump_exceeds",
+  "machinery_audible"
+ ],
+ "enabled_actions": [
+  "go_to_deposit",
+  "return_to_beacon",
+  "hold",
+  "interface_machinery"
+ ],
+ "params": {
+  "time_elapsed_exceeds": {
+   "seconds": 270.0
+  },
+  "uncertainty_exceeds": {
+   "theta": 16.0
+  },
+  "fix_jump_exceeds": {
+   "cells": 8.0
+  },
+  "machinery_audible": {
+   "level": 0.45
+  }
+ },
+ "steps": [
+  {
+   "tick": 1,
+   "junction": 0,
+   "predicates": {
+    "deposit_remaining": true,
+    "carrying_cargo": false,
+    "time_elapsed_exceeds": false,
+    "uncertainty_exceeds": false,
+    "fix_jump_exceeds": false,
+    "machinery_audible": false
+   },
+   "raw": {
+    "time_elapsed_exceeds": 0.05,
+    "uncertainty_exceeds": 0.7071067811865476,
+    "fix_jump_exceeds": 0.0,
+    "machinery_audible": 0.0
+   },
+   "action": "go_to_deposit",
+   "reason": "start"
+  },
+  {
+   "tick": 1775,
+   "junction": 2,
+   "predicates": {
+    "deposit_remaining": true,
+    "carrying_cargo": true,
+    "time_elapsed_exceeds": false,
+    "uncertainty_exceeds": false,
+    "fix_jump_exceeds": false,
+    "machinery_audible": false
+   },
+   "raw": {
+    "time_elapsed_exceeds": 88.75,
+    "uncertainty_exceeds": 5.183067073538123,
+    "fix_jump_exceeds": 0.0,
+    "machinery_audible": 0.0
+   },
+   "action": "go_to_deposit",
+   "reason": "rose:carrying_cargo"
+  },
+  {
+   "tick": 1776,
+   "junction": 2,
+   "predicates": {
+    "deposit_remaining": true,
+    "carrying_cargo": true,
+    "time_elapsed_exceeds": false,
+    "uncertainty_exceeds": false,
+    "fix_jump_exceeds": false,
+    "machinery_audible": false
+   },
+   "raw": {
+    "time_elapsed_exceeds": 88.80000000000001,
+    "uncertainty_exceeds": 5.1830671051621,
+    "fix_jump_exceeds": 0.0,
+    "machinery_audible": 0.0
+   },
+   "action": "go_to_deposit",
+   "reason": "ended:go_to_deposit"
+  },
+  {
+   "tick": 2837,
+   "junction": 1,
+   "predicates": {
+    "deposit_remaining": true,
+    "carrying_cargo": true,
+    "time_elapsed_exceeds": false,
+    "uncertainty_exceeds": false,
+    "fix_jump_exceeds": true,
+    "machinery_audible": false
+   },
+   "raw": {
+    "time_elapsed_exceeds": 141.85,
+    "uncertainty_exceeds": 0.7071067811865476,
+    "fix_jump_exceeds": 34.164603582496675,
+    "machinery_audible": 0.0
+   },
+   "action": "go_to_deposit",
+   "reason": "rose:fix_jump_exceeds"
+  },
+  {
+   "tick": 5401,
+   "junction": 2,
+   "predicates": {
+    "deposit_remaining": true,
+    "carrying_cargo": true,
+    "time_elapsed_exceeds": true,
+    "uncertainty_exceeds": false,
+    "fix_jump_exceeds": false,
+    "machinery_audible": false
+   },
+   "raw": {
+    "time_elapsed_exceeds": 270.05,
+    "uncertainty_exceeds": 1.0676615308028172,
+    "fix_jump_exceeds": 2.705727084513988,
+    "machinery_audible": 0.30489675000000016
+   },
+   "action": "go_to_deposit",
+   "reason": "rose:time_elapsed_exceeds"
+  },
+  {
+   "tick": 8191,
+   "junction": 5,
+   "predicates": {
+    "deposit_remaining": true,
+    "carrying_cargo": true,
+    "time_elapsed_exceeds": true,
+    "uncertainty_exceeds": false,
+    "fix_jump_exceeds": false,
+    "machinery_audible": true
+   },
+   "raw": {
+    "time_elapsed_exceeds": 409.55,
+    "uncertainty_exceeds": 3.6836558433963797,
+    "fix_jump_exceeds": 0.0,
+    "machinery_audible": 0.4620422638888889
+   },
+   "action": "hold",
+   "reason": "rose:machinery_audible"
+  }
+ ],
+ "outcome": {
+  "success": false,
+  "ticks": 8320,
+  "lost": false
+ }
+}

@@ -57,3 +57,5 @@ spikes/godot/surface/shots/cinema/*/
 phase2-session/
 # Rendered score stems: regenerate with python -m phase1.audio.score_render
 spikes/score/*.wav
+spikes/trailer_teach/seq/
+spikes/trailer_teach/*.mp4

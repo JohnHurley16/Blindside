@@ -1,0 +1,285 @@
+{
+ "seed": 7,
+ "enabled_predicates": [
+  "deposit_remaining",
+  "carrying_cargo",
+  "time_elapsed_exceeds",
+  "uncertainty_exceeds",
+  "fix_jump_exceeds",
+  "machinery_audible"
+ ],
+ "enabled_actions": [
+  "go_to_deposit",
+  "return_to_beacon",
+  "hold",
+  "interface_machinery"
+ ],
+ "params": {
+  "time_elapsed_exceeds": {
+   "seconds": 270.0
+  },
+  "uncertainty_exceeds": {
+   "theta": 16.0
+  },
+  "fix_jump_exceeds": {
+   "cells": 8.0
+  },
+  "machinery_audible": {
+   "level": 0.45
+  }
+ },
+ "steps": [
+  {
+   "tick": 1,
+   "junction": 0,
+   "predicates": {
+    "deposit_remaining": true,
+    "carrying_cargo": false,
+    "time_elapsed_exceeds": false,
+    "uncertainty_exceeds": false,
+    "fix_jump_exceeds": false,
+    "machinery_audible": false
+   },
+   "raw": {
+    "time_elapsed_exceeds": 0.05,
+    "uncertainty_exceeds": 0.7071067811865476,
+    "fix_jump_exceeds": 0.0,
+    "machinery_audible": 0.0
+   },
+   "action": "go_to_deposit"
+  },
+  {
+   "tick": 1771,
+   "junction": 2,
+   "predicates": {
+    "deposit_remaining": true,
+    "carrying_cargo": true,
+    "time_elapsed_exceeds": false,
+    "uncertainty_exceeds": false,
+    "fix_jump_exceeds": false,
+    "machinery_audible": false
+   },
+   "raw": {
+    "time_elapsed_exceeds": 88.55000000000001,
+    "uncertainty_exceeds": 5.153364636845623,
+    "fix_jump_exceeds": 0.0,
+    "machinery_audible": 0.0
+   },
+   "action": "go_to_deposit"
+  },
+  {
+   "tick": 1772,
+   "junction": 2,
+   "predicates": {
+    "deposit_remaining": true,
+    "carrying_cargo": true,
+    "time_elapsed_exceeds": false,
+    "uncertainty_exceeds": false,
+    "fix_jump_exceeds": false,
+    "machinery_audible": false
+   },
+   "raw": {
+    "time_elapsed_exceeds": 88.60000000000001,
+    "uncertainty_exceeds": 5.153364745949075,
+    "fix_jump_exceeds": 0.0,
+    "machinery_audible": 0.0
+   },
+   "action": "go_to_deposit"
+  },
+  {
+   "tick": 2835,
+   "junction": 1,
+   "predicates": {
+    "deposit_remaining": true,
+    "carrying_cargo": true,
+    "time_elapsed_exceeds": false,
+    "uncertainty_exceeds": false,
+    "fix_jump_exceeds": true,
+    "machinery_audible": false
+   },
+   "raw": {
+    "time_elapsed_exceeds": 141.75,
+    "uncertainty_exceeds": 0.7071067811865476,
+    "fix_jump_exceeds": 33.28364756410131,
+    "machinery_audible": 0.0
+   },
+   "action": "go_to_deposit"
+  },
+  {
+   "tick": 5216,
+   "junction": 5,
+   "predicates": {
+    "deposit_remaining": true,
+    "carrying_cargo": true,
+    "time_elapsed_exceeds": false,
+    "uncertainty_exceeds": false,
+    "fix_jump_exceeds": false,
+    "machinery_audible": true
+   },
+   "raw": {
+    "time_elapsed_exceeds": 260.8,
+    "uncertainty_exceeds": 6.828207492099932,
+    "fix_jump_exceeds": 0.0,
+    "machinery_audible": 0.4648872916666667
+   },
+   "action": "hold"
+  },
+  {
+   "tick": 5401,
+   "junction": 5,
+   "predicates": {
+    "deposit_remaining": true,
+    "carrying_cargo": true,
+    "time_elapsed_exceeds": true,
+    "uncertainty_exceeds": false,
+    "fix_jump_exceeds": false,
+    "machinery_audible": true
+   },
+   "raw": {
+    "time_elapsed_exceeds": 270.05,
+    "uncertainty_exceeds": 6.828208143227271,
+    "fix_jump_exceeds": 0.0,
+    "machinery_audible": 0.785725
+   },
+   "action": "hold"
+  },
+  {
+   "tick": 5415,
+   "junction": 5,
+   "predicates": {
+    "deposit_remaining": true,
+    "carrying_cargo": true,
+    "time_elapsed_exceeds": true,
+    "uncertainty_exceeds": false,
+    "fix_jump_exceeds": false,
+    "machinery_audible": false
+   },
+   "raw": {
+    "time_elapsed_exceeds": 270.75,
+    "uncertainty_exceeds": 6.828207578722093,
+    "fix_jump_exceeds": 0.0,
+    "machinery_audible": 0.0
+   },
+   "action": "go_to_deposit"
+  },
+  {
+   "tick": 6541,
+   "junction": 9,
+   "predicates": {
+    "deposit_remaining": true,
+    "carrying_cargo": true,
+    "time_elapsed_exceeds": true,
+    "uncertainty_exceeds": true,
+    "fix_jump_exceeds": false,
+    "machinery_audible": false
+   },
+   "raw": {
+    "time_elapsed_exceeds": 327.05,
+    "uncertainty_exceeds": 16.012854012585667,
+    "fix_jump_exceeds": 0.0,
+    "machinery_audible": 0.0
+   },
+   "action": "return_to_beacon"
+  },
+  {
+   "tick": 6746,
+   "junction": 9,
+   "predicates": {
+    "deposit_remaining": true,
+    "carrying_cargo": true,
+    "time_elapsed_exceeds": true,
+    "uncertainty_exceeds": true,
+    "fix_jump_exceeds": false,
+    "machinery_audible": true
+   },
+   "raw": {
+    "time_elapsed_exceeds": 337.3,
+    "uncertainty_exceeds": 17.07691727076794,
+    "fix_jump_exceeds": 0.0,
+    "machinery_audible": 0.4539726041666666
+   },
+   "action": "hold"
+  },
+  {
+   "tick": 6915,
+   "junction": 9,
+   "predicates": {
+    "deposit_remaining": true,
+    "carrying_cargo": true,
+    "time_elapsed_exceeds": true,
+    "uncertainty_exceeds": true,
+    "fix_jump_exceeds": false,
+    "machinery_audible": false
+   },
+   "raw": {
+    "time_elapsed_exceeds": 345.75,
+    "uncertainty_exceeds": 17.076914300315217,
+    "fix_jump_exceeds": 0.0,
+    "machinery_audible": 0.0
+   },
+   "action": "return_to_beacon"
+  },
+  {
+   "tick": 8261,
+   "junction": 5,
+   "predicates": {
+    "deposit_remaining": true,
+    "carrying_cargo": true,
+    "time_elapsed_exceeds": true,
+    "uncertainty_exceeds": false,
+    "fix_jump_exceeds": false,
+    "machinery_audible": true
+   },
+   "raw": {
+    "time_elapsed_exceeds": 413.05,
+    "uncertainty_exceeds": 2.5270239324463373,
+    "fix_jump_exceeds": 4.960706441059208,
+    "machinery_audible": 0.45960324999999996
+   },
+   "action": "hold"
+  },
+  {
+   "tick": 8415,
+   "junction": 5,
+   "predicates": {
+    "deposit_remaining": true,
+    "carrying_cargo": true,
+    "time_elapsed_exceeds": true,
+    "uncertainty_exceeds": false,
+    "fix_jump_exceeds": false,
+    "machinery_audible": false
+   },
+   "raw": {
+    "time_elapsed_exceeds": 420.75,
+    "uncertainty_exceeds": 2.5270242702434675,
+    "fix_jump_exceeds": 4.960706441059208,
+    "machinery_audible": 0.0
+   },
+   "action": "go_to_deposit"
+  },
+  {
+   "tick": 8567,
+   "junction": 2,
+   "predicates": {
+    "deposit_remaining": true,
+    "carrying_cargo": true,
+    "time_elapsed_exceeds": true,
+    "uncertainty_exceeds": false,
+    "fix_jump_exceeds": true,
+    "machinery_audible": false
+   },
+   "raw": {
+    "time_elapsed_exceeds": 428.35,
+    "uncertainty_exceeds": 0.7071067811865476,
+    "fix_jump_exceeds": 13.255332050919106,
+    "machinery_audible": 0.0
+   },
+   "action": "go_to_deposit"
+  }
+ ],
+ "outcome": {
+  "success": false,
+  "ticks": 9600,
+  "lost": true
+ }
+}
