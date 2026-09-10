@@ -244,6 +244,29 @@ func place(id: String) -> Array:
 		var G: Dictionary = P["gantry"]
 		return _fr(Vector3(_m((int(G["x0"]) + int(G["x1"])) / 2), 0.0, _m(G["z"])),
 			Vector3(1, 0, 0))
+	# THE BRAID PLAIN, and it is the only anchor in this file that is not on the
+	# pit-head. THE-ICE 8.2 turns shot 4 into "meltwater running off ice, macro"
+	# and the object it asks for is two hundred metres south of the collar, out
+	# on the valley floor. ACT-ONE 8.1 could not take that shot because the
+	# pit-head's ground mesh was a flat lid over it; it is not any more, so the
+	# shot has an anchor.
+	#
+	# It FINDS the channel rather than being told where it is. `river_z` is
+	# -150 m but the braid wanders 60 m either side of that, so the plan's
+	# number names a band and not a place. Marching the mask and taking its
+	# maximum is the only way to name the thread, and it costs 80 evaluations
+	# once. `a` runs down-valley, `o` runs across the channel.
+	if id == "braid":
+		var bx := 8.0
+		var bz := -150.0
+		var best := -1.0
+		for i in 81:
+			var zz: float = -250.0 + float(i) * 2.5
+			var v: float = Valley.floor_masks(bx, zz).x
+			if v > best:
+				best = v
+				bz = zz
+		return _fr(Vector3(bx, 0.0, bz), Vector3(1, 0, 0))
 	if id == "gate":
 		var GA: Dictionary = P["gate"]
 		return _fr(Vector3(_m(GA["x"]), 0.0, _m((int(GA["z0"]) + int(GA["z1"])) / 2)),

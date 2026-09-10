@@ -547,3 +547,390 @@ fog, aerial perspective and a tone curve — it is how §5.3's fog error was fou
 | `v14_course_snow` | the training course in snow |
 | `v15_collar_town` | the collar from the yard |
 | `v16_snowfall` | the fourth weather state |
+
+---
+
+# The track and the lid — 2026-09-10
+
+Two defects, both named by `ACT-ONE.md` §8 and both in §8's own priority order.
+
+> **§8.6 / ACT-ONE §8.4** — *"The snow does not record what walked on it … Shot 7 is a
+> machine walking a course in snow and **the snow behind it is untouched.** It is the only
+> place in this act where the frame actively contradicts the design."*
+>
+> **ACT-ONE §8.1** — *"The pit-head's own ground mesh is a single ArrayMesh spanning the
+> site box plus a skirt to **420 m in every direction** … from the collar out to 420 m the
+> valley's floor detail — the braid plain, the near lateral moraine's trough, the roches
+> moutonnées — is under a flat lid."*
+
+Both are fixed. Fourteen frames in `shots/tracks/`; shots 4, 7 and 12 re-rendered at full
+duration into `shots/cinema/seq/`. Nothing outside `spikes/godot/surface/` was modified and
+nothing was committed.
+
+## 11. The short version
+
+| | |
+|---|---|
+| **Does the snow record what walked on it?** | **Yes.** `scripts/tracks.gd`. Feet mark the surface, the marks persist and accumulate, and they read at all three of `DESIGN-PRINCIPLES.md` §4's scales. `shots/tracks/k05_route_behind.png` is a machine on open snow with its own track running out behind it. §12 |
+| **How is it accumulated?** | Two buffers, and the split is forced rather than chosen. A **print buffer** stores each footfall's *identity* — centre to 0.8 mm, foot yaw, depth — and the ground shader rebuilds the shape analytically; a **pack buffer** holds three saturating counters that say *how many times*. §12.1 |
+| **What does it cost?** | **5.0 MB, fixed** — 4 MB + 1 MB, independent of print count and of agent count. Measured video memory 333.6 → 340.5 MB, which is the buffers plus the bigger ground mesh. In frame time it is **inside the run-to-run noise**: three interleaved pairs of control against `--trk=0` measured the ablation as *slower*, which is thermal drift, not a result. §15 |
+| **Does it survive twenty agents?** | **The read side and the storage do, exactly. The write side as built does not, and the fix is fifty lines rather than a different design.** §12.4 |
+| **Is the valley floor's detail visible?** | **Yes.** `ground.gd` follows `Valley.h` outside the site box now, over 70 m, and its skirt is graded instead of geometric. The braid plain, the near moraine and the roches moutonnées exist inside 420 m. §13 |
+| **Shot 4** | Re-authored onto the braid plain, which is the object `THE-ICE.md` §8.2 asks for and which could not be photographed before. It has a **site anchor** — `braid` — that finds the channel rather than being told where it is. §13.3 |
+| **Layout hash** | **UNCHANGED: `701635322695612`.** So are seeds 4242 and 7. Not one integer moved; every change in this pass is on the dressing side of the seam. §16 |
+| **Honest verdict** | The close read and the many-times read are good and the teaching claim is delivered. The line-across-the-yard-at-fifty-metres read is the weakest of the three and §17 says why. |
+
+## 12. The track
+
+### 12.1 Four mechanisms were on the table and the answer is two of them
+
+A render target the feet write into; a growing instanced set of print meshes; a decal
+buffer; a field the ground shader samples. **The answer is the fourth, in two layers, and
+the split is forced by the density principle rather than chosen for convenience.**
+`DESIGN-PRINCIPLES.md` §4 asks every environment to carry detail at three scales at once,
+and a track has to read at all three:
+
+| scale | what it needs |
+|---|---|
+| a line across the yard, from sixty metres | a **field**. 40 cm resolution is ample |
+| individual prints, from two metres | 1–2 cm of **shape** |
+| ground crossed a hundred times | a **counter**, not an image |
+
+One buffer cannot serve the first and second at once without being enormous. A foot is
+130 mm across, so drawing print *shape* into a texture wants ~15 mm texels, and 15 mm over
+the site box is an 8192-square texture — 67 MB for a single channel. So:
+
+**`_p`, the print buffer. 1024² RGBA8 over a 208 m square centred on (9, 0) — 203 mm a
+texel, 4 MB.** It does not hold a picture of a print. It holds the print's **identity**:
+R,G the sub-texel offset of its centre (0.8 mm), B the foot's yaw, A its depth. **One texel
+is written per footfall — not a splat, one texel** — and the newest print in a texel wins,
+which is also what happens in snow. `trk_prints()` in the ground shader reads the 3×3
+neighbourhood, reconstructs each print about its stored centre and evaluates a rounded
+punch with a rim of displaced snow, **with an analytic gradient**. So a 203 mm texel yields
+a print with a 1 mm edge and a correct normal, and the buffer's own resolution never
+appears in the picture.
+
+**`_k`, the pack buffer. 512² RGBA8 over the same square — 406 mm a texel, 1 MB.** Three
+saturating counters splatted over ~0.6 m per footfall: **R compaction** (~24 machine passes
+to saturate), **G refreeze**, **B dirt**. This is the layer that reads from sixty metres,
+the layer that says *many times* rather than *once*, and it costs one bilinear tap.
+
+Nine `texelFetch`es sounds expensive and is not, because it is gated twice: only inside
+17 m, where a 130 mm print is more than a couple of pixels, and only where something has
+actually walked. In a wide frame that is no pixels at all.
+
+**The rim is not decoration.** On a valley floor lit only by the sky there is no sun to
+cast a shadow into a hollow, so a depression on its own is nearly invisible — what reads is
+the lip of displaced snow around it, because it is the one part of a footprint tilted
+enough to catch the bright part of the sky. The first version had no rim and the prints
+came back as grey smudges.
+
+### 12.2 The gait is measured, not guessed
+
+`Tracks.learn()` steps the hero's own `walk` clip through one period, reads each foot off
+the skeleton, finds the stance window and records the phase and the body-frame offset.
+Nothing in it is a number somebody chose. `machine.gd` already measures each foot as the
+lowest vertex weighted to its tibia, and the clip is baked in place at `Book.speed`, so the
+answer is exact: **0.63 s a cycle, 0.50 m/s, four feet, a 0.315 m stride — 12.7 footfalls a
+metre.** Replaying that along a path is then arithmetic, which is what makes six hundred
+metres of history affordable.
+
+**This is why `Tracks` is built after `Fleet`.** The prints the yard's history is made of
+are the prints *this machine* makes.
+
+### 12.3 The yard has a past, and the course is the part that matters
+
+At build, every route the plan knows about gets walked by that gait the right number of
+times: the six walkways ×18, the haul road ×22, the four stations and the collar ×14 each
+as short mill-abouts. **141,781 footfalls, laid in 1.8 s, none of them outside the window.**
+
+And then the course gets walked *the way a course is walked*, which is the part the static
+wear field could never express. `THE-ICE.md` §7.1's whole claim is that a training course
+in snow **shows the policy** — *"where it hesitated, where it turned, where it went twice,
+where it went wrong."* A distance field cannot say any of that, because the plan does not
+contain a policy. So: root to a leaf, again, again, both ways; and into some branches only
+as far as a **threshold**, and then back out, four or five times, which draws a stub with a
+beaten circle on the end of it. **That is what being taught not to go somewhere looks like
+from above, and it is nine lines.**
+
+Live, `Fleet._mark()` replays the same measured gait along the part of the shot's own path
+that has already happened. It is deterministic and frame-rate independent, so a shot has
+the same track at three frames as at a hundred and twenty — which matters, because
+`--cinema=look` renders exactly three.
+
+### 12.4 Twenty agents
+
+**Storage and reading are unaffected by agent count and that is not a claim, it is the
+shape of the design:** the buffers are fixed-size and shared, so twenty agents cost exactly
+what one costs to store and exactly what one costs to sample. There is no per-agent state
+anywhere in the read path.
+
+**The write path as built does not scale, and it should be said plainly.** A footfall costs
+one texel write and a 3×3 splat — about thirty byte operations, which is nothing at any
+agent count — but any frame on which a foot lands re-uploads both images, 5 MB. At 0.8 s a
+frame of offline capture that is free; at sixty frames a second with twenty agents walking
+it is 300 MB/s of pointless traffic.
+
+**The production form of the same design writes the stamps on the GPU** — one instanced
+quad per new footfall into a render target with clear-mode never, driven `UPDATE_ONCE` so
+the accumulation is exactly-once regardless of how many render passes a frame takes. That
+is O(new footfalls) and uploads nothing. **It is a different fifty lines, not a different
+design:** the two buffers, the encoding, the gait, the history and the whole of the shader
+are unchanged. Flagged as the one thing here that is spike-shaped.
+
+### 12.5 Four things that were wrong first, and what each one taught
+
+1. **The counters were four times too hot, twice.** At K = 0.15 a texel saturated in about
+   seven crossings, so every route in the plan came back at 1.0 — which cleared the snow off
+   *all* of them, which left nothing for a print to be in, and the yard photographed
+   exactly as it had before the file existed. **Saturating a counter throws away the only
+   information it has.** The arithmetic that fixes it is in `tracks.gd`: a texel on the line
+   is inside the splat of every footfall within 620 mm, which is about sixteen a pass, not
+   the four I first estimated.
+2. **The dither is load-bearing.** A counter that rises 0.011 a pass is 2.8 of 255 and the
+   outer half of every splat is under 1, so truncating rounds the whole *margin* of every
+   track to zero and the field comes back as a hard-edged core with no feathering — which
+   is the one thing a footpath in snow does not have. Carrying the fraction as a
+   probability costs one xorshift.
+3. **A beaten path is smoother than the snow beside it.** Feet destroy sastrugi. Without
+   knocking the wind relief down inside the track, a 40 mm print sits against 135 mm of
+   sastrugi and is *there, correct and invisible* — which is precisely how the first pass
+   photographed.
+4. **And the yard's gravel bed is a lattice.** `ghf`'s open-ground bed is a 130 mm worley
+   with 38 mm of relief. Where the snow over it goes thin — which is exactly where something
+   has walked all winter — those stones poke through **on a grid**, and shot 7 came back
+   *paved*. Feet press a bed flat; that is what a path is. The same failure appeared in
+   shot 4's first re-render as rows of dark ovals on the braid plain, and it had been
+   invisible for as long as the only macro in the act was on concrete.
+
+A fifth, and it is the one that decides whether the whole thing looks real: **a machine
+does not walk a straight line and its feet do not land on a lattice.** Replaying the
+measured gait exactly produced four perfectly parallel rows of evenly spaced dots — a
+conveyor, not a track. A slow wander of each pass across the line, plus a per-footfall
+scatter of about a foot's width, is what turns it into a track.
+
+## 13. The lid
+
+### 13.1 The agreement
+
+The pit-head owns its own site box, exactly and unchanged: LAYOUT still says where a foot
+stands, `ground_mm` is untouched, and the plan hash did not move. **Outside the box the
+ground becomes the valley, over 70 m**, and the seam is a 2 % grade rather than a step —
+the whole mismatch to blend out is the metre or so of outwash relief at the site.
+
+That direction is the only one that works. Making LAYOUT know about the landform would put
+a float and a square root inside the integer half; making the valley know about the
+pit-head would put a graded pad inside a 16 km heightfield. This is a **dressing** decision,
+the same kind as `relief()`, and it belongs on the dressing side of the seam.
+
+The two meshes still overlap rather than sharing a boundary ring, for the reason `valley.gd`
+gives about two graded grids meeting exactly. What changed is that **they now agree about
+the shape in the overlap**, so the 0.25 m the ground sits proud of the valley is a constant
+offset instead of a lid.
+
+`ground.gd` also carries the valley's two floor masks in **UV2** — all four colour channels
+were spoken for — so the braid plain drawn on the pit-head's mesh is the same field the
+valley shader draws beyond it, off one function (`Valley.floor_masks`). Two fields that
+disagree about where a river is look far worse than one field with no river in it.
+
+### 13.2 The skirt is graded now
+
+The old skirt doubled its ring every step — 2, 3.1, 4.8, 7.4, 11.5 m — which is correct
+while the skirt is flat and useless the moment it carries a landform: the braid plain is
+58 m wide and the geometric ring out there was 28 m, so it would land on the mesh as two
+vertices. That is the identical failure `valley.gd`'s own z-grading was written to fix. The
+new bands spend rows where the shape is; the −260…−74 band is the moraine trough and the
+braid plain.
+
+**Cost: 65,095 → 77,290 vertices, 129,072 → 153,372 triangles (+19 %), and the ground's
+generation goes 1.4 → 3.3 s** because the vertices outside the box each call `Valley.h`.
+Total generation 8.2 → 10.1 s, which `NOTES.md` §4.2 already argues is not a number worth
+defending in GDScript.
+
+**And one real bug fell out of it.** The valley's hole was the site box ±340 m and the
+ground's skirt reached 420 m *from the origin* — so on the +x side the hole ran to 436 m
+and the lid stopped at 420, and there was a 16 m ring of nothing. Never noticed, because it
+is a sliver seen edge-on at four hundred metres. The hole is ±290 m now.
+
+### 13.3 Shot 4, and a site anchor that finds its own subject
+
+`THE-ICE.md` §8.2 turns shot 4 into *"meltwater running off ice, macro"* and ACT-ONE could
+not take it. It can be taken now, and it has an anchor of its own: **`braid`, the only
+anchor in `cinema.gd` that is not on the pit-head.**
+
+It **finds** the channel rather than being told where it is, and that is the interesting
+part. `river_z` is −150 m, but the braid wanders 60 m either side of that, so the plan's
+number names a **band and not a place** — at x = 8 the thread is actually at z ≈ −200, with
+the near lateral moraine standing 15 m high between it and the yard. Marching the mask and
+taking its maximum is the only way to name the thread, and it costs eighty evaluations once.
+
+Two material corrections came with it, and both are physics rather than taste:
+
+* **The valley floor is not the yard's ground.** Its 130 mm stone worley and its gravel bed
+  are suppressed under the braid plain and replaced with a finer, sorted outwash bed.
+* **The water is in the lowest part of the channel.** Keying the threads to the braid noise
+  alone put them in bands six metres apart wherever the noise happened to be high, so
+  whether shot 4 had *any water in it at all* was a coin toss on where the camera stood.
+  `river` is the distance into the channel; the melt runs down the middle of it and the
+  noise decides which threads are running today and which are dry gravel.
+
+## 14. The drifts, which were third on the list and were ruining the floor frames
+
+`ACT-ONE.md` §8.2 diagnosed this correctly and prescribed its own fix: *"scatter.gd::_drift
+instances a rock mesh with the snow material, and the snow material is shaded from world
+position … the fix is a per-instance offset into the noise field, not a new mesh."*
+
+There is no per-instance custom-data channel in this batcher and adding one would touch
+every bin. **It is not needed: `MODEL_MATRIX`'s own origin is unique per instance and is
+already in the vertex shader**, so hashing it gives every drift its own place in the same
+field for one hash and one varying. A `snow_body` uniform says *this material IS snow*
+rather than *this is a thing with snow on it*, and it is set on exactly one material.
+
+It does the second half too, which ACT-ONE did not name. A drift's **sides** face sideways,
+so the up-facing cap misses them and only the wind plaster catches them — which is the other
+reason they read as sheets. A bank of snow is snow all over.
+
+## 15. Frame rate, and the machine was NOT quiet
+
+**Checked, and it matters.** `tasklist` at the time of measurement: Brave (two processes),
+Discord, Spotify (two), Epic Games Launcher, VS Code, Razer Cortex, Razer Synapse, Windows
+Defender, Phone Link. `ACT-ONE.md` §7's numbers were taken on a genuinely quiet machine and
+these are not comparable to them. **Only the relative numbers below mean anything**, and the
+run-to-run spread today is ±3–5 ms, which is worse than the ±3 ms this laptop is documented
+as having.
+
+Same 14-waypoint free-flight path, 1920×1080, MSAA 2×, `day`, no cinematic post stack:
+
+| run | mean | worst |
+|---|---|---|
+| control | 18.04 ms | 26.60 ms |
+| `--trk=0` (print reconstruction off) | 23.00 ms | 35.00 ms |
+| `--ssao=0` | 14.85 ms | 29.87 ms |
+
+`--trk=0` measuring **slower** than control is not a result, it is drift, so two more pairs
+were taken interleaved:
+
+| pair | control | `--trk=0` |
+|---|---|---|
+| 1 | 20.73 ms | 21.91 ms |
+| 2 | 21.70 ms | 22.22 ms |
+
+**The print reconstruction is inside the noise on this machine today.** It is bought only
+inside 17 m and only where something has walked, so in a wide frame it is bought by no
+pixels at all; the honest statement is that it costs less than this measurement can see.
+The one number that is not noisy is memory: **video memory 333.6 → 340.5 MB**, which is the
+5.0 MB of buffers plus the larger ground mesh, and it does not move with print count.
+
+**Ambient occlusion is still the whole of the frame budget**, exactly as `PHOTOREAL.md` and
+§7.1 both found. Nothing in this pass touched it.
+
+Render time for the three re-rendered sequences: `t04` 64.0 s, `t07` 79.1 s, `t12` 86.6 s
+for 96 frames each — 0.67 / 0.82 / 0.90 s a frame, in line with `ACT-ONE.md` §7.2.
+
+## 16. What did not move
+
+* **The layout hash: `701635322695612`.** Seed 4242 is still `462980458301742` and seed 7 is
+  still `526964610805162`. Not one integer in the plan changed.
+* `layout.gd` has no new float, no new square root and no dictionary iteration.
+* The layout/dressing seam, the arrangement vocabulary, the batcher, the kit, the sky
+  shader, the camera rig, the post stack, `props.gd`, `dressing.gd`.
+* The four `xfail` shots still fail, correctly and for their own reasons.
+
+**New:** `scripts/tracks.gd`; `--mode=tshots`; `--dbg=22` (the track field: how many times,
+how long ago, the print field) and `--dbg=23` (the floor masks); `--trk=N` as an ablation
+switch; a `braid` site anchor; a `u`/`tu` ground-relative height in the `tshots` list,
+because out on the valley floor nobody has measured the ground and defect two just put
+twenty metres of relief inside 420 m.
+
+## 17. What is weak, and what was not reached
+
+1. **The line-across-the-yard-at-fifty-metres read is the weakest of the three.** Close in
+   the prints are unambiguous and the beaten ground is unambiguous; at fifty metres, on a
+   graded pad, under a sky with no sun, a packed route is a 30 % value difference on a
+   0.795 albedo and the frame is already full of white. `k01_yard_line.png` shows it and
+   `k09_field_dbg.png` shows the field that is under it, and the gap between the two is
+   this item. It wants either a ploughed *edge* — a lane has banks, and banks have
+   silhouettes — or accepting that in this light a route reads by its **emptiness** rather
+   than by its colour, which is what `DESIGN-PRINCIPLES.md` §7 said in the first place.
+2. **Individual prints stop reading at about twelve metres** and are gone at seventeen,
+   where the reconstruction is switched off. Between there and sixty metres there is only
+   the field. That is the correct trade and it is also a visible seam if you look for it.
+3. **`trk_far` and the buffer window are both fixed.** The window is 208 m centred on the
+   pit-head, so a machine that walks past x = 113 leaves nothing. For a spike whose subject
+   is a 126 × 68 m compound that is fine; for a match it wants the scrolling window this
+   deliberately avoided, and a scrolling window has a seam.
+4. **Cornices and avalanche paths were not reached.** They were §8.3's item and they are
+   still §8.3's item.
+5. **The prints are round.** The machine's foot is a ball, so a round punch is right, but
+   there is no toe, no heel, no drag on take-off and no spoil thrown forward, and a real
+   track is asymmetric in the direction of travel. The yaw is in the buffer and used only
+   to orient the ellipse.
+6. **Nothing melts and nothing refills.** The counters only ever go up. Snowfall should
+   erase a track over hours and a thaw should turn one to ice; both are one decay term on
+   the pack buffer and neither is built.
+7. **Shot 4 is a frame rather than a macro**, and that is a decision taken against
+   `THE-ICE.md` §8.2's own word. At 50 mm from a metre this material is a texture swatch;
+   at 50 mm from eye height looking thirteen metres down the channel it is a place. Struck
+   individually in §18.
+8. **One seed was examined for the pictures**, as ever, though the hash and the print counts
+   were checked on three.
+
+## 18. Every guess in this pass
+
+1. **The buffer geometry**: a 208 m window centred on (9, 0), 1024² for prints and 512² for
+   the counters, and that the window is fixed rather than following the camera.
+2. **Every counter rate** — 0.0077, 0.0028, 0.0021 — and the 0.62 m splat radius. §12.5
+   derives them from a footfall count; the target values they were derived *to* are mine.
+3. **Every pass count in the history**: walkways ×18, haul road ×22, stations ×14, a taught
+   course leaf ×3–9 each way, a turn-back ×3–6 at 55–80 % of the branch. These are the only
+   guesses in `tracks.gd` and they are the whole of what the yard's past looks like.
+4. **That 42 % of course nodes have a turn-back at all**, and that a turn-back is what
+   teaching looks like from above.
+5. **The print's shape**: 132 × 104 mm, a rounded punch at exponent 0.75, a rim reaching
+   62 mm at 0.55 of the depth, depth 28–58 mm for history and 44 mm for a live walk.
+6. **`APPROACH = 8.0`** — that a walking machine's track already runs eight metres back
+   along its own line when a shot opens. It is an authoring decision, not a physical one:
+   the machine did not come into existence at t = 0, and a track that begins at the first
+   frame's feet is a worse lie than one that does not.
+7. **Every threshold in the ground shader's track block**: `clr` at `smoothstep(0.50, 0.95)
+   × 0.97`, `beaten` at `smoothstep(0.34, 0.90)`, the sastrugi flatten at
+   `smoothstep(0.012, 0.42) × 0.74`, the print fade at `smoothstep(0.26, 0.82) × 0.66`, and
+   `trk_far = 17 m`.
+8. **The beaten-ground colour** — that what is under a foot track is dirty refrozen ice at
+   0.17/0.10 rather than the yard's soil.
+9. **That the plan's static wear field keeps a job**: at 52 % strength, clearing only,
+   because a lane is *ploughed* as well as walked and the plan is a fair account of where a
+   plough goes. It no longer draws tracks.
+10. **`BLEND_OUT = 70 m`** — how far outside the site box the ground takes to become the
+    valley — and every band in the re-graded skirt.
+11. **That the valley's hole should be ±290 m** rather than ±340.
+12. **That the braid plain's threads follow the channel** rather than the braid noise, and
+    the outwash bed at 23 cells a metre.
+13. **Shot 4's whole re-framing**: the `braid` anchor at x = 8, eye height, 50 mm, looking
+    13 m down-valley at f/4 in `snowfall`. Flagged in §17.7 as the one place this pass took
+    a side against the document.
+14. **That `snow_body` should exist as a material property** rather than the drift getting a
+    mesh or a custom-data channel of its own.
+15. **That `--mode=tshots` and its eleven frames should exist**, and every camera in them.
+
+## 19. The frames
+
+Fourteen at 1920×1080 in `shots/tracks/`, captured by `--mode=tshots`. Each one is a
+falsifiable claim rather than a flattering angle.
+
+| file | the claim it would disprove |
+|---|---|
+| `k01_yard_line` | the field reads as a route across the yard from fifty metres. **§17.1: it half does** |
+| `k02_prints_close` | individual prints read at a machine's own height, on snow nothing else has touched |
+| `k03_many_times` | ground crossed all winter is a different material from ground crossed once |
+| `k04_course_policy` | the course draws the policy: taught routes beaten, turn-back stubs, clean snow between |
+| `k05_route_behind` | **the machine's own route runs out behind it while it walks.** The frame ACT-ONE §8.4 says does not exist |
+| `k06_route_wide` | the same, from far enough away to see where it came from |
+| `k07_braid_plain` | the braid plain exists, at 200 m, on the pit-head's own mesh |
+| `k08_floor_detail` | the valley floor's relief and erratics exist inside 420 m |
+| `k09_field_dbg` | `--dbg=22`: what the counters actually hold, judged without snow, fog or a tone curve on top |
+| `k10_floor_over` | the whole site in its landform, from 58 m up — the lid gone, in one frame |
+| `k11_moraine` | the near lateral moraine reads as a moraine from the yard |
+| `k12_shot4_melt` | TRAILER shot 4, re-rendered on the object `THE-ICE.md` §8.2 names |
+| `k13_shot7_course` | TRAILER shot 7 — the frame that used to argue against the design |
+| `k14_shot12_alone` | TRAILER shot 12, with the track that makes *alone* a fact rather than a composition |

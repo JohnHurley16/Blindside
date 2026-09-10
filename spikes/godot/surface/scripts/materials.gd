@@ -245,6 +245,24 @@ uniform float bump_det = 0.0024;    // metres, the 5 cm scale
 uniform float bump_mic = 0.00052;   // metres, the 6 mm scale
 uniform float detail_on = 1.0;      // 0 = strip the normal scales, for pricing
 uniform float snow_take = 1.0;      // how much snow this material collects
+// THIS MATERIAL *IS* SNOW, rather than being a thing with snow on it.
+//
+// ACT-ONE 8.2: "scatter.gd::_drift instances a rock mesh with the snow material,
+// and the snow material is shaded from WORLD POSITION. So a drift's own crust,
+// sastrugi and wind grain line up exactly with the ground's underneath it, and
+// on open snow the result reads as a TRANSLUCENT FACETED SHEET lying on the
+// ground rather than as a bank of snow." Correct diagnosis, and its own fix:
+// "a per-instance offset into the noise field, not a new mesh."
+//
+// There is no per-instance custom data channel in this batcher, and adding one
+// would touch every bin. It is not needed: MODEL_MATRIX's own origin is unique
+// per instance and is already in the vertex shader, so hashing it gives every
+// drift its own place in the same field for one hash and one varying.
+//
+// It does the second half too. A drift's SIDES face sideways, so the up-facing
+// cap misses them and only the wind plaster catches them - which is the other
+// reason they read as sheets. A bank of snow is snow all over.
+uniform float snow_body = 0.0;
 global uniform float g_wet;
 
 __NOISE__
@@ -252,10 +270,13 @@ __SNOW__
 
 varying vec3 wpos;
 varying vec3 wnorm;
+varying vec2 snowp;
 
 void vertex() {
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	wnorm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+	snowp = wpos.xz + snow_body
+		* (hash22(floor(MODEL_MATRIX[3].xz * 2.7) + 0.5) - 0.5) * 840.0;
 }
 
 // The kit is flat-shaded axis-aligned prisms under a rotation, so a HARD
@@ -428,10 +449,12 @@ void fragment() {
 		float run_s = fbm2(vec2(wpos.x * 2.4 + wpos.z * 2.4, wpos.y * 0.42));
 		plaster *= smoothstep(0.34, 0.86, run_s * 0.72 + wind * 0.42);
 		snowc = clamp(max(snowc, plaster) * g_snow * snow_take, 0.0, 1.0);
+		// and a drift is snow all the way round, not a rock wearing a hat
+		snowc = max(snowc, snow_body * clamp(g_snow, 0.0, 1.0) * 0.96);
 	}
 	float metalq = metal;
 	if (snowc > 0.004) {
-		float sh = snowf(wpos.xz, dist < 9.0 ? 2 : (dist < 36.0 ? 1 : 0));
+		float sh = snowf(snowp, dist < 9.0 ? 2 : (dist < 36.0 ? 1 : 0));
 		float scav = sn_cav(sh);
 		alb = mix(alb, sn_col(scav, clamp(g_wet, 0.0, 1.0)), snowc);
 		r = mix(r, mix(0.44, 0.80, scav), snowc);
@@ -441,9 +464,9 @@ void fragment() {
 		// reading as a decal painted on the top face of a box
 		if (dist < 22.0) {
 			float es = 0.010;
-			float s0 = snowf(wpos.xz, 1);
-			vec2 gs = vec2(snowf(wpos.xz + vec2(es, 0.0), 1) - s0,
-			               snowf(wpos.xz + vec2(0.0, es), 1) - s0) / es;
+			float s0 = snowf(snowp, 1);
+			vec2 gs = vec2(snowf(snowp + vec2(es, 0.0), 1) - s0,
+			               snowf(snowp + vec2(0.0, es), 1) - s0) / es;
 			n = normalize(mix(n, normalize(vec3(-gs.x, 1.0, -gs.y)), snowc * 0.80));
 		}
 	}
@@ -499,17 +522,115 @@ uniform float pond_amp = 0.024;        // must match Ground.POND_AMP
 uniform float nrm_lod = 1.0;           // 0 kills the detail and micro normals
 global uniform float g_wet;
 
+// ---------------------------------------------------------------------------
+// WHAT WALKED ON IT. `tracks.gd` owns both of these and its header explains the
+// encoding; this is the read side.
+//
+//   trk_print  NEAREST, and it must be. It does not hold a picture of a print,
+//              it holds the print's IDENTITY - centre to 0.8 mm in RG, foot
+//              yaw in B, depth in A - and filtering an identity averages two
+//              different prints into a third that never happened.
+//   trk_pack   LINEAR. Three saturating counters: compaction, refreeze, dirt.
+//   trk_win    (x0, z0, 1/span, print texels per edge)
+uniform sampler2D trk_print : filter_nearest, repeat_disable, hint_default_black;
+uniform sampler2D trk_pack : filter_linear, repeat_disable, hint_default_black;
+uniform vec4 trk_win = vec4(-95.0, -104.0, 0.004807692, 1024.0);
+uniform vec2 trk_foot = vec2(0.066, 0.052);   // print half-extents: along, across
+uniform float trk_rim = 0.062;                // how far the displaced snow reaches
+uniform float trk_far = 17.0;                 // past this, prints are the field
+
 __NOISE__
 __SNOW__
 
 varying vec3 wpos;
 varying vec3 wnorm;
 varying vec4 vcol;
+varying vec2 vfloor;                   // UV2: (braid plain, glacier ice)
 
 void vertex() {
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	wnorm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
 	vcol = COLOR;
+	vfloor = UV2;
+}
+
+// ---------------------------------------------------------------------------
+// THE PRINTS, REBUILT.
+//
+// Nine texelFetches, gated to the distance at which a 130 mm print is more than
+// a couple of pixels. The buffer gives the centre, the yaw and the depth; the
+// SHAPE is evaluated here, so the print has a 1 mm edge off a 203 mm texel and
+// the buffer's own resolution never appears in the picture.
+//
+// A ball foot punches a rounded hole and pushes what was in it out into a rim
+// around the lip. THE RIM IS NOT DECORATION. On a valley floor lit only by the
+// sky there is no sun to cast a shadow into a hollow, so a depression alone is
+// nearly invisible - what actually reads is the rim, because it is the one part
+// of a footprint with a surface tilted enough to catch the bright part of the
+// sky. The first version had no rim and the prints read as grey smudges.
+//
+// Returns (dh, dh/dx, dh/dz, packed), the height added to the snow surface and
+// its ANALYTIC gradient. Differencing this would cost eighteen more fetches per
+// pixel and is not necessary: the primitive is known, so its derivative is too.
+vec4 trk_prints(vec2 p) {
+	float tex = 1.0 / (trk_win.z * trk_win.w);            // metres a texel
+	vec2 tc = (p - trk_win.xy) * trk_win.z * trk_win.w;   // position in texels
+	vec2 fl = floor(tc);
+	vec4 acc = vec4(0.0);
+	for (int j = -1; j <= 1; j++) {
+		for (int i = -1; i <= 1; i++) {
+			vec2 c = fl + vec2(float(i), float(j));
+			if (c.x < 0.0 || c.y < 0.0 || c.x >= trk_win.w || c.y >= trk_win.w) { continue; }
+			vec4 s = texelFetch(trk_print, ivec2(c), 0);
+			if (s.a < 0.03) { continue; }
+			vec2 ctr = trk_win.xy + (c + s.rg) * tex;
+			vec2 d = p - ctr;
+			if (dot(d, d) > 0.030) { continue; }
+			float yaw = s.b * 6.2831853;
+			float cs = cos(yaw);
+			float sn = sin(yaw);
+			// into the foot's own frame. tracks.gd puts a machine-local
+			// (forward, lateral) into the world with [[cs, sn], [-sn, cs]];
+			// this is that inverted, which for a rotation is its transpose.
+			vec2 q = vec2(d.x * cs - d.y * sn, d.x * sn + d.y * cs);
+			vec2 hf = trk_foot;
+			vec2 qn = q / hf;
+			float e = length(qn) + 1e-5;
+			// the edge of a print in snow is CRUMBLED, never elliptical. This
+			// is what stops a track reading as a row of stamps.
+			e *= 0.90 + 0.24 * gnoise(p * 26.0 + 11.0);
+			float dep = s.a * 0.075;
+			float dh = 0.0;
+			float dde = 0.0;
+			if (e < 1.0) {
+				// A ROUNDED PUNCH WITH A STEEP WALL, and the exponent is where
+				// the picture is. At 1.0 it is a parabola and the print reads as
+				// a dent; the wall of a real print is nearly vertical for the
+				// first centimetre because the snow SHEARS rather than deforms.
+				// The floor is clamped so the wall's gradient stays bounded -
+				// an unbounded one aliases into a bright ring at three metres.
+				float u = 1.0 - e * e;
+				dh = -dep * pow(max(u, 0.0), 0.75);
+				dde = dep * 1.5 * e * pow(max(u, 0.04), -0.25);
+				acc.w = max(acc.w, 1.0 - e * 0.35);
+			} else {
+				float g = trk_rim / max(hf.x, 1e-4);
+				float u = (e - 1.0) / g;
+				if (u < 1.0) {
+					float ru = u * (1.0 - u) * 4.0;          // 0 -> 1 -> 0
+					dh = dep * 0.55 * ru;
+					dde = dep * 0.55 * (4.0 - 8.0 * u) / g;
+					acc.w = max(acc.w, (1.0 - u) * 0.55);
+				}
+			}
+			if (dh == 0.0) { continue; }
+			acc.x += dh;
+			// grad = dh/de * de/dq * dq/dp, and dq/dp is the rotation back
+			vec2 gq = dde * vec2(qn.x / hf.x, qn.y / hf.y) / e;
+			acc.yz += vec2(gq.x * cs + gq.y * sn, -gq.x * sn + gq.y * cs);
+		}
+	}
+	return acc;
 }
 
 // ---------------------------------------------------------------------------
@@ -522,7 +643,7 @@ void vertex() {
 //   open ground  : gravel bed -> ruts along the routes -> mud
 //
 // `lod` 0 form only (POM march), 1 + aggregate and cracks, 2 + micro grain.
-float ghf(vec2 p, float hard, float wear, int lod) {
+float ghf(vec2 p, float hard, float wear, int lod, float trod) {
 	// --- slab joints, analytic, no noise. The joint has to be exactly on the
 	// module the simulation uses or the chippings drawn into it miss it.
 	vec2 gj = abs(fract(p / slab + 0.5) - 0.5) * slab;
@@ -565,11 +686,28 @@ float ghf(vec2 p, float hard, float wear, int lod) {
 	}
 	if (hard < 0.98) {
 		// open ground: a gravel bed with ruts down the routes things take
-		ho = 0.030 * (fbm2(p * 1.15) - 0.5);
+		//
+		// AND THE BRAID PLAIN IS NOT THIS GROUND. The pit-head's bed is a 130 mm
+		// worley with 38 mm of relief, which is right for a made yard and is a
+		// REGULAR LATTICE at a metre - the first re-render of shot 4 came back
+		// as rows of dark ovals, because the stones poked through the thin snow
+		// on a grid. An outwash plain is smaller stones, sorted and packed by
+		// the water that laid them, and it belongs to the landform rather than
+		// to the site. Invisible until now, because until now the only macro in
+		// the act was on concrete.
+		float vr = clamp(vfloor.x, 0.0, 1.0);
+		// A BEATEN PATH IS A PRESSED BED. The yard's gravel bed is a 130 mm
+		// worley with 38 mm of relief; where the snow over it is thin - which
+		// is exactly where something has walked all winter - those stones poke
+		// through it on a regular grid and the track reads as COBBLES. Shot 7
+		// came back paved. Feet press a bed flat; that is what a path is.
+		float bed = (1.0 - vr * 0.95) * (1.0 - 0.80 * smoothstep(0.20, 0.72, trod));
+		ho = 0.030 * (fbm2(p * 1.15) - 0.5) * (1.0 - vr * 0.55) * (1.0 - 0.45 * trod);
 		// ruts: stretched hard across the direction of travel, soft along it
 		ho -= 0.055 * wear * smoothstep(0.35, 0.72, fbm2(vec2(p.x * 0.30, p.y * 2.60)));
 		if (lod >= 1) {
-			ho += 0.038 * (1.0 - smoothstep(0.10, 0.62, worley(p * 7.5).x));
+			ho += 0.038 * (1.0 - smoothstep(0.10, 0.62, worley(p * 7.5).x)) * bed;
+			ho += vr * 0.012 * (1.0 - smoothstep(0.06, 0.52, worley(p * 23.0 + 9.0).x));
 		}
 		if (lod >= 2) {
 			ho += ((gnoise(p * 62.0) - 0.5) * 0.0028 + (gnoise(p * 190.0) - 0.5) * 0.0009) * 2.0;
@@ -603,6 +741,21 @@ void fragment() {
 	float wear = clamp(vcol.b, 0.0, 1.0);
 	float pondable = clamp(vcol.a, 0.0, 1.0);
 	float flat_ = smoothstep(0.86, 0.985, wnorm.y);
+	// --- WHAT HAS WALKED HERE. `tracks.gd` owns the two buffers; this is one
+	//     bilinear tap and it is read by four different things below.
+	vec2 tuv = (p0 - trk_win.xy) * trk_win.z;
+	vec3 K = vec3(0.0);
+	if (tuv.x > 0.0 && tuv.y > 0.0 && tuv.x < 1.0 && tuv.y < 1.0) {
+		K = texture(trk_pack, tuv).rgb;
+	}
+	// the counters are a 406 mm field, and a 406 mm grid must not be visible in
+	// a 130 mm print. Every threshold below is crossed through a broad noise,
+	// which costs one fbm and hides the lattice completely.
+	float tramp = clamp(K.r * (0.84 + 0.34 * fbm2(p0 * 1.35 + 5.0)), 0.0, 1.0);
+	float refroze = K.g;
+	float trdirt = K.b;
+
+
 	// EACH FREQUENCY GETS ITS OWN DISTANCE, and this is a correctness fix rather
 	// than an optimisation. A 23 mm worley cell is four pixels at 10 m and two at
 	// 20 m, and a two-pixel cell does not average, it ALIASES - it came back as
@@ -611,6 +764,13 @@ void fragment() {
 	float near_ = 1.0 - smoothstep(22.0, 38.0, dist);   // the coarse masks
 	float near_a = 1.0 - smoothstep(6.0, 14.0, dist);   // 23 mm aggregate
 	float near_s = 1.0 - smoothstep(14.0, 26.0, dist);  // 130 mm stones
+	// THE BRAID PLAIN IS NOT THE YARD'S SOIL and it must not carry the yard's
+	// 130 mm stone worley. Shot 4 is a macro at a metre, and at a metre that
+	// worley is a REGULAR LATTICE of dark ovals - which is exactly what the
+	// first re-render of the shot came back as. It was invisible for as long as
+	// the only macro in the act was on concrete.
+	float vriver = clamp(vfloor.x, 0.0, 1.0);
+	near_s *= 1.0 - vriver * 0.94;
 	float near_f = 1.0 - smoothstep(8.0, 18.0, dist);   // 37 mm grain
 
 	// --- PARALLAX OCCLUSION MAPPING.
@@ -646,7 +806,7 @@ void fragment() {
 		float prev_f = 0.0;
 		for (int i = 0; i < steps; i++) {
 			d += dh;
-			float f = -ghf(p0 + stride * d, hard, wear, 0);
+			float f = -ghf(p0 + stride * d, hard, wear, 0, tramp);
 			if (f <= d) {
 				float a = prev_f - prev_d;
 				float b = f - d;
@@ -678,15 +838,15 @@ void fragment() {
 	//   beyond 15 m : form only, sampled at 75 mm
 	int lodn = dist < 5.0 ? 2 : (dist < 15.0 ? 1 : 0);
 	float e = mix(0.011, 0.075, clamp(dist / 20.0, 0.0, 1.0));
-	float h = ghf(p, hard, wear, lodn);
+	float h = ghf(p, hard, wear, lodn, tramp);
 	vec3 n = wnorm;
 	// Past 55 m the ground's own form is a metre of relief across a hundred
 	// pixels: the mesh normal already carries it and the two gradient taps buy
 	// nothing. This is aimed squarely at the worst frame in the benchmark, which
 	// is the wide establishing view at each end of the loop.
 	if (dist < 55.0) {
-		float gx = (ghf(p + vec2(e, 0.0), hard, wear, lodn) - h) / e;
-		float gz = (ghf(p + vec2(0.0, e), hard, wear, lodn) - h) / e;
+		float gx = (ghf(p + vec2(e, 0.0), hard, wear, lodn, tramp) - h) / e;
+		float gz = (ghf(p + vec2(0.0, e), hard, wear, lodn, tramp) - h) / e;
 		n = normalize(wnorm + vec3(-gx, 0.0, -gz) * 1.25);
 	}
 
@@ -786,6 +946,68 @@ void fragment() {
 		r = mix(rs, r, hard);
 	}
 
+	// ---------------- THE VALLEY FLOOR, INSIDE THE SITE'S OWN MESH
+	//
+	// ACT-ONE 8.1: the pit-head's ground mesh used to be a FLAT LID out to
+	// 420 m drawn on top of the valley, so the braid plain, the moraine trough
+	// and the roches moutonnees did not exist inside that radius and shot 4
+	// could not be taken. `ground.gd` now follows `Valley.h` outside the
+	// compound, which gives back the FORM - but the braid plain is a MATERIAL
+	// as much as a shape, and the valley shader owns that material. This is
+	// that block, ported, keyed off UV2.x, which `ground.gd` fills from exactly
+	// the field `valley.gd` writes into its own vertex colour G. Two surfaces,
+	// one river.
+	// ---------------- WHAT IS UNDER A BEATEN PATH, AND IT IS NOT SOIL
+	//
+	// Ground crossed all winter is not bare ground with the snow taken off it.
+	// It is the BOTTOM OF THE SNOW: thawed under a foot, refrozen, with the
+	// grit of the yard trodden into it, polished by every crossing since. The
+	// first version left the yard's own dark soil showing through wherever the
+	// track cleared it and drew black mud lanes across a white yard, which is a
+	// summer picture. This is what makes a route read as a LINE from sixty
+	// metres, which is the scale the print reconstruction cannot serve.
+	float beaten = smoothstep(0.34, 0.90, tramp);
+	if (beaten > 0.004) {
+		vec3 ice_c = mix(vec3(0.168, 0.174, 0.184), vec3(0.104, 0.100, 0.094),
+			clamp(trdirt * 2.4, 0.0, 1.0));
+		alb = mix(alb, ice_c * mix(0.86, 1.14, grit), beaten * 0.88);
+		r = mix(r, mix(0.42, 0.24, clamp(refroze * 2.6, 0.0, 1.0)), beaten * 0.85);
+	}
+
+	float river = vriver;
+	if (river > 0.01) {
+		float braid = fbm2(vec2(p.x * 0.011, p.y * 0.46) + 63.0);
+		vec3 flat_c = mix(vec3(0.088, 0.078, 0.064), vec3(0.190, 0.196, 0.206),
+			smoothstep(0.40, 0.75, braid));
+		// WASHED GRAVEL, and it only exists inside four metres. An outwash plain
+		// is made of 20-60 mm stones sorted by the water that put them there,
+		// and at the range shot 4 is taken from that is what it has to be made
+		// of. 26 cells a metre is a 38 mm stone; it is faded out by 8 m,
+		// before it is two pixels, on the same Nyquist rule as everything else
+		// in this shader.
+		if (near_a > 0.01) {
+			vec4 wg = worley(p * 26.0);
+			float st = (1.0 - smoothstep(0.05, 0.52, wg.x)) * near_a;
+			flat_c *= mix(1.0, mix(0.60, 1.46, hash21(floor(p * 26.0) + 5.0)), st * 0.90);
+		}
+		alb = mix(alb, flat_c, river * 0.90);
+		r = mix(r, 0.88, river * 0.8);
+		// the threads are narrow, and they are a MIRROR before they are a dark
+		// body: what you see in meltwater under a bright sky is the sky.
+		// THE WATER IS IN THE LOWEST PART OF THE CHANNEL, which is a correction
+		// and not a tuning. Keying the threads to the braid noise ALONE put them
+		// in bands six metres apart wherever the noise happened to be high, so
+		// whether shot 4 had any water in it at all was a coin toss on where the
+		// camera stood. `river` is the distance into the channel; the melt runs
+		// down the middle of it and the noise decides which threads are running
+		// today and which are dry gravel.
+		float thread = smoothstep(0.62, 0.92, river)
+			* (0.30 + 0.70 * smoothstep(0.42, 0.78, braid));
+		alb = mix(alb, vec3(0.062, 0.070, 0.082), thread * 0.80);
+		r = mix(r, 0.09, thread * 0.90);
+		n = normalize(mix(n, vec3(0.0, 1.0, 0.0), thread * 0.90));
+	}
+
 	// ---------------- STANDING WATER
 	// Water finds a LEVEL. `pondable * pond_amp` is the mesh's own shallow dish,
 	// straight out of vertex colour; `h` is this shader's micro relief; `drain`
@@ -836,15 +1058,50 @@ void fragment() {
 	//    wrong. That is the single most valuable object the ice decision
 	//    produces, and it is not an art win, it is a teaching win."
 	//
-	// `wear` is already exactly the right field: ground.gd bakes it from the six
-	// walkway polylines, the haul road and the four stations - the plan's own
-	// account of where things go. So the snow is cleared where the plan says
-	// machines walk, and nowhere else, and no new plumbing was needed at all.
-	float clr = max(smoothstep(0.19, 0.56, wear),
+	// AND THE FIRST VERSION OF THIS READ THE PLAN, WHICH IS THE DEFECT.
+	// `wear` is baked from the six walkway polylines, the haul road and the
+	// four stations, so a route appeared in the snow if and only if the LAYOUT
+	// ALREADY KNEW ABOUT IT. A machine that walked somewhere nobody planned
+	// left nothing - which is precisely the case the teaching loop is about,
+	// and it made shot 7 a machine walking a course through untouched snow.
+	//
+	// `tracks.gd` accumulates instead. `tramp` is how many times something has
+	// actually crossed this ground, `refroze` is how long ago it started, and
+	// `trdirt` is what it dragged up. The plan's own wear field keeps ONE job
+	// and it is not this one: a lane is PLOUGHED and swept as well as walked,
+	// and the plan is a fair account of where a plough goes. It is at half
+	// strength and it clears; it no longer draws tracks.
+	// THE TRAMPLE TERM CLEARS, and where it clears what is under it is the
+	// `beaten` block above rather than the yard's soil - which is the whole
+	// reason that block exists. The thresholds are worth stating: the snow
+	// depth term saturates the cover smoothstep at load 0.065, so only ground
+	// past `tramp` ~0.85 - the main routes, walked all winter - opens at all,
+	// and it opens PATCHILY, in the snow field's own hollows. A course branch
+	// at 0.5 and the hero's own single pass at 0.04 keep their snow and show
+	// their prints, which is the point.
+	float clr = max(max(smoothstep(0.26, 0.74, wear) * 0.52,
+			smoothstep(0.50, 0.95, tramp) * 0.97),
 		1.0 - smoothstep(9.2, 11.6, length(p - hot_a)));
-	float lie = clamp((1.0 - clr) * (1.0 - hard * 0.22), 0.0, 1.0);
+	float lie = clamp((1.0 - clr) * (1.0 - hard * 0.22) * (1.0 - river * 0.985),
+		0.0, 1.0);
 	float load = clamp(g_snow, 0.0, 1.0) * lie;
-	float sfield = snowf(p, lodn);
+	// THE PRINTS. Nine texelFetches, and they are bought only where a 130 mm
+	// print is bigger than a couple of pixels AND something has actually walked
+	// here. In a wide frame that is no pixels at all.
+	vec4 TR = vec4(0.0);
+	if (dist < trk_far && tramp > 0.003) {
+		TR = trk_prints(p);
+		// AND PRINTS ARE TRODDEN OUT. On ground crossed all winter every texel
+		// in the buffer holds a print, so drawing each one at full depth builds
+		// a continuous raised lattice of rims that reads as COBBLES - which is
+		// what shot 7 came back as on the first pass. What survives on a beaten
+		// path is not four thousand footprints, it is packed lumpy firn; the
+		// individual print is the thing that reads on ground crossed ONCE.
+		float pfade = 1.0 - 0.66 * smoothstep(0.26, 0.82, tramp);
+		TR.xyz *= pfade;
+	}
+	float sbase = snowf(p, lodn);
+	float sfield = sbase + TR.x;
 	// SNOW FINDS A LEVEL exactly the way water does, which is the same trick the
 	// puddle code two blocks up uses and for the same reason: the edge of a
 	// snow patch is where a SURFACE crosses a SURFACE. So it fills the slab
@@ -861,22 +1118,35 @@ void fragment() {
 		// glassier, greyer and BLUER, because the light gets further into it
 		// before it comes back out - which is the same path-length rule, used
 		// as evidence of traffic rather than of depth.
-		float pack = clamp(wear * 1.5, 0.0, 1.0) * (1.0 - clr);
-		sc = mix(sc, sc * mix(vec3(1.0), snow_deep, 0.55) * 0.80, pack);
+		//
+		// AND IT NOW COMES FROM A COUNTER RATHER THAN A DISTANCE FIELD, which
+		// is what lets ground crossed a hundred times look different from
+		// ground crossed twice. `TR.w` carries the single print, so one foot on
+		// fresh snow packs its own bottom even where the counter is near zero.
+		float pack = max(smoothstep(0.03, 0.52, tramp), TR.w * 0.80);
+		sc = mix(sc, sc * mix(vec3(1.0), snow_deep, 0.55) * 0.72, pack);
+		// REFROZEN. Snow crossed all winter thaws under a foot and freezes
+		// again, and what that makes is not snow, it is ice with snow in it:
+		// lower albedo, much lower roughness, and no facets at all.
+		sc = mix(sc, sc * 0.66, refroze * 0.85);
+		// AND DIRTY. Grit dragged up out of the ground underneath. This is the
+		// third scale DESIGN-PRINCIPLES 4 asks for and it is the one that says
+		// "a working yard" rather than "a ski slope".
+		sc = mix(sc, mix(sc, alb, 0.66), trdirt);
 		alb = mix(alb, sc, scov);
-		r = mix(r, mix(mix(0.46, 0.80, scav), 0.30, pack), scov);
+		r = mix(r, mix(mix(0.46, 0.80, scav), 0.22, max(pack, refroze)), scov);
 		if (dist < 46.0) {
 			float es = clamp(dist * 0.0026, 0.010, 0.09);
-			float s0 = sfield;
-			vec2 gsn = vec2(snowf(p + vec2(es, 0.0), lodn) - s0,
-			                snowf(p + vec2(0.0, es), lodn) - s0) / es;
+			vec2 gsn = vec2(snowf(p + vec2(es, 0.0), lodn) - sbase,
+			                snowf(p + vec2(0.0, es), lodn) - sbase) / es + TR.yz;
 			// the ground under the snow is GONE, not showing through, so the
 			// snow's own normal REPLACES the concrete's rather than blending
 			// with it - which is also why the joints stop reading where it lies
 			n = normalize(mix(n, normalize(vec3(-gsn.x * 1.35, 1.0, -gsn.y * 1.35)), scov));
 		}
 		// the facets, lit by the sky, faded out before they alias
-		float gf = (1.0 - smoothstep(4.0, 13.0, dist)) * scov * (1.0 - pack * 0.7);
+		float gf = (1.0 - smoothstep(4.0, 13.0, dist)) * scov * (1.0 - pack * 0.7)
+			* (1.0 - refroze * 0.6);
 		if (gf > 0.02) {
 			vec3 zen = normalize(vec3(0.10, 1.0, -0.10));
 			glit_s = sn_facet(p, n, V0, zen, gf) * 0.55;
@@ -896,6 +1166,9 @@ void fragment() {
 	// self-occlusion is the ONLY cue a snow surface has, so removing it removes
 	// the surface. 0.45 keeps the hollows and still stops it reading as plaster.
 	ao = mix(ao, mix(ao, 1.0, 0.45), scov);
+	// a print is a hole and a hole sees less sky. Small, because snow fills its
+	// own hollows with scattered light - the same correction two lines up.
+	ao *= 1.0 - TR.w * 0.17 * scov;
 
 	// ---------------- the hand-written reflection
 	// Dry ground gets a roughness-attenuated Fresnel that cannot wash out at
@@ -926,6 +1199,14 @@ void fragment() {
 	if (dbg == 6) { ALBEDO = vec3(water, pondable, clamp(depth * 60.0, 0.0, 1.0)); ROUGHNESS = 1.0; EMISSION = vec3(0.0); }
 	if (dbg == 7) { ALBEDO = vec3(0.0); ROUGHNESS = 1.0; EMISSION = vec3(1.0, 0.0, 0.6); }
 	if (dbg == 17) { ALBEDO = vec3(0.5); ROUGHNESS = 1.0; EMISSION = vec3(0.0); }
+	// --dbg=22: what walked here. R how many times, G how long ago it started,
+	// B the print field itself. The only honest way to ask whether the counters
+	// are where you think they are rather than judging them through snow, a
+	// tone curve and a grade - the same argument --dbg=1 makes about wear.
+	if (dbg == 22) { ALBEDO = vec3(0.0); ROUGHNESS = 1.0;
+		EMISSION = vec3(tramp, refroze, clamp(-TR.x * 22.0, 0.0, 1.0)); }
+	if (dbg == 23) { ALBEDO = vec3(0.0); ROUGHNESS = 1.0;
+		EMISSION = vec3(river, clamp(vfloor.y, 0.0, 1.0), 0.0); }
 }
 """
 
@@ -1260,7 +1541,7 @@ void fragment() {
 	// only place the warm rock family appears at ground level, and the threads
 	// are the only moving thing in the picture.
 	if (river > 0.01) {
-		float braid = fbm2(vec2(p.x * 0.010, p.y * 0.16) + 63.0);
+		float braid = fbm2(vec2(p.x * 0.011, p.y * 0.46) + 63.0);
 		vec3 flat_c = mix(vec3(0.088, 0.078, 0.064), vec3(0.190, 0.196, 0.206),
 			smoothstep(0.40, 0.75, braid));
 		alb = mix(alb, flat_c, river * 0.90);
@@ -1271,7 +1552,15 @@ void fragment() {
 		// bright sky is a MIRROR before it is a dark body: what you see is the
 		// sky in it, so its albedo hardly matters and its roughness does all the
 		// work. Half of it is under rotten shore ice anyway.
-		float thread = smoothstep(0.80, 0.93, braid) * smoothstep(0.42, 0.78, river);
+		// THE WATER IS IN THE LOWEST PART OF THE CHANNEL, which is a correction
+		// and not a tuning. Keying the threads to the braid noise ALONE put them
+		// in bands six metres apart wherever the noise happened to be high, so
+		// whether shot 4 had any water in it at all was a coin toss on where the
+		// camera stood. `river` is the distance into the channel; the melt runs
+		// down the middle of it and the noise decides which threads are running
+		// today and which are dry gravel.
+		float thread = smoothstep(0.62, 0.92, river)
+			* (0.30 + 0.70 * smoothstep(0.42, 0.78, braid));
 		alb = mix(alb, vec3(0.062, 0.070, 0.082), thread * 0.80);
 		rough = mix(rough, 0.09, thread * 0.90);
 		n = normalize(mix(n, vec3(0.0, 1.0, 0.0), thread * 0.90));
@@ -1562,6 +1851,9 @@ static func get_mat(id: String) -> ShaderMaterial:
 	elif id == "ice":
 		st = 0.35
 	m.set_shader_parameter("snow_take", st)
+	# a drift IS snow: it takes its own place in the noise field so its crust
+	# stops agreeing with the ground's, and it is covered all over. ACT-ONE 8.2.
+	m.set_shader_parameter("snow_body", 1.0 if id == "snow" else 0.0)
 	m.set_shader_parameter("emissive", 0.0)
 	_cache[id] = m
 	return m

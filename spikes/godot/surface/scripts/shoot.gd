@@ -110,6 +110,10 @@ func pose_cam(shot: Dictionary, tn: float, mask_v: int, prev_tn: float = -1.0) -
 	# phase at frame i is the phase a real 0.50 m/s walk would be at i/24 s.
 	if fleet != null:
 		fleet.hero_pose(shot, tn, tn * float(shot.get("len_s", 4.0)))
+		# and whatever its feet just did to the snow reaches the GPU before the
+		# frame that has to show it. Upload is a no-op on a frame where nothing
+		# walked, which is most of them.
+		Tracks.upload()
 	# and the thing the camera is riding, if it is riding one
 	rig.carry(shot, tn)
 	var ps: Dictionary = rig.pose(shot, tn)

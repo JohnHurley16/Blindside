@@ -261,6 +261,30 @@ static func _floor(x: float, z: float) -> float:
 		y = maxf(y, ice)
 	return y
 
+## The two floor masks the valley material keys off - (braid plain, glacier ice)
+## - at a world point, exactly as `build()` writes them into vertex colour.
+##
+## IT EXISTS SO THE PIT-HEAD'S OWN MESH CAN ASK. ACT-ONE 8.1's finding is that
+## the two ground systems had no agreement about the floor between 80 m and
+## 420 m; `ground.gd` now follows this file's height out there, and a shape
+## without its material is half a reconciliation - a braid plain rendered as
+## snow-covered soil is not a braid plain. One function, one definition of where
+## the river is, two meshes reading it. Two fields that disagree about where a
+## river is look far worse than one field with no river in it at all, which is
+## the same argument the `cut` channel is written for.
+static func floor_masks(x: float, z: float) -> Vector2:
+	if _V.is_empty():
+		return Vector2.ZERO
+	var tx: float = _V["terminus_x"]
+	var glac := clampf((x - (tx - 180.0)) / 220.0, 0.0, 1.0)
+	glac *= clampf(1.0 - (_floor(x, z) - 60.0) / 400.0, 0.0, 1.0)
+	var rz: float = _V["river_z"] + 120.0 * (Ground._vn(x * 0.00085 + 7.0, 0.0) - 0.5)
+	var rw: float = _V["river_w"] * (0.55 + 0.90 * Ground._vn(x * 0.0022 + 15.0, 0.0))
+	var riv := clampf(1.0 - absf(z - rz) / maxf(rw, 1.0), 0.0, 1.0)
+	riv *= clampf(1.0 - glac * 2.0, 0.0, 1.0)
+	riv *= clampf(1.0 - (x - tx) / 600.0, 0.0, 1.0)
+	return Vector2(riv, glac)
+
 ## RIDGED noise: 1 - |2n - 1|. Folds the field about its midpoint so it has a
 ## sharp maximum along a LOCUS rather than a rounded one. Every crease in this
 ## landscape - every gully wall, every buttress edge, every arete - comes from
@@ -359,11 +383,17 @@ static func build(L: SurfaceLayout, parent: Node3D) -> Dictionary:
 		for ix in nx:
 			hc[iz * nx + ix] = h(xs[ix], zf) - SINK
 
+	# THE HOLE THE PIT-HEAD'S MESH DRAWS IN. It was 340 m, and `ground.gd`'s
+	# skirt reaches 420 m from the ORIGIN rather than from the box - so on the
+	# +x side the hole ran to 436 m and the lid stopped at 420, and there was a
+	# 16 m ring of nothing. Never noticed because it is a sliver seen edge-on at
+	# four hundred metres. 290 m puts the hole comfortably inside the lid on
+	# every side, with fifty metres of overlap to spare.
 	var site: Dictionary = L.plan["site"]
-	var sx0 := float(site["x0"]) * 0.001 - 340.0
-	var sx1 := float(site["x1"]) * 0.001 + 340.0
-	var sz0 := float(site["z0"]) * 0.001 - 340.0
-	var sz1 := float(site["z1"]) * 0.001 + 340.0
+	var sx0 := float(site["x0"]) * 0.001 - 290.0
+	var sx1 := float(site["x1"]) * 0.001 + 290.0
+	var sz0 := float(site["z0"]) * 0.001 - 290.0
+	var sz1 := float(site["z1"]) * 0.001 + 290.0
 
 	for iz in nz:
 		for ix in nx:

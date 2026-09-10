@@ -29,6 +29,35 @@ class_name Ground
 
 const RELIEF_MAX := 0.080   # metres. The most a prop can be buried.
 
+## ---------------------------------------------------------------------------
+## THE FLAT LID, AND HOW IT IS RECONCILED. ACT-ONE.md 8.1 is the bill:
+##
+##   "The pit-head's own ground mesh is a single ArrayMesh spanning the site box
+##    plus a skirt to 420 m IN EVERY DIRECTION, it is drawn on top of the valley
+##    mesh by construction, and it knows nothing about the landform. So from the
+##    collar out to 420 m the valley's floor detail - the braid plain, the near
+##    lateral moraine's trough, the roches moutonnees - is under a flat lid ...
+##    two graded surfaces, one drawn over the other, with no agreement about
+##    which owns the ground between 80 m and 420 m."
+##
+## THE AGREEMENT. The pit-head owns its own site box, exactly and unchanged:
+## LAYOUT still says where a foot stands, `ground_mm` is untouched, no integer
+## moved and the plan hash did not budge. Outside the box the ground BECOMES the
+## valley, over 70 m, and the seam is a 2% grade rather than a step.
+##
+## That direction is the only one that works. Making LAYOUT know about the
+## landform would put a float and a square root inside the integer half; making
+## the valley know about the pit-head would put a graded pad inside a 16 km
+## heightfield. This is a DRESSING decision - the same kind as `relief()` twelve
+## lines down - and it belongs on this side of the seam.
+##
+## The two meshes still overlap rather than sharing a boundary ring, for the
+## reason `valley.gd` gives: two graded grids meeting exactly is a class of bug
+## that eats a day. What changed is that they now agree about the SHAPE in the
+## overlap, so the 0.25 m the ground sits proud of the valley is a constant
+## offset instead of a lid.
+const BLEND_OUT := 70.0     # metres beyond the site box to become the valley
+
 ## The amplitude of the shallow dish that puddles live in, metres.
 ##
 ## THIS IS THE NUMBER THAT MAKES PUDDLES POSSIBLE, and getting it wrong is why
@@ -75,15 +104,42 @@ static func wear_at(x: float, z: float) -> float:
 	var d := _wg[(iz + 1) * _wnx + ix + 1]
 	return lerpf(lerpf(a, b, tx), lerpf(c, d, tx), tz)
 
+## how far outside the site box this point is, metres. 0 inside it.
+static var _bx0 := -78.0
+static var _bz0 := -74.0
+static var _bx1 := 96.0
+static var _bz1 := 74.0
+
+static func out_dist(x: float, z: float) -> float:
+	var dx := maxf(maxf(_bx0 - x, 0.0), x - _bx1)
+	var dz := maxf(maxf(_bz0 - z, 0.0), z - _bz1)
+	if dx <= 0.0 and dz <= 0.0:
+		return 0.0
+	return sqrt(dx * dx + dz * dz)
+
+## How much of this point's height is the VALLEY's rather than the pit-head's.
+## 0 inside the site box, 1 at BLEND_OUT metres beyond it.
+static func valley_w(x: float, z: float) -> float:
+	var d := out_dist(x, z)
+	if d <= 0.0:
+		return 0.0
+	var t := clampf(d / BLEND_OUT, 0.0, 1.0)
+	return t * t * (3.0 - 2.0 * t)
+
 ## The height every other dressing file must place against: the layout height
-## plus the dressing relief. Anything that calls `L.ground_mm` directly and not
-## this will float by up to 67 mm.
+## plus the dressing relief, blended into the landform outside the site box.
+## Anything that calls `L.ground_mm` directly and not this will float by up to
+## 67 mm inside the yard and by up to twenty metres on the moraine.
 static func height(L: SurfaceLayout, x: float, z: float) -> float:
 	var hard := 1.0 if L.on_pad(int(x * 1000.0), int(z * 1000.0)) else 0.0
 	if hard < 0.5:
 		hard = clampf(1.0 - _pad_dist(L, x, z) / 1.6, 0.0, 1.0) * 0.7
 	var base := float(L.ground_mm(int(x * 1000.0), int(z * 1000.0))) / 1000.0
-	return base + relief(x, z, hard, wear_at(x, z))
+	var h := base + relief(x, z, hard, wear_at(x, z))
+	var w := valley_w(x, z)
+	if w <= 0.0:
+		return h
+	return lerpf(h, Valley.h(x, z), w)
 
 static func build(L: SurfaceLayout, parent: Node3D) -> Dictionary:
 	var t0 := Time.get_ticks_usec()
@@ -92,19 +148,36 @@ static func build(L: SurfaceLayout, parent: Node3D) -> Dictionary:
 	var x1 := float(site["x1"]) / 1000.0
 	var z0 := float(site["z0"]) / 1000.0
 	var z1 := float(site["z1"]) / 1000.0
+	_bx0 = x0
+	_bz0 = z0
+	_bx1 = x1
+	_bz1 = z1
 
 	# the compound - where a camera ever stands - gets twice the resolution
-	var xs := _axis(x0, x1, 1.0, 420.0, -38.0, 42.0, 0.5)
-	var zs := _axis(z0, z1, 1.0, 420.0, -32.0, 32.0, 0.5)
+	#
+	# AND THE SKIRT IS GRADED NOW RATHER THAN GEOMETRIC. It used to double its
+	# step every ring - 2, 3.1, 4.8, 7.4, 11.5 m - which was correct while the
+	# skirt was flat and is useless the moment it carries a landform: the braid
+	# plain is 58 m wide at z = -150 and the geometric ring there was 28 m, so
+	# it would land on the mesh as two vertices. That is exactly the failure
+	# `valley.gd`'s own z-grading was written to fix and the fix is the same:
+	# spend rows where the shape is. The -260..-74 band is the moraine trough
+	# and the braid plain; everything past 200 m is a hundred metres a pixel.
+	var xs := _grade([[-420.0, -180.0, 24.0], [-180.0, x0, 10.0]], x0, x1,
+		1.0, -38.0, 42.0, 0.5, [[x1, 200.0, 10.0], [200.0, 420.0, 24.0]])
+	var zs := _grade([[-420.0, -260.0, 24.0], [-260.0, z0, 8.0]], z0, z1,
+		1.0, -32.0, 32.0, 0.5, [[z1, 200.0, 12.0], [200.0, 420.0, 26.0]])
 	var nx := xs.size()
 	var nz := zs.size()
 
 	var verts := PackedVector3Array()
 	var norms := PackedVector3Array()
 	var cols := PackedColorArray()
+	var uv2 := PackedVector2Array()
 	verts.resize(nx * nz)
 	norms.resize(nx * nz)
 	cols.resize(nx * nz)
+	uv2.resize(nx * nz)
 
 	var shaft: Dictionary = L.plan["shaft"]
 	var sw := float(shaft["w"]) / 2000.0 + 0.15
@@ -129,9 +202,11 @@ static func build(L: SurfaceLayout, parent: Node3D) -> Dictionary:
 	var hcache := PackedFloat32Array()
 	var wcache := PackedFloat32Array()
 	var pcache := PackedFloat32Array()
+	var vcache := PackedFloat32Array()
 	hcache.resize(nx * nz)
 	wcache.resize(nx * nz)
 	pcache.resize(nx * nz)
+	vcache.resize(nx * nz)
 	for iz in nz:
 		var zf: float = zs[iz]
 		for ix in nx:
@@ -143,8 +218,11 @@ static func build(L: SurfaceLayout, parent: Node3D) -> Dictionary:
 			var wr := wear_at(xf, zf)
 			wcache[i] = wr
 			pcache[i] = hardv
-			hcache[i] = float(L.ground_mm(int(xf * 1000.0), int(zf * 1000.0))) / 1000.0 \
+			var lh := float(L.ground_mm(int(xf * 1000.0), int(zf * 1000.0))) / 1000.0 \
 				+ relief(xf, zf, hardv, wr)
+			var vw := valley_w(xf, zf)
+			vcache[i] = vw
+			hcache[i] = lh if vw <= 0.0 else lerpf(lh, Valley.h(xf, zf), vw)
 
 	for iz in nz:
 		for ix in nx:
@@ -164,8 +242,14 @@ static func build(L: SurfaceLayout, parent: Node3D) -> Dictionary:
 			norms[i] = Vector3(-(hr - hl) / maxf(dx, 0.01), 2.0, -(hf - hb) / maxf(dz, 0.01)).normalized()
 			# --- surface facts
 			var hard: float = pcache[i]
-			var mud := clampf((h - 0.4) / 3.0, 0.0, 1.0) * 0.8
-			mud = maxf(mud, clampf(1.0 - hard, 0.0, 1.0) * 0.35)
+			var vw: float = vcache[i]
+			# MUD IS A HEIGHT RULE AND THE HEIGHT RULE IS ABOUT SPOIL TIPS.
+			# "Above 0.4 m is a tip, so it is mud" is true of 1.2 m of made
+			# ground and absurd of an eighteen-metre moraine, which would come
+			# back as a mountain of wet clay the moment the lid came off. It
+			# stops at the site box, which is where the tips stop.
+			var mud := clampf((h - 0.4) / 3.0, 0.0, 1.0) * 0.8 * (1.0 - vw)
+			mud = maxf(mud, clampf(1.0 - hard, 0.0, 1.0) * 0.35 * (1.0 - vw))
 			# WEAR IS A PROPERTY OF THE GROUND, NOT OF THE PLAN POSITION. A walkway
 			# runs from the collar to the course on z = 0 and a spoil tip has been
 			# dumped across it; without this gate the wear field paints a worn
@@ -196,6 +280,11 @@ static func build(L: SurfaceLayout, parent: Node3D) -> Dictionary:
 				hard = 0.0
 				pond = 0.0
 			cols[i] = Color(hard, mud, traffic, pond)
+			# UV2 carries the two floor masks the VALLEY shader keys its floor
+			# materials off, so the same braid plain drawn on the same field
+			# continues across the seam instead of stopping at it. The colour
+			# channels are all four spoken for; UV2 was free.
+			uv2[i] = Valley.floor_masks(x, z) * vw if vw > 0.0 else Vector2.ZERO
 
 	var idx := PackedInt32Array()
 	for iz in nz - 1:
@@ -221,6 +310,7 @@ static func build(L: SurfaceLayout, parent: Node3D) -> Dictionary:
 	arr[Mesh.ARRAY_VERTEX] = verts
 	arr[Mesh.ARRAY_NORMAL] = norms
 	arr[Mesh.ARRAY_COLOR] = cols
+	arr[Mesh.ARRAY_TEX_UV2] = uv2
 	arr[Mesh.ARRAY_INDEX] = idx
 	var am := ArrayMesh.new()
 	am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
@@ -300,6 +390,38 @@ static func _vn(x: float, z: float) -> float:
 	var c := _h2(ix, iz + 1)
 	var d := _h2(ix + 1, iz + 1)
 	return lerpf(lerpf(a, b, fx), lerpf(c, d, fx), fz)
+
+## A graded axis: explicit bands outside the site box, `fine` metres between fa
+## and fb, `step` over the rest of the box. One mesh, one call.
+##
+## `pre` and `post` are [[from, to, step], ...] outside the box. They replace the
+## geometric skirt, which doubled its ring every step and could not hold a 58 m
+## braid plain at 150 m. Rows are cheap; a landform sampled at 28 m is not.
+static func _grade(pre: Array, a: float, b: float, step: float,
+		fa: float, fb: float, fine: float, post: Array) -> PackedFloat32Array:
+	var v := PackedFloat32Array()
+	for bnd in pre:
+		var e: float = bnd[0]
+		var to: float = bnd[1]
+		var st: float = bnd[2]
+		while e < to - 0.001:
+			v.append(e)
+			e += st
+	var x := a
+	while x <= b + 0.001:
+		v.append(x)
+		if x >= fa - 0.001 and x < fb - 0.001:
+			x += fine
+		else:
+			x += step
+	for bnd in post:
+		var e: float = bnd[0] + bnd[2]
+		var to: float = bnd[1]
+		var st: float = bnd[2]
+		while e <= to + 0.001:
+			v.append(e)
+			e += st
+	return v
 
 ## a graded axis: `fine` metres between fa and fb, `step` metres over the rest of
 ## the site box, then a geometric skirt out to the horizon. One mesh, one call.

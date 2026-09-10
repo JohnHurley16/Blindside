@@ -1,0 +1,39 @@
+=== Blindside surface spike ===
+adapter        : NVIDIA GeForce RTX 3080 Laptop GPU
+api            : 1.4.312 (NVIDIA)
+godot          : 4.7.2-stable (official)
+seed           : 20260908
+layout hash    : 701635322695612
+layout ms      : 2.11
+tracks ms      : 1634.59  (141781 prints laid, gait 0.63 s x 0.50 m/s, 4 feet)
+tracks         : 141781 prints, 0 outside the window, 5.0 MB, 1 uploads
+valley ms      : 4958.87  (209828 tris, 107424 verts)
+town ms        : 459.79  (20 terraces, 501 buildings)
+ground ms      : 3266.22  (153372 tris, 77290 verts)
+inherited ms   : 63.69
+brought ms     : 13.04
+scatter ms     : 910.24
+flush ms       : 74.89
+fleet ms       : 807.25  (18 machines, 391940 tris)
+TOTAL GEN ms   : 9748.85
+prop instances : 56425
+multimeshes    : 1476
+mm triangles   : 2019972
+decals         : 87
+mode           : tshots   light: overcast
+pom            : 1.0   sky: realtime   ssao: true
+tshot k01_yard_line  day  fps=9.0 draws=671 prims=2582917
+  machine at (47.0, -0.078131, -8.0)  cam (40.4, 0.34, -6.9)  prints 141977
+tshot k02_prints_close  day  fps=63.0 draws=149 prims=1463710
+tshot k03_many_times  day  fps=72.0 draws=159 prims=1433108
+tshot k04_course_policy  day  fps=68.0 draws=256 prims=1632358
+  machine at (47.0, -0.078131, -8.0)  cam (43.6, 0.5, -12.6)  prints 142173
+tshot k05_route_behind  day  fps=57.0 draws=222 prims=1614762
+  machine at (47.0, -0.078131, -8.0)  cam (36.0, 3.4, -15.5)  prints 142369
+tshot k06_route_wide  day  fps=44.0 draws=248 prims=1628578
+tshot k07_braid_plain  day  fps=47.0 draws=23 prims=1135148
+tshot k08_floor_detail  day  fps=72.0 draws=109 prims=1282504
+tshot k09_field_dbg  day  fps=72.0 draws=685 prims=2568705
+tshot k10_floor_over  day  fps=72.0 draws=276 prims=1682412
+tshot k11_moraine  day  fps=72.0 draws=23 prims=1135148
+tracks         : 142369 prints, 0 outside the window, 5.0 MB, 4 uploads

@@ -23,6 +23,9 @@ var bench_secs := 45.0
 var only_shot := ""
 var tag := "before"
 var dbg := 0
+## ablation switch: --trk=0 kills the print reconstruction in the ground
+## shader, leaving only the one bilinear tap into the pack buffer.
+var trk := -1.0
 ## measurement switches, so the cost of each technique can be priced separately
 var pom := 1.0
 var skymode := "realtime"
@@ -130,6 +133,41 @@ var VSHOTS := [
 	{"n": "v16_snowfall",      "p": Vector3(-9.2, 1.52, 3.0), "t": Vector3(0.8, 0.55, -0.4), "fov": 60, "l": "snowfall"},
 ]
 
+## ---------------------------------------------------------------- TRACKS
+## THE-ICE 7.1 and VALLEY.md 8.6. Into shots/tracks/, captured by --mode=tshots.
+##
+## The list is a set of FALSIFIABLE claims and nothing else. Each frame is the
+## one that would show the corresponding claim to be false:
+##   the field reads as a line from across the yard
+##   individual prints read at a machine's own height
+##   ground crossed many times is a different material from ground crossed twice
+##   the course draws the policy - where it went twice, where it turned back
+##   the machine's own route runs out behind it while it walks
+##   and the valley floor's detail exists inside 420 m, which is defect two.
+##
+## `m` is a hero block in exactly the grammar shots_cinema.json uses, so a frame
+## here places a machine the same way a trailer shot does; `tn` is how far
+## through its walk it is when the shutter opens.
+var TSHOTS := [
+	{"n": "k01_yard_line",     "p": Vector3(-46.0, 11.0, 26.0),"t": Vector3(8.0, 0.0, -2.0),  "fov": 55, "l": "day"},
+	{"n": "k02_prints_close",  "p": Vector3(40.4, 0.34, -6.9), "t": Vector3(45.2, 0.00, -8.4),"fov": 42, "l": "day",
+		"m": {"role": "hero", "clip": "walk", "lamp": false, "yaw": "path",
+			"at": {"from": [39.6, 0.0, -8.4], "to": [47.0, 0.0, -8.0]}}, "tn": 1.0},
+	{"n": "k03_many_times",    "p": Vector3(47.0, 0.46, 0.0),  "t": Vector3(53.4, 0.26, 0.0), "fov": 44, "l": "day"},
+	{"n": "k04_course_policy", "p": Vector3(34.0, 15.0, 30.0), "t": Vector3(62.0, 0.0, 13.0), "fov": 50, "l": "day"},
+	{"n": "k05_route_behind",  "p": Vector3(43.6, 0.50, -12.6),"t": Vector3(46.6, 0.22, -8.4),"fov": 46, "l": "day",
+		"m": {"role": "hero", "clip": "walk", "lamp": false, "yaw": "path",
+			"at": {"from": [39.6, 0.0, -8.4], "to": [47.0, 0.0, -8.0]}}, "tn": 1.0},
+	{"n": "k06_route_wide",    "p": Vector3(36.0, 3.4, -15.5), "t": Vector3(47.0, 0.2, -8.2), "fov": 54, "l": "day",
+		"m": {"role": "hero", "clip": "walk", "lamp": false, "yaw": "path",
+			"at": {"from": [39.6, 0.0, -8.4], "to": [47.0, 0.0, -8.0]}}, "tn": 1.0},
+	{"n": "k07_braid_plain",   "p": Vector3(6.0, 0.0, -194.0), "t": Vector3(20.0, 0.0, -200.0),"fov": 46, "l": "day", "u": 1.35, "tu": 0.05},
+	{"n": "k08_floor_detail",  "p": Vector3(56.0, 5.0, -40.0), "t": Vector3(-140.0, -8.0, -200.0),"fov": 60, "l": "day"},
+	{"n": "k09_field_dbg",     "p": Vector3(-46.0, 11.0, 26.0),"t": Vector3(8.0, 0.0, -2.0),  "fov": 55, "l": "day", "dbg": 22},
+	{"n": "k10_floor_over",    "p": Vector3(20.0, 58.0, 96.0), "t": Vector3(6.0, -8.0, -230.0),"fov": 64, "l": "day"},
+	{"n": "k11_moraine",       "p": Vector3(-24.0, 0.0, -96.0),"t": Vector3(56.0, 12.0, -168.0),"fov": 56, "l": "day", "u": 1.9},
+]
+
 ## the camera path used by --mode=bench, chosen to hit every density regime
 var PATH := [
 	Vector3(-56, 14, 44), Vector3(-30, 4, 22), Vector3(-14, 1.7, 9),
@@ -233,6 +271,41 @@ func _ready() -> void:
 	fleet = Fleet.new()
 	fleet.build(self, L, P.machine_slots)
 	var t_fleet := float(Time.get_ticks_usec() - t6) / 1000.0
+
+	# ---------------- WHAT WALKED ON IT (THE-ICE 7.1, VALLEY.md 8.6).
+	# After the fleet, and that ordering is the point: the gait is MEASURED off
+	# the hero's own skeleton rather than guessed, so the prints the yard's
+	# history is made of are the prints this machine makes.
+	var t7 := Time.get_ticks_usec()
+	Tracks.reset()
+	fleet.gait = Tracks.learn(fleet.hero)
+	var hstats := Tracks.history(L, fleet.gait)
+	for gm2 in Mats.grounds():
+		Tracks.bind(gm2)
+		if trk >= 0.0:
+			gm2.set_shader_parameter("trk_far", trk)
+	var t_tracks := float(Time.get_ticks_usec() - t7) / 1000.0
+	_log("tracks ms      : %.2f  (%d prints laid, gait %s)"
+		% [t_tracks, int(hstats["prints"]),
+			("%.2f s x %.2f m/s, %d feet" % [fleet.gait.get("period", 0.0),
+				fleet.gait.get("speed", 0.0), (fleet.gait.get("plants", []) as Array).size()])
+			if not fleet.gait.is_empty() else "NOT LEARNED"])
+	_log(Tracks.report())
+	if dbg == 24:
+		for w in L.plan["walkways"]:
+			_log("walkway %s -> %s" % [str(w[0]), str(w[1])])
+		_log("road %s" % str(L.plan["road"]))
+		for st in L.plan["stations"]:
+			_log("station %s %d %d" % [str(st["kind"]), int(st["x"]), int(st["z"])])
+		var C: Dictionary = L.plan["course"]
+		_log("course ox=%d oz=%d pitch=%d nodes=%s" % [int(C["ox"]), int(C["oz"]), int(C["pitch"]), str(C["nodes"])])
+		_log("leaves %s edges %s" % [str(C["leaves"]), str(C["edges"])])
+		for xz in [-40.0, 0.0, 40.0]:
+			var row := ""
+			for zz in range(-230, -60, 10):
+				var fm: Vector2 = Valley.floor_masks(xz, float(zz))
+				row += " %d:%.2f/%.1f" % [zz, fm.x, Ground.height(L, xz, float(zz))]
+			_log("floor x=%.0f %s" % [xz, row])
 
 	if dbg == 10:
 		var rows: Array = []
@@ -352,6 +425,8 @@ func _ready() -> void:
 		_run_oshots()
 	elif mode == "vshots":
 		_run_vshots()
+	elif mode == "tshots":
+		_run_tshots()
 	elif mode == "bench":
 		set_process(true)
 
@@ -444,6 +519,8 @@ func _parse_args() -> void:
 			skymode = a.substr(6)
 		elif a.begins_with("--ssao="):
 			ssao = int(a.substr(7)) != 0
+		elif a.begins_with("--trk="):
+			trk = float(a.substr(6))
 		elif a.begins_with("--dbg="):
 			dbg = int(a.substr(6))
 		elif a.begins_with("--cinema="):
@@ -526,6 +603,58 @@ func _run_vshots() -> void:
 			int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),
 			int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME))])
 	_write_log("vshots.txt")
+	get_tree().quit()
+
+func _run_tshots() -> void:
+	var dir := ProjectSettings.globalize_path("res://shots/tracks/")
+	DirAccess.make_dir_recursive_absolute(dir)
+	var gmats: Array = Mats.grounds()
+	for s in TSHOTS:
+		if only_shot != "" and s["n"] != only_shot:
+			continue
+		var d: int = int(s.get("dbg", 0))
+		for m in gmats:
+			m.set_shader_parameter("dbg", d)
+		# a machine, if the frame is about one. `hero_pose` takes exactly the
+		# grammar shots_cinema.json uses, so this is the same code path the
+		# trailer runs and not a second one.
+		if s.has("m"):
+			var tn: float = float(s.get("tn", 1.0))
+			fleet.reset_clock()
+			# the track behind it is laid by walking the shot forward rather
+			# than by teleporting to the end of it, which is the same thing the
+			# sequence capture does and the reason both agree.
+			for k in range(0, 25):
+				var tk: float = tn * float(k) / 24.0
+				fleet.hero_pose({"name": s["n"], "machine": s["m"], "len_s": 6.0},
+					tk, tk * 6.0)
+			Tracks.upload()
+			_log("  machine at %s  cam %s  prints %d" % [str(fleet.hero.global_position), str(s["p"]), Tracks.n_print])
+		W.apply(s["l"])
+		cam.fov = s["fov"]
+		# `u` and `tu` are HEIGHT ABOVE THE GROUND HERE rather than absolute y,
+		# which is the camera rig's own rule and is the only usable one out on
+		# the valley floor, where the ground is now a landform and nobody has
+		# measured it. Defect two put twenty metres of relief inside 420 m.
+		var cp: Vector3 = s["p"]
+		var ct: Vector3 = s["t"]
+		if s.has("u"):
+			cp.y = Ground.height(L, cp.x, cp.z) + float(s["u"])
+		if s.has("tu"):
+			ct.y = Ground.height(L, ct.x, ct.z) + float(s["tu"])
+		cam.position = cp
+		cam.look_at(ct)
+		W.rain.global_position = cam.position + Vector3(0, 6, 0)
+		for i in 72:
+			await RenderingServer.frame_post_draw
+		var img := get_viewport().get_texture().get_image()
+		img.save_png(dir + str(s["n"]) + ".png")
+		_log("tshot %s  %s  fps=%.1f draws=%d prims=%d" % [s["n"], s["l"],
+			Performance.get_monitor(Performance.TIME_FPS),
+			int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),
+			int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME))])
+	_log(Tracks.report())
+	_write_log("tshots.txt")
 	get_tree().quit()
 
 func _run_oshots() -> void:

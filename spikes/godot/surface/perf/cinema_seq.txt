@@ -4,20 +4,22 @@ api            : 1.4.312 (NVIDIA)
 godot          : 4.7.2-stable (official)
 seed           : 20260908
 layout hash    : 701635322695612
-layout ms      : 2.19
-valley ms      : 5179.80  (208712 tris, 107424 verts)
-town ms        : 485.74  (20 terraces, 501 buildings)
-ground ms      : 1559.05  (129072 tris, 65095 verts)
-inherited ms   : 64.31
-brought ms     : 12.62
-scatter ms     : 906.97
-flush ms       : 76.21
-fleet ms       : 783.92  (18 machines, 391940 tris)
-TOTAL GEN ms   : 8286.89
+layout ms      : 2.11
+tracks ms      : 1759.74  (141781 prints laid, gait 0.63 s x 0.50 m/s, 4 feet)
+tracks         : 141781 prints, 0 outside the window, 5.0 MB, 1 uploads
+valley ms      : 5266.17  (209828 tris, 107424 verts)
+town ms        : 494.31  (20 terraces, 501 buildings)
+ground ms      : 3421.03  (153372 tris, 77290 verts)
+inherited ms   : 66.67
+brought ms     : 13.85
+scatter ms     : 955.36
+flush ms       : 89.28
+fleet ms       : 795.95  (18 machines, 391940 tris)
+TOTAL GEN ms   : 10308.77
 prop instances : 56425
 multimeshes    : 1476
 mm triangles   : 2019972
 decals         : 87
 mode           : cinema   light: overcast
 pom            : 1.0   sky: realtime   ssao: true
-cinema collis : 129072 ground tris + 13354 instances / 265006 tris in 607 ms
+cinema collis : 153372 ground tris + 13354 instances / 265006 tris in 654 ms

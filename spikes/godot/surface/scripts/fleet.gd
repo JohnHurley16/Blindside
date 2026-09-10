@@ -61,6 +61,17 @@ var build_ms: float = 0.0
 var tri_total: int = 0
 var hero_home: Transform3D = Transform3D.IDENTITY
 var _t: float = 0.0
+## the hero's own gait, measured off its skeleton by Tracks.learn
+var gait: Dictionary = {}
+var _trk_shot: String = ""
+var _trk_done: float = 0.0
+
+## How far back along its own line a walking machine's track already runs when a
+## shot opens, metres. GUESS, and it is an authoring decision rather than a
+## physical one: the machine did not come into existence at t = 0, so a track
+## that starts at the first frame's feet is a worse lie than one that does not.
+## Eight metres is about six seconds of walking.
+const APPROACH := 8.0
 
 
 func gh(x: float, z: float) -> float:
@@ -258,6 +269,7 @@ func hero_pose(shot: Dictionary, tn: float, tsec: float) -> void:
 	if at is Dictionary and (at as Dictionary).has("from"):
 		var a: Vector3 = _anchor(at["from"])
 		var b: Vector3 = _anchor(at["to"])
+		_mark(shot, a, b, tn, clip)
 		# LINEAR, and never eased. The camera has mass and eases; the machine's
 		# feet are BAKED, planted in world space at exactly the clip's speed
 		# (NOTES 5: "any other speed and it skates"). Easing the machine's
@@ -302,9 +314,45 @@ func hero_pose(shot: Dictionary, tn: float, tsec: float) -> void:
 	hero._terrain(1.0)
 
 
+## THE MACHINE'S OWN ROUTE, BEHIND IT, AS IT WALKS.
+##
+## ACT-ONE 8.4: "Shot 7 is a machine walking a course in snow and THE SNOW
+## BEHIND IT IS UNTOUCHED. It is the only place in this act where the frame
+## actively contradicts the design." This is the line that fixes it.
+##
+## It replays the MEASURED gait along the part of the shot's own path that has
+## already happened, which is deterministic, frame-rate independent and exactly
+## reproducible - the same track whether a shot is rendered at three frames or
+## at a hundred and twenty. Reading the skeleton's feet every frame would be more
+## direct and would put a hole in the track wherever the capture skipped a
+## plant, and `--cinema=look` renders t = 0.06, 0.50 and 0.94 and nothing else.
+func _mark(shot: Dictionary, a: Vector3, b: Vector3, tn: float, clip: String) -> void:
+	if gait.is_empty() or clip != "walk":
+		return
+	var nm: String = String(shot.get("name", ""))
+	var p0 := Vector2(a.x, a.z)
+	var p1 := Vector2(b.x, b.z)
+	var total: float = p0.distance_to(p1)
+	if total < 0.05:
+		return
+	var dir: Vector2 = (p1 - p0) / total
+	# the whole line, INCLUDING the approach it walked in on
+	var line := PackedVector2Array([p0 - dir * APPROACH, p1])
+	if nm != _trk_shot or tn * total + APPROACH < _trk_done - 0.01:
+		_trk_shot = nm
+		_trk_done = 0.0
+	var d: float = APPROACH + tn * total
+	if d <= _trk_done + 0.001:
+		return
+	Tracks.walk(gait, line, 0.0, 0.0, 0.044, _trk_done, d)
+	_trk_done = d
+
+
 func reset_clock() -> void:
 	_t = 0.0
 	hero._settled = false
+	_trk_shot = ""
+	_trk_done = 0.0
 
 
 static func _ease(t: float) -> float:

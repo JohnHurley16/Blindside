@@ -3,32 +3,36 @@ adapter        : NVIDIA GeForce RTX 3080 Laptop GPU
 api            : 1.4.312 (NVIDIA)
 godot          : 4.7.2-stable (official)
 seed           : 20260908
-layout hash    : 190631341776686
-layout ms      : 1.96
-ground ms      : 1579.96  (129072 tris, 65095 verts)
-inherited ms   : 61.32
-brought ms     : 12.43
-scatter ms     : 994.96
-flush ms       : 56.16
-fleet ms       : 814.00  (18 machines, 391940 tris)
-TOTAL GEN ms   : 2706.79
-prop instances : 51042
-multimeshes    : 1295
-mm triangles   : 1891922
-decals         : 82
+layout hash    : 701635322695612
+layout ms      : 2.56
+tracks ms      : 1785.86  (141781 prints laid, gait 0.63 s x 0.50 m/s, 4 feet)
+tracks         : 141781 prints, 0 outside the window, 5.0 MB, 1 uploads
+valley ms      : 5375.17  (209828 tris, 107424 verts)
+town ms        : 499.52  (20 terraces, 501 buildings)
+ground ms      : 3542.61  (153372 tris, 77290 verts)
+inherited ms   : 68.82
+brought ms     : 13.19
+scatter ms     : 975.13
+flush ms       : 77.23
+fleet ms       : 774.43  (18 machines, 391940 tris)
+TOTAL GEN ms   : 10554.23
+prop instances : 56425
+multimeshes    : 1476
+mm triangles   : 2019972
+decals         : 87
 mode           : bench   light: overcast
 pom            : 1.0   sky: realtime   ssao: true
 
 --- sustained, overcast light, 1920x1080, camera moving ---
-frames         : 3728 over 40.0 s
-mean frame     : 10.46 ms   (95.6 fps)
-median frame   : 10.00 ms   (100.0 fps)
-p95 frame      : 15.28 ms   (65.5 fps)
-p99 frame      : 15.97 ms   (62.6 fps)
-worst frame    : 16.67 ms   (60.0 fps)
-draw calls max : 744
-primitives max : 2312083
-objects max    : 744
-video mem      : 326.2 MB
-gen ms         : 2706.79
-instances      : 51042
+frames         : 1756 over 40.0 s
+mean frame     : 22.22 ms   (45.0 fps)
+median frame   : 22.73 ms   (44.0 fps)
+p95 frame      : 27.65 ms   (36.2 fps)
+p99 frame      : 30.00 ms   (33.3 fps)
+worst frame    : 30.81 ms   (32.5 fps)
+draw calls max : 743
+primitives max : 2714266
+objects max    : 743
+video mem      : 340.5 MB
+gen ms         : 10554.23
+instances      : 56425
