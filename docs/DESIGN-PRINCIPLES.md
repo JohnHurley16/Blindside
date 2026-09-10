@@ -344,3 +344,47 @@ unchanged. The reconciliation is `docs/THE-ICE.md`.
 **What it does not settle.** How long the ice lasted, how far the melt has gone, whether the
 player's society knows what it is digging into, and whether anyone alive remembers the ancients as
 people rather than as a layer.
+
+## 11. A cave persists for weeks, then evolves - 2026-09-10
+
+> I think it makes sense for a cave to exist for a few weeks and then change / evolve (the
+> seasons thing we talked about). That way players can build for one cave and get deeper into it
+> vs having to start from scratch every time. We should build out tools that make designing and
+> building new caves easier.
+
+**What it binds.**
+- **A cave is an artefact with a lifetime, not a per-match roll.** It is generated or authored
+  once, it stands for weeks, players learn it, and then a season changes it. That is the content
+  cadence and it is the same shape as §2's extraction loop: you come back to the same place with
+  better knowledge and go one junction further.
+- **Knowledge of the cave becomes the accumulated asset.** Getting deeper is progression measured
+  in what a player has learned rather than in what they have equipped, which is the strongest
+  possible fit for a game about teaching.
+- **Tools matter more than the generator.** If a cave lives for weeks, hand-work on it pays for
+  itself, so the pipeline is authoring tools plus procedural assistance rather than pure
+  generation. That is a different investment and a better one.
+
+**Three problems this solves, and the third is the important one.**
+
+1. **The seed leak is gone.** `docs/spikes/PROCEDURAL-AND-GODOT.md` §2.1 found that pure
+   per-match generation means the client must hold the seed, and the seed is the whole map, so
+   anyone reading their own memory has the map before the raid. With a persistent cave that stops
+   being an exploit and becomes the premise: **everybody** knows the map, over time, by playing.
+
+2. **Photoreal becomes reachable.** A cave that stands for weeks can carry authored, scanned and
+   hand-finished art in a way a per-match roll never could. This is what makes an engine with
+   virtualised geometry and a scan library the right tool rather than an awkward fit, and it is
+   the deciding argument in `docs/ENGINE.md`.
+
+3. **It sharpens the game rather than softening it.** The obvious worry is that a known cave
+   removes the tension, because drift and getting lost are what make depth expensive (§2). The
+   opposite is true, and it is the best consequence here: **the player knows the cave and the
+   machine still does not.** You can see exactly where the deposit is and you cannot drive there.
+   All you can do is teach something that has to find it by itself, and then watch it get lost in
+   a place you personally know by heart. The gap between what the player knows and what the
+   machine can know stops being a mechanic and becomes the whole game.
+
+**What it does not settle.** How long a season is; whether a change is a redress, a partial
+regeneration or a new cave; whether a player's accumulated map carries across a season; whether
+the deep levels open over time; and whether caves are authored, generated then hand-finished, or
+generated with authored set-pieces dropped in.
