@@ -100,6 +100,20 @@ var lights: Array = []
 var path_points: PackedVector3Array = PackedVector3Array()
 var path_look: PackedVector3Array = PackedVector3Array()
 
+# THE REAL SHELL, PER STATION, and it exists because of one designer note:
+#   "there are random icicles floating there attached to nothing"
+# They were. `_dress_ice` hung them from an ELLIPSE -- an analytic guess at
+# where the crown was -- while `_sweep_edge` was emitting a ring displaced by
+# up to 0.5 m of silhouette noise, a 0.1 m scallop and a 0.26 m meltwater
+# notch. The guess and the geometry were never the same surface, so half the
+# icicles started inside the rock and half started in mid-air.
+#
+# So the sweep now KEEPS the ring it emitted at each station's own centre, and
+# every ice object is placed on a vertex of it. 40 points per station, 1061
+# stations: about half a megabyte, and it is the difference between an object
+# and a decal.
+var st_ring: Array = []
+
 # ===========================================================================
 # small mesh builder: accumulates primitives per material into one ArrayMesh
 # ===========================================================================
@@ -209,6 +223,7 @@ func build(p_topo: CaveTopology, p_seed: int, root: Node3D) -> void:
 	noise_lo.frequency = 0.11
 	noise_lo.fractal_octaves = 2
 
+	st_ring.resize(topo.stations.size())
 	_make_noise_textures(p_seed)
 	stage.call("noise volumes")
 	_make_materials()
@@ -324,24 +339,32 @@ func _make_materials() -> void:
 	var wy0: float = -1000.0
 	if topo.level_water_mm.size() > 0 and topo.level_water_mm[0] > -1000000:
 		wy0 = float(topo.level_water_mm[0]) * 0.001
-	mat_ice_clear = _ice_prop_mat(ish, wy0, 0.90, 0.92, 0.05, 0.28)
-	mat_ice_bubbly = _ice_prop_mat(ish, wy0, 0.34, 0.34, 0.16, 0.40)
-	# broken ice carries the floor it broke onto. Without the debris term a
-	# block pile under a moulin renders as a heap of white polygons.
-	mat_ice_block = _ice_prop_mat(ish, wy0, 0.64, 0.20, 0.26, 0.50)
-	mat_ice_block.set_shader_parameter("albedo_gain", 0.66)
-	# THE POOL LID IS NOT A MIRROR. At polish 0.92 the slab is roughness 0.13,
-	# and a flat horizontal sheet at that roughness two metres under a 5.4 W
-	# lamp returns almost all of it: 19.6% of `i10_meltwater_channel` came back
-	# over 0.50 against a 3% ceiling, from one object. A lid froze slowly from
-	# still water under a dripping roof; it is matt, not glassy.
-	mat_ice_lid = _ice_prop_mat(ish, wy0, 0.80, 0.42, 0.10, 0.12)
-	mat_ice_lid.set_shader_parameter("albedo_gain", 0.78)
-	mat_ice_lv.append(mat_ice_lid)
-	mat_ice_dirty = _ice_prop_mat(ish, wy0, 0.40, 0.30, 0.52, 0.55)
+	# --- AND THEY ARE A DIFFERENT SHADER, not a parameter set -------------
+	# `ice.gdshader` is a semi-infinite solid drawn opaque: you see the
+	# structure INSIDE a wall of glacier ice, not the rock behind it. These
+	# objects are 40 mm to 300 mm thick and you see the passage THROUGH them,
+	# distorted. That is the transparent path and it is `ice_clear.gdshader`.
+	#
+	# `thin_m` is the number that stops it reading as blue paint: the object's
+	# characteristic thickness in METRES, from which the absorption path is
+	# derived per fragment and per viewing angle. An icicle tip transmits ~97%
+	# of the red and is white; the wall behind it transmits 20% and is blue.
+	var csh: Shader = load("res://ice_clear.gdshader")
+	#                             thin_m round clarity polish debris  wet
+	mat_ice_clear  = _ice_prop_mat(csh, wy0, 0.052, 1.0, 0.90, 0.92, 0.04, 0.30)
+	mat_ice_bubbly = _ice_prop_mat(csh, wy0, 0.190, 1.0, 0.34, 0.38, 0.14, 0.40)
+	# broken ice carries the floor it broke onto, and it is the thickest of
+	# these, so it is the only one of them with any blue in it at all
+	mat_ice_block  = _ice_prop_mat(csh, wy0, 0.300, 1.0, 0.55, 0.24, 0.30, 0.50)
+	mat_ice_block.set_shader_parameter("albedo_gain", 0.78)
+	# A LID IS A SLAB, not a cylinder: colourless face-on and blue at grazing,
+	# which is the opposite angular law and is why it needs `thin_round` 0.
+	mat_ice_lid    = _ice_prop_mat(csh, wy0, 0.055, 0.0, 0.85, 0.62, 0.08, 0.14)
+	mat_ice_dirty  = _ice_prop_mat(csh, wy0, 0.240, 1.0, 0.40, 0.30, 0.52, 0.55)
 	mat_ice_lv.append(mat_ice_clear)
 	mat_ice_lv.append(mat_ice_bubbly)
 	mat_ice_lv.append(mat_ice_block)
+	mat_ice_lv.append(mat_ice_lid)
 	mat_ice_lv.append(mat_ice_dirty)
 	mat_stone = ShaderMaterial.new()
 	mat_stone.shader = load("res://stone.gdshader")
@@ -393,12 +416,14 @@ func _make_materials() -> void:
 	mat_pilot.emission_energy_multiplier = 2.6
 	mat_pilot.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 
-func _ice_prop_mat(sh: Shader, wy: float, clarity: float, polish: float,
-				   debris: float, wet: float) -> ShaderMaterial:
+func _ice_prop_mat(sh: Shader, wy: float, thin_m: float, round_f: float,
+				   clarity: float, polish: float, debris: float, wet: float) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
 	m.shader = sh
 	m.set_shader_parameter("t_fbm", tex_fbm)
 	m.set_shader_parameter("water_y", wy)
+	m.set_shader_parameter("thin_m", thin_m)
+	m.set_shader_parameter("thin_round", round_f)
 	m.set_shader_parameter("clarity_u", clarity)
 	m.set_shader_parameter("polish_u", polish)
 	m.set_shader_parameter("debris_u", debris)
@@ -887,7 +912,8 @@ func _icicle_prof(r0: float, rings: int) -> PackedVector2Array:
 		var t: float = float(i) / float(rings)
 		# (1-t)^0.62 is close to what a dribble that keeps flowing leaves;
 		# the sine is the ring the freeze-thaw cycle puts on it
-		var r: float = r0 * pow(1.0 - t, 0.62) * (1.0 + 0.16 * sin(t * 26.0))
+		# 0.16 of ring is BAMBOO. A freeze-thaw ring is a few per cent.
+		var r: float = r0 * pow(1.0 - t, 0.62) * (1.0 + 0.022 * sin(t * 26.0))
 		pr.push_back(Vector2(maxf(r, 0.0015), -t))
 	return pr
 
@@ -1367,6 +1393,13 @@ func _sweep_edge(ids: PackedInt32Array) -> void:
 						Vector2(axial, s01 * 0.5 + (0.5 if side < 0.0 else 0.0)),
 						Vector2(uv.x, packed)
 					])
+			# KEEP THE RING. sub == 0 is the station's own section, displacement
+			# and notch and all, and it is what every ice object anchors to.
+			if sub == 0:
+				var keep := PackedVector3Array()
+				for k3 in range(RING_VERTS):
+					keep.push_back(ring[k3])
+				st_ring[ids[i]] = keep
 			if prev_ring.size() == RING_VERTS:
 				_emit_band(prev_ring, prev_data, ring, data, prev_centre,
 					p + Vector3.UP * ht * 0.42,
@@ -1662,6 +1695,45 @@ func _pitch_radius(kind: int, bore: float, th: float, t: float, hgt: float) -> f
 		return bore * 0.5 * (0.80 + 0.34 * sin(th * 2.0 + t * 5.0))
 	return bore * 0.5 * (1.0 + 0.13 * sin(th * 3.0 + t * hgt * 0.55))
 
+# THE ACTUAL WALL OF A BORE, at parameter t and angle ang, INCLUDING the
+# displacement _sweep_pitch applied when it emitted it. Every object inside a
+# shaft used to be placed on `_pitch_radius()` alone, which is the NOMINAL
+# radius: the emitted wall is up to 0.3 of a bore away from it (0.55 for a
+# collapse), so ribs and curtains floated off the wall or sank into it. This
+# is the same four lines the sweep runs, so the object lands on the triangle.
+func _pitch_wall(pi: int, t: float, ang: float, inset: float) -> Vector3:
+	var pr: PackedInt32Array = topo.pitch(pi)
+	var kind: int = pr[CaveTopology.P_KIND]
+	var bore: float = float(pr[CaveTopology.P_BORE_MM]) * 0.001
+	var top_y: float = float(pr[CaveTopology.P_TOP_MM]) * 0.001
+	var foot: PackedInt32Array = _st(pr[CaveTopology.P_TO_ST])
+	var bot_y: float = float(foot[CaveTopology.S_CEIL_MM]) * 0.001
+	var top_p := Vector3(float(pr[CaveTopology.P_X]) * CELL, top_y, float(pr[CaveTopology.P_Y]) * CELL)
+	var bot_p := Vector3(float(pr[CaveTopology.P_TO_X]) * CELL, bot_y, float(pr[CaveTopology.P_TO_Y]) * CELL)
+	var hgt: float = top_y - bot_y
+	var c: Vector3 = top_p.lerp(bot_p, t)
+	if kind == CaveTopology.PK_MOULIN or kind == CaveTopology.PK_COLLAR:
+		var aa: float = t * hgt * 0.22
+		var amp: float = bore * 0.32 * sin(t * PI)
+		c += Vector3(cos(aa) * amp, 0.0, sin(aa) * amp)
+	elif kind == CaveTopology.PK_COLLAPSE:
+		c += Vector3(sin(t * 2.4) * bore * 0.38, 0.0, cos(t * 1.7) * bore * 0.30)
+	var ice_base: float = float(CaveTopology.BAND_ICE_BASE_MM) * 0.001
+	var worked_pitch: bool = kind == CaveTopology.PK_WINZE or kind == CaveTopology.PK_ORE_PASS
+	var is_ice: bool = ((not worked_pitch) and c.y > ice_base) or kind == CaveTopology.PK_CREVASSE
+	var ends: float = smoothstep(0.0, 0.055, t) * smoothstep(0.0, 0.055, 1.0 - t)
+	var amp2: float = (0.10 if is_ice else 0.30) * bore * ends
+	if kind == CaveTopology.PK_COLLAPSE:
+		amp2 = 0.55 * bore * ends
+	var rr: float = _pitch_radius(kind, bore, ang, t, hgt)
+	var ax: float = cos(ang)
+	var az: float = sin(ang)
+	var lp := Vector3(c.x + ax * rr, c.y, c.z + az * rr)
+	var nlo: float = noise_lo.get_noise_3d(lp.x * 0.9, lp.y * 0.35, lp.z * 0.9)
+	var nhi: float = noise.get_noise_3d(lp.x * 2.4, lp.y * 1.1, lp.z * 2.4)
+	lp += Vector3(ax, 0.0, az) * (nlo * amp2 + nhi * amp2 * 0.4 - inset)
+	return lp
+
 func _sweep_pitch(pi: int) -> void:
 	var pr: PackedInt32Array = topo.pitch(pi)
 	var kind: int = pr[CaveTopology.P_KIND]
@@ -1894,8 +1966,10 @@ func _pitch_props(pi: int, pr: PackedInt32Array, top_p: Vector3, bot_p: Vector3,
 		var nlip: int = maxi(6, int(bore * 9.0))
 		for il in range(nlip):
 			var al: float = float(il) / float(nlip) * TAU + rng.randf_range(-0.12, 0.12)
-			var rl: float = _pitch_radius(kind, bore, al, 0.0, hgt) * rng.randf_range(0.80, 0.97)
-			var ql := Vector3(top_p.x + cos(al) * rl, top_p.y - 0.03, top_p.z + sin(al) * rl)
+			# ON the lip, from the wall the sweep actually emitted, and 30 mm
+			# inside it so the root is buried rather than touching
+			var ql: Vector3 = _pitch_wall(pi, 0.004, al, 0.03)
+			ql.y = top_p.y - 0.02
 			var lnl: float = rng.randf_range(0.20, 0.85)
 			_prop(ql, "icefringe%d" % (il % 2), Transform3D(
 				Basis.from_euler(Vector3(0, al + PI * 0.5, 0))
@@ -1905,12 +1979,8 @@ func _pitch_props(pi: int, pr: PackedInt32Array, top_p: Vector3, bot_p: Vector3,
 		var nrib: int = maxi(3, int(hgt / 1.6))
 		for ir in range(nrib):
 			var tr: float = (float(ir) + 0.35) / float(nrib)
-			var qr: Vector3 = top_p.lerp(bot_p, tr)
-			if curly:
-				qr += Vector3(cos(tr * hgt * 0.22), 0.0, sin(tr * hgt * 0.22)) * (bore * 0.32 * sin(tr * PI))
 			var ar: float = rng.randf() * TAU
-			var rr4: float = _pitch_radius(kind, bore, ar, tr, hgt) - 0.05
-			var qq := Vector3(qr.x + cos(ar) * rr4, qr.y, qr.z + sin(ar) * rr4)
+			var qq: Vector3 = _pitch_wall(pi, tr, ar, 0.04)
 			_prop(qq, "icerib", Transform3D(_face(Vector3(-cos(ar), 0.0, -sin(ar)))
 				* Basis.from_scale(Vector3(1.0, rng.randf_range(0.7, 1.6), 1.0)), qq))
 		# THE FROZEN WATERFALL down one side of the moulin. Where the flow is
@@ -1923,8 +1993,8 @@ func _pitch_props(pi: int, pr: PackedInt32Array, top_p: Vector3, bot_p: Vector3,
 				var q5: Vector3 = top_p.lerp(bot_p, t5)
 				q5 += Vector3(cos(t5 * hgt * 0.22), 0.0, sin(t5 * hgt * 0.22)) * (bore * 0.32 * sin(t5 * PI))
 				var a6: float = a5 + t5 * hgt * 0.26
-				var r6: float = _pitch_radius(kind, bore, a6, t5, hgt) - 0.04
-				var q6 := Vector3(q5.x + cos(a6) * r6, q5.y + 1.15, q5.z + sin(a6) * r6)
+				var q6: Vector3 = _pitch_wall(pi, t5, a6, 0.03)
+				q6.y += 1.15
 				_prop(q6, "icefall", Transform3D(_face(Vector3(-cos(a6), 0.0, -sin(a6)))
 					* Basis.from_scale(Vector3(0.62, 1.25, 0.85)), q6))
 	# the cone of rubble under it. Everything the hole has ever dropped.
@@ -2063,19 +2133,23 @@ func _dress_assayer_site() -> void:
 	var R: float = assayer_radius()
 	# the floor of clear ice it is standing in. Four overlapping lids so the
 	# sheet is not a square, laid just under the anchor pads.
+	var rg0: PackedVector3Array = _ring(sid)
+	var fy: float = p.y
+	if rg0.size() == RING_VERTS:
+		fy = _ring_floor_under(rg0, p).y
 	for k in range(5):
 		var a: float = TAU * float(k) / 5.0 + 0.3
 		var rr: float = 1.1 + float(k % 2) * 0.7
 		var q: Vector3 = p + Vector3(cos(a) * rr, 0.0, sin(a) * rr)
-		q.y += _floor_y(q, 0.0) + 0.055
+		q.y = fy + 0.055
 		_prop(q, "icelid", _xf(q, Vector3(0, a * 0.7, 0),
-			Vector3(2.2 + float(k) * 0.25, 1.0, 1.9 + float(k) * 0.2)))
+			Vector3(1.7 + float(k) * 0.20, 1.0, 1.5 + float(k) * 0.15)))
 	# ice grown up the anchor pads: bosses ON the footing, not beside it
 	for k in range(14):
 		var a2: float = TAU * float(k) / 14.0 + 0.17
 		var rr2: float = 1.35 + rng.randf_range(-0.30, 0.55)
 		var q2: Vector3 = p + Vector3(cos(a2) * rr2, 0.0, sin(a2) * rr2)
-		q2.y += _floor_y(q2, 0.0) - 0.02
+		q2.y = fy - 0.02
 		var h: float = rng.randf_range(0.16, 0.46)
 		_prop(q2, "iceboss%d" % (k % 2), _xf(q2, Vector3(0, rng.randf() * TAU, 0),
 			Vector3(h * 3.4, h, h * 3.4)))
@@ -2084,34 +2158,67 @@ func _dress_assayer_site() -> void:
 		var a3: float = rng.randf() * TAU
 		var rr3: float = 1.7 + sqrt(rng.randf()) * (R * 0.55)
 		var q3: Vector3 = p + Vector3(cos(a3) * rr3, 0.0, sin(a3) * rr3)
-		q3.y += _floor_y(q3, 0.0) - 0.03
+		q3.y = fy - 0.03
 		_prop(q3, "iceblock%d" % (rng.randi() % 3), _xf(q3,
 			Vector3(rng.randf() * TAU, rng.randf() * TAU, rng.randf() * TAU),
 			Vector3.ONE * rng.randf_range(0.8, 1.8)))
 	# and the chamber wall behind it: three frozen falls at the back of the
 	# dome, so the machine is silhouetted against ice rather than against black
-	# ... but NOT across the drive. A 2 m wide curtain on the chamber wall is
-	# 2 m of wall the camera has to come through, and the drive enters the dome
-	# on two opposite sides. These sit on the four quarters between them.
-	var f0: Array = _asy_site_frame(sid)
-	var tgv: Vector3 = f0[0]
-	for k in range(4):
-		var a4: float = TAU * (float(k) + 0.5) / 4.0
-		var dirv: Vector3 = (tgv * cos(a4) + (f0[1] as Vector3) * sin(a4)).normalized()
-		var q4: Vector3 = p + dirv * (R * 0.90)
-		q4.y += 3.4
-		_prop(q4, "icefall", Transform3D(_face(-dirv)
-			* Basis.from_scale(Vector3(1.5, 3.2, 1.1)), q4))
-	# a fringe round the crown over it
-	for k in range(16):
-		var a5: float = TAU * float(k) / 16.0 + 0.4
-		var rr5: float = R * rng.randf_range(0.35, 0.80)
-		var q5: Vector3 = p + Vector3(cos(a5) * rr5, 0.0, sin(a5) * rr5)
-		var ph: float = acos(clampf(rr5 / R, 0.0, 1.0))
-		q5.y += sin(ph) * (_ht(_st(sid)) * 1.25) * 0.97
-		var ln: float = rng.randf_range(0.35, 1.5)
-		_prop(q5, "icefringe%d" % (k % 2), _xf(q5, Vector3(0, rng.randf() * TAU, 0),
-			Vector3(rng.randf_range(0.6, 1.3), ln, rng.randf_range(0.6, 1.3))))
+	# --- AND NOTHING HANGS OFF THE DOME ------------------------------------
+	# The first version of this hung four 3.2 m curtains and sixteen fringes off
+	# the CHAMBER DOME's analytic surface. Two problems, and the designer saw
+	# both: a camera inside the drive tube never sees the dome (VERTICAL.md 5's
+	# interpenetration), so those objects hung in mid-air in every frame; and a
+	# 3.2 m curtain across a 3 m room is a wall the camera has to come through.
+	#
+	# The room a viewer is actually in is the DRIVE, so the site's ice is hung
+	# off the drive's own rings -- the chamber station and its two neighbours --
+	# exactly like every other ice object in the cave. `_dress_ice` already runs
+	# on those stations, so all this adds is DENSITY: this is the one place in
+	# the cave that has to be worth walking into.
+	var ids0: PackedInt32Array = topo.edges[topo.level_main_edge[0]]
+	var at0: int = 0
+	for i in range(ids0.size()):
+		if ids0[i] == sid:
+			at0 = i
+			break
+	for dk in range(-2, 3):
+		var s2: int = ids0[clampi(at0 + dk, 0, ids0.size() - 1)]
+		var rg: PackedVector3Array = _ring(s2)
+		if rg.size() != RING_VERTS:
+			continue
+		var c2: Vector3 = _ring_centre(rg)
+		# a dense fringe along the crown of the drive over the machine
+		for k in range(7):
+			var kx: int = 13 + (rng.randi() % 15)
+			var root: Vector3 = rg[kx]
+			var fl: Vector3 = _ring_floor_under(rg, root)
+			var clear_m: float = root.y - fl.y
+			if clear_m < 0.9:
+				continue
+			var ow: Vector3 = (root - c2).normalized()
+			var an: Vector3 = root + ow * 0.02
+			var ln: float = minf(rng.randf_range(0.3, 1.4), clear_m - 0.5)
+			var wd: float = rng.randf_range(0.5, 1.1)
+			_prop(an, "icefringe%d" % (k % 2), Transform3D(
+				Basis.from_euler(Vector3(0, rng.randf() * TAU, 0))
+				* Basis.from_scale(Vector3(wd, ln, wd)), an))
+			_prop(an, "iceboss%d" % (k % 2), Transform3D(
+				_face(-ow) * Basis.from_euler(Vector3(PI * 0.5, 0, 0))
+				* Basis.from_scale(Vector3(wd * 0.55, 0.06, wd * 0.55)), an))
+		# and two curtains on the drive walls beside it
+		if dk == -2 or dk == 2:
+			var kw: int = 9 if dk < 0 else RING_VERTS - 9
+			var wall: Vector3 = rg[kw]
+			var fw: Vector3 = _ring_floor_under(rg, wall)
+			var ow2: Vector3 = (wall - c2)
+			ow2.y = 0.0
+			if ow2.length() < 0.05:
+				continue
+			ow2 = ow2.normalized()
+			var qf2: Vector3 = wall + ow2 * 0.03
+			_prop(qf2, "icefall", Transform3D(_face(-ow2)
+				* Basis.from_scale(Vector3(1.1, clampf(wall.y - fw.y + 0.15, 0.5, 3.0), 1.0)), qf2))
 
 # ===========================================================================
 # UNCOVERING
@@ -2179,13 +2286,28 @@ func _place_reveals() -> void:
 			# frame photographed an empty wall. It sits on the surface now and
 			# the wall's own displacement half-buries it, which is what
 			# "embedded" has to mean when the wall is procedural.
-			var q: Vector3 = p + right * (sgn * hw * 0.97) + Vector3.UP * (0.35 + float(sid % 5) * 0.16)
-			_prop(q, nm, Transform3D(_face(-right * sgn)
+			# ON A RING VERTEX, for the same reason the icicles are. A wall
+			# whose silhouette noise is 0.5 m has no analytic position.
+			var rgv: PackedVector3Array = _ring(sid)
+			if rgv.size() != RING_VERTS:
+				continue
+			var cv: Vector3 = _ring_centre(rgv)
+			var kv: int = 7 + (sid % 5)
+			if sgn < 0.0:
+				kv = RING_VERTS - kv
+			var wallv: Vector3 = rgv[kv]
+			var outv: Vector3 = (wallv - cv)
+			outv.y = 0.0
+			if outv.length() < 0.05:
+				continue
+			outv = outv.normalized()
+			var q: Vector3 = wallv - outv * 0.04
+			_prop(q, nm, Transform3D(_face(-outv)
 				* Basis.from_scale(Vector3(0.92, 0.92, 0.55)), q))
 			# and a lens of clear ice over it, standing off the wall, so the
 			# thing is UNDER something rather than merely against something
-			var ql: Vector3 = q - right * (sgn * 0.085)
-			_prop(ql, "icelid", Transform3D(_face(-right * sgn)
+			var ql: Vector3 = q - outv * 0.075
+			_prop(ql, "icelid", Transform3D(_face(-outv)
 				* Basis.from_euler(Vector3(PI * 0.5, 0, 0))
 				* Basis.from_scale(Vector3(0.85, 1.0, 0.85)), ql))
 			n_rev += 1
@@ -2524,98 +2646,178 @@ func _dress_station(sid: int, i: int, ids: PackedInt32Array) -> void:
 # The density is driven by ONE topology field -- `wet` -- because a drip is
 # water and the field that says how much water is here is the field that says
 # how many icicles there are. Nothing new crosses the seam.
+func _ring(sid: int) -> PackedVector3Array:
+	if sid < 0 or sid >= st_ring.size():
+		return PackedVector3Array()
+	var r = st_ring[sid]
+	if r == null:
+		return PackedVector3Array()
+	return r
+
+# The perimeter coordinate of ring index k, 0 at the floor centre and 1 at the
+# crown. _sweep_edge builds k = 0..20 up one side and 21..39 back down the
+# other, so this is the only place that has to know the winding.
+func _ring_s01(k: int) -> float:
+	return float(k) / float(HALF_RING) if k <= HALF_RING \
+		else float(RING_VERTS - k) / float(HALF_RING)
+
+func _ring_centre(r: PackedVector3Array) -> Vector3:
+	var c := Vector3.ZERO
+	for i in range(r.size()):
+		c += r[i]
+	return c / maxf(1.0, float(r.size()))
+
+# the lowest ring vertex whose horizontal position is nearest `q`. This is
+# "what is under this point", and it is what gives a column its length and a
+# hanging icicle its clearance.
+func _ring_floor_under(r: PackedVector3Array, q: Vector3) -> Vector3:
+	var best: Vector3 = r[0]
+	var bd: float = 1e9
+	for i in range(r.size()):
+		if _ring_s01(i) > 0.30:
+			continue
+		var d: float = Vector2(r[i].x - q.x, r[i].z - q.z).length()
+		if d < bd:
+			bd = d
+			best = r[i]
+	return best
+
+# ===========================================================================
+# THE ICE, DRESSED -- AND EVERY OBJECT ANCHORED
+# ===========================================================================
+# The designer, 2026-09-10: "there are random icicles floating there attached
+# to nothing."
+#
+# The rule now is: ONE VERTEX OF THE ACTUAL SHELL PER OBJECT. An icicle starts
+# on a ring vertex in the crown band and gets a rime fillet where it meets it;
+# a boss stands on a ring vertex in the floor band; a curtain hangs from a ring
+# vertex in the wall band with its outward direction taken from that vertex's
+# own radius; a column runs from a crown vertex to the floor vertex under it
+# and is exactly that long. If the ring is not there, nothing is placed.
+#
+# Five objects and one rule each. Every one of them is water that stopped.
 func _dress_ice(sid: int, s: PackedInt32Array, p: Vector3, tangent: Vector3,
 				right: Vector3, basis_dir: Basis, hw: float, ht: float,
 				wet: float, worked: float, flooded: bool) -> void:
+	var r: PackedVector3Array = _ring(sid)
+	if r.size() != RING_VERTS:
+		return
 	var icep: Vector3 = _ice_params(s)
 	var pure: bool = s[CaveTopology.S_MEDIUM] == CaveTopology.MED_ICE
+	var ctr: Vector3 = _ring_centre(r)
 	# how much has run here. Below 0.2 the ice is dry and sublimating and
 	# nothing hangs off it, which is what makes the wet stretches read.
 	var drip: float = clampf((wet - 0.18) / 0.62, 0.0, 1.0)
-	# the crown height at a lateral offset u, from the same ellipse the profile
-	# sweeps. Getting this from the section rather than from `ht` is what stops
-	# an icicle hanging in mid-air two metres from the wall it belongs to.
-	var crown := func(u: float) -> float:
-		var k: float = clampf(absf(u) / maxf(hw * 0.95, 0.01), 0.0, 1.0)
-		return ht * sqrt(maxf(0.0, 1.0 - k * k)) * 0.94
 
-	# --- the crown fringe --------------------------------------------------
-	var nfr: int = int(0.6 + drip * 4.2)
-	for k in range(nfr):
-		var u: float = rng.randf_range(-0.82, 0.82) * hw
-		var q: Vector3 = p + right * u + tangent * rng.randf_range(-0.30, 0.30)
-		var cy: float = crown.call(u)
-		if cy < 0.5:
+	# --- THE CROWN FRINGE, hung off real vertices -------------------------
+	# HALF THE LINEAR DENSITY. Stations are 0.6 m apart and four fringes on
+	# every one of them is a forest you cannot photograph through -- the
+	# scallop frame came back as a curtain of spikes with no cave behind it.
+	# Icicles occur along a crack, not along a corridor, so every other
+	# station gets them and the rest get none.
+	var nfr: int = 0 if (sid % 2 == 1) else int(0.8 + drip * 3.4)
+	for kk in range(nfr):
+		# a vertex in the crown band, either side of the apex
+		var k: int = 13 + (rng.randi() % 15)          # 13..27, s01 >= 0.65
+		var root: Vector3 = r[k]
+		var floorp: Vector3 = _ring_floor_under(r, root)
+		var clear_m: float = root.y - floorp.y
+		if clear_m < 0.55:
 			continue
-		q.y += cy - 0.015
-		var ln: float = rng.randf_range(0.14, 0.30 + drip * 0.95)
-		ln = minf(minf(ln, cy - 0.25), 1.3)
+		var ln: float = minf(rng.randf_range(0.14, 0.30 + drip * 0.95),
+			minf(clear_m - 0.28, 1.3))
 		if ln < 0.10:
 			continue
 		var wd: float = rng.randf_range(0.35, 0.95)
-		_prop(q, "icefringe%d" % (rng.randi() % 2),
+		# the fringe mesh hangs from its own origin, so the origin goes ON the
+		# surface and 20 mm into it, which is what makes it look grown rather
+		# than hung
+		var outward: Vector3 = (root - ctr).normalized()
+		var anchor: Vector3 = root + outward * 0.02
+		_prop(anchor, "icefringe%d" % (rng.randi() % 2),
 			Transform3D(Basis.from_euler(Vector3(0, rng.randf() * TAU, 0))
-				* Basis.from_scale(Vector3(wd, ln, wd)), q))
-		# what came off it is under it
+				* Basis.from_scale(Vector3(wd, ln, wd)), anchor))
+		# THE FILLET. Ice does not meet a ceiling at a point; it spreads into a
+		# rime patch first. One squashed boss, oriented along the surface's own
+		# outward normal, and it is what welds the object to the wall.
+		_prop(anchor, "iceboss%d" % (kk % 2), Transform3D(
+			_face(-outward) * Basis.from_euler(Vector3(PI * 0.5, 0, 0))
+			* Basis.from_scale(Vector3(wd * 0.55, 0.055, wd * 0.55)), anchor))
+		# what came off it is under it, on the floor that is actually there
 		if rng.randf() < 0.55:
-			var qb: Vector3 = p + right * (u + rng.randf_range(-0.10, 0.10)) + tangent * rng.randf_range(-0.2, 0.2)
-			qb.y += _floor_y(qb, worked) - 0.01
+			var qb: Vector3 = floorp + Vector3(rng.randf_range(-0.09, 0.09), 0.0,
+				rng.randf_range(-0.09, 0.09))
 			var bh: float = rng.randf_range(0.10, 0.16 + drip * 0.30)
 			_prop(qb, "iceboss%d" % (rng.randi() % 2),
 				_xf(qb, Vector3(0, rng.randf() * TAU, 0), Vector3(bh * 4.0, bh, bh * 4.0)))
-		# --- THE COLUMN. Only where the two would actually have met --------
-		# A column is not a decoration, it is an age: the drip has been running
-		# long enough to close a gap. So it is generated only where the fringe
-		# is long enough and the crown low enough that they touch, which makes
-		# it rare, and rare is what makes it worth photographing.
-		if ln > cy * 0.62 and drip > 0.55 and rng.randf() < 0.42:
-			var qc: Vector3 = p + right * (u + rng.randf_range(-0.06, 0.06)) + tangent * rng.randf_range(-0.25, 0.25)
-			var fy: float = qc.y + _floor_y(qc, worked)
-			var top: float = p.y + crown.call(u)
-			var hgt: float = top - fy
-			if hgt > 0.6:
-				qc.y = fy
-				_prop(qc, "icecolumn", _xf(qc, Vector3(0, rng.randf() * TAU, 0),
-					Vector3(rng.randf_range(0.7, 1.5), hgt, rng.randf_range(0.7, 1.5))))
 
-	# --- the frozen waterfall ---------------------------------------------
-	# A wall seep, so it wants a wall: the wider the section the better it
-	# reads, and it only exists where water came THROUGH the wall rather than
-	# down the middle. One in four wet stations, at most one per station.
-	# NOT IN A CHAMBER. `hw` for a K_CHAMBER station is 2.93 m and `ht` is
-	# 6.75, so the same rule that hangs a 1.5 m curtain in a passage hangs a
-	# FIVE METRE one three metres from the middle of a room -- which is what
-	# stood between the camera and the Assayer in every frame of the first
-	# discovery sequence. A chamber gets its curtains from the site rule
-	# instead, on the wall, where a seep would actually be.
-	if s[CaveTopology.S_KIND] != CaveTopology.K_CHAMBER 			and drip > 0.30 and hw > 1.15 and rng.randf() < 0.15:
-		var sgn: float = 1.0 if (sid % 2 == 0) else -1.0
-		var qf: Vector3 = p + right * (sgn * (hw - 0.10)) + tangent * rng.randf_range(-0.25, 0.25)
-		var htop: float = minf(ht * rng.randf_range(0.48, 0.72), 2.7)
-		qf.y += htop
-		var hf: float = htop + 0.18
-		_prop(qf, "icefall", Transform3D(_face(-right * sgn)
+	# --- THE COLUMN, and it TOUCHES BOTH ENDS -----------------------------
+	# Only from the apex band down to the floor centre, because those are the
+	# two vertices that are actually above and below one another; anywhere else
+	# on a 2.9 m section the ceiling is not over the floor. A column is an age,
+	# not a decoration: it exists where a drip has been running long enough to
+	# close the gap, so it is rare, and rare is what makes it worth
+	# photographing.
+	# NOT IN A CHAMBER. A chamber is where something stands -- a machine, a
+	# wreck, a player's kit -- and a 3 m column through the middle of it is a
+	# post in front of the subject. The Assayer's own frame had one.
+	# NOT IN A HALL. A hall is a chamber or its approach -- it is where
+	# something STANDS, a machine or a wreck or a player's kit -- and a 3 m
+	# post through the middle of it is a post in front of the subject. The
+	# Assayer's own approach frame had one, on the station next to the one the
+	# K_CHAMBER test excluded. Columns live in the narrow conduits, which is
+	# where they are prettiest anyway.
+	if s[CaveTopology.S_WIDTH] < CaveTopology.WC_HALL and drip > 0.55 and rng.randf() < 0.22:
+		var kc: int = 19 + (rng.randi() % 3)
+		var top: Vector3 = r[kc]
+		var bot: Vector3 = _ring_floor_under(r, top)
+		var gap: float = top.y - bot.y
+		if gap > 0.60 and gap < 3.4:
+			var base: Vector3 = bot
+			_prop(base, "icecolumn", _xf(base, Vector3(0, rng.randf() * TAU, 0),
+				Vector3(rng.randf_range(0.7, 1.5), gap, rng.randf_range(0.7, 1.5))))
+
+	# --- THE FROZEN WATERFALL, on a wall vertex ---------------------------
+	if s[CaveTopology.S_KIND] != CaveTopology.K_CHAMBER \
+			and drip > 0.30 and hw > 1.15 and rng.randf() < 0.15:
+		var kw: int = 8 + (rng.randi() % 4)
+		if sid % 2 == 1:
+			kw = RING_VERTS - kw
+		var wall: Vector3 = r[kw]
+		var fl: Vector3 = _ring_floor_under(r, wall)
+		var hf: float = clampf(wall.y - fl.y + 0.16, 0.4, 2.9)
+		var outw: Vector3 = (wall - ctr)
+		outw.y = 0.0
+		if outw.length() < 0.05:
+			outw = right
+		outw = outw.normalized()
+		var qf: Vector3 = wall + outw * 0.03
+		_prop(qf, "icefall", Transform3D(_face(-outw)
 			* Basis.from_scale(Vector3(rng.randf_range(0.55, 1.15), hf, 1.0)), qf))
 
-	# --- rime and floor ice on the walls of a dry conduit ------------------
+	# --- rime ribs on the wall of a dry conduit ---------------------------
 	if pure and drip < 0.35 and rng.randf() < 0.30:
-		var sgn2: float = 1.0 if (rng.randf() < 0.5) else -1.0
-		var qr: Vector3 = p + right * (sgn2 * (hw - 0.06)) + tangent * rng.randf_range(-0.3, 0.3)
-		qr.y += rng.randf_range(0.15, ht * 0.5)
-		_prop(qr, "icerib", Transform3D(_face(-right * sgn2)
+		var kr: int = 6 + (rng.randi() % 6)
+		if rng.randf() < 0.5:
+			kr = RING_VERTS - kr
+		var wl: Vector3 = r[kr]
+		var ow: Vector3 = (wl - ctr)
+		ow.y = 0.0
+		if ow.length() < 0.05:
+			ow = right
+		ow = ow.normalized()
+		var qr: Vector3 = wl + ow * 0.02
+		_prop(qr, "icerib", Transform3D(_face(-ow)
 			* Basis.from_scale(Vector3(1.0, rng.randf_range(0.4, 1.1), 1.0)), qr))
 
-	# --- the still pool that froze over ------------------------------------
-	# THE-ICE 6.1's "a stope with a floor of clear ice over a muck pile you can
-	# see and cannot reach", at passage scale. The lid is a slab; what makes it
-	# read is that ice.gdshader marches the bubble trains INTO it, so the air
-	# under the lid is under the lid.
+	# --- the still pool that froze over, on the floor that is there -------
 	var still: bool = (s[CaveTopology.S_WORKS] & CaveTopology.WK_STANDWATER) != 0
 	if (still or (pure and wet > 0.74)) and not flooded and rng.randf() < 0.62:
-		var ql: Vector3 = p + right * rng.randf_range(-0.20, 0.20) + tangent * rng.randf_range(-0.2, 0.2)
-		ql.y += _floor_y(ql, worked) + 0.055
+		var fc: Vector3 = _ring_floor_under(r, ctr)
+		var ql: Vector3 = fc + Vector3(rng.randf_range(-0.18, 0.18), 0.045,
+			rng.randf_range(-0.18, 0.18))
 		_prop(ql, "icelid", Transform3D(basis_dir * Basis.from_scale(
-			Vector3(hw * rng.randf_range(1.3, 1.9), 1.0, rng.randf_range(0.9, 1.5))), ql))
+			Vector3(hw * rng.randf_range(1.2, 1.7), 1.0, rng.randf_range(0.9, 1.5))), ql))
 
 func _place_water() -> void:
 	for e in range(topo.edges.size()):

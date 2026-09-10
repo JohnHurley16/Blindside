@@ -20,13 +20,15 @@ collected in §10.
 | question | answer |
 |---|---|
 | What read as a mine? | Timber sets, rail, sleepers, ballast, tubs, iron props and lagging **on the first frame a viewer sees**, plus a `worked` ramp that put the industry 15 m under the snow. And the ice was **grey** — §1 |
-| Why was the ice grey? | Three numbers, all arithmetic rather than taste. The absorption path was 3 cm where it needed to be metres, the red:blue ratio was 3.3:1 where ice is about 17:1, and the scattering albedo was one constant where it has to be two. §2 |
+| Why was the ice grey (v1)? | Three numbers, all arithmetic rather than taste. The absorption path was 3 cm where it needed to be metres, the red:blue ratio was 3.3:1 where ice is about 17:1, and the scattering albedo was one constant where it has to be two. §2 |
 | Does the ice carry the light now? | **Yes, and it is the single biggest change in the pass.** The lamp is a real spot with a position and a cone, and the internal scattering is computed against a cone **62°** wide where the lamp's own is **27°** — so the light bleeds past the edge of its own beam. That does not happen on rock. §3 |
 | Is it a glacial cave rather than a mine? | Yes in bands 0 and 1. Icicles, fringes, columns, frozen falls, pool lids with air under them, ice blocks, scallops in the silhouette, a meltwater channel cut down the floor. The mine is still there and it starts abruptly at −38 m, which is the point. §4, §5 |
 | Were the workings reduced? | Hard, and by depth, on the layered path only. Band 1 went from carrying rail + sets + gutter + bolt line + ground support to carrying **one cast index plate**. §6 |
 | Does it end with the Assayer? | Yes. `spikes/godot/assayer/` is brought in unmodified, stood in the ice at −11 m with its footing frozen in, and found across a ten-frame stills set plus a 32-frame approach. §7 |
 | Did the seam survive? | **Yes, and it is asserted every run.** `seed 7 / 240 cells / 1 level` still hashes to `0xAD83E3ED`; the flat cave's prop count is still 19 015 in 946 multimeshes. Two changes tried to break it and were caught — §8 |
 | What did it cost? | (§9) |
+| Why was the ice BLUE PAINT (v2)? | Because the physics of colour was right and the kind of MATERIAL was wrong. A diffuse surface with a subsurface tint is a matte wall that happens to be blue; ice is a dielectric you see into. **v3 splits it into two shaders** -- an opaque shell you see the structure inside, and a refractive one for thin ice. §13 |
+| And the floating icicles? | Every ice object was placed against an ANALYTIC GUESS at the section while the sweep emitted a ring displaced by up to 0.5 m. The sweep now keeps its ring and every object sits on a vertex of it. §13.1 |
 | Would a viewer want to go there? | **Bands 0 and 1: yes.** The ice reads, the light reads, and the moulin frames are no longer holes with nothing in them. Honest failures are in §9 and §11. |
 
 ---
@@ -449,36 +451,39 @@ processes for both runs**, so these are absolute rather than relative — but th
 (see `cool.sh`) and the run-to-run band on this spike has been measured at 85–114 fps p50 for the
 same build, so treat the *ratio* as the number.
 
-| | flat cave `--levels=1` | **the ice cave** `--levels=4` | the same 4-level cave *before* this pass (`VERTICAL.md` §7, at 1.7 m/s) |
-|---|---|---|---|
-| fps mean / p50 | **193 / 196** | **140 / 134** | 174 / 168 |
-| fps p05 (worst 5%) / min | 128 / 121 | **42 / 9** | 133 / 11 |
-| GPU ms p50 / p95 / max | 4.19 / 6.54 / 7.8 | **5.72 / 14.97 / 158** | 4.91 / 6.20 / — |
-| draw calls p50 / max | 301 / 447 | 309 / 847 | 268 / — |
-| primitives p50 / p95 / max | 225 k / 291 k / 314 k | **272 k / 1.09 M / 2.49 M** | — |
-| shell triangles | 113 656 | 380 766 | 370 546 |
-| prop instances | 19 015 in 946 mm | 56 256 in 2 771 mm | 57 411 in 2 597 mm |
-| chunks | 49 | 274 | 272 |
-| video memory | 189 MB | **250 MB** | 204 MB |
-| generation: topology / dressing | 6.8 ms / 724 ms | 45.8 ms / **1 875 ms** | 42.7 ms / 1 369 ms |
+| | flat cave `--levels=1` | ice cave, **v2** (tinted diffuse) | ice cave, **v3** (dielectric) | the 4-level cave *before* this pass (`VERTICAL.md` §7, 1.7 m/s) |
+|---|---|---|---|---|
+| fps mean / p50 | **193 / 196** | 140 / 134 | **150 / 156** | 174 / 168 |
+| fps p05 (worst 5%) / min | 128 / 121 | 42 / 9 | **70 / 57** | 133 / 11 |
+| GPU ms p50 / p95 / max | 4.19 / 6.54 / 7.8 | 5.72 / 14.97 / 158 | **5.30 / 11.04 / 40** | 4.91 / 6.20 / — |
+| draw calls p50 / max | 301 / 447 | 309 / 847 | 289 / 541 | 268 / — |
+| primitives p50 / p95 / max | 225 k / 291 k / 314 k | 272 k / 1.09 M / 2.49 M | 248 k / 774 k / 1.98 M | — |
+| shell triangles | 113 656 | 380 766 | 380 766 | 370 546 |
+| prop instances | 19 015 in 946 mm | 56 256 in 2 771 mm | 55 868 in 2 768 mm | 57 411 in 2 597 mm |
+| video memory | 189 MB | 250 MB | 250 MB | 204 MB |
+| generation: topology / dressing | 6.8 ms / 724 ms | 45.8 ms / 1 875 ms | 45.8 ms / **2 092 ms** | 42.7 ms / 1 369 ms |
 
-**The honest reading, against the cave this pass started from:** GPU frame time **+16%**
-(4.91 → 5.72 ms p50), video memory **+23%** (204 → 250 MB), dressing **+37%** (1 369 → 1 875 ms),
-and the mean frame rate **−20%**. Shell triangles are almost unchanged (+2.8%) and prop instances
-went *down* slightly; the cost is in what those props are and in the second material family being
-on screen more of the time.
+**TRANSPARENCY CAME IN FASTER, and that is not what I expected.** v3 adds a screen-space
+refraction pass, a seven-step internal march on every ice pixel and a whole transparent draw queue,
+and it measured **+7% mean, +67% on the worst 5% and −73% on the worst single frame** against v2.
+Two reasons, and the second is the interesting one:
 
-**And one number is a real regression, not noise: the worst 5% went 128 → 42 fps.** The flat cave
-measured at the *same* 3.4 m/s holds 128, so this is the ice cave specifically. Two causes, and the
-split is visible in the table: `primitives max` is 2.49 M against 314 k on the flat path (the ice
-kit arriving all at once when a wet chamber becomes resident), and `GPU max` is 158 ms in a single
-frame, which is chunk-entry pipeline compilation — the stall `NOTES.md` §5.2 and `VERTICAL.md` §7
-both already name, made worse because there are now more distinct materials to compile per chunk.
-Pipeline pre-compilation would remove the second; the first is a density decision and there is
-room to halve the fringe counts.
+1. **The density cut paid for it.** Icicles now occur along a crack rather than along a corridor —
+   every other station gets a fringe and the rest get none — and columns are refused in chambers.
+   Peak primitives fell 2.49 M → 1.98 M, which is where the 9 fps frames were.
+2. **The march replaced work rather than adding it.** v2's bubble march was already three taps and
+   its normal chain was four `h_flow` evaluations at bump 1.15; v3's quieter normal
+   (`mix(1.05, 0.34, polish)`) and its 3-step far LOD claw most of the 7-step march back.
 
-The brief's clean baseline of **206 mean / 87 worst** is close to the 193 / 128 measured here for
-the same flat cave, which is inside the documented run-to-run band.
+**Caveat, stated because the brief asks for it:** `tasklist` reported **one other Godot process**
+during the v3 run and **zero** during the v2 run, so if anything the v3 numbers are conservative.
+The p05 of 70 is still well under the flat cave's 128, and the remaining gap is chunk-entry
+pipeline compilation (`GPU max 40 ms`), which is the stall `NOTES.md` §5.2 already names.
+
+**Against the cave this pass started from** (`VERTICAL.md`'s own vertical run): GPU frame time
++8%, video memory +23%, dressing +53%, mean frame rate −14%. Shell triangles are unchanged (+2.8%)
+and prop instances went *down*; the cost is in what those props are and in the second material
+family being on screen more of the time.
 
 **Where the new cost is.** Three places, and none of them is the shader's arithmetic:
 
@@ -605,3 +610,133 @@ New flags: `--p=N` parks the Assayer's clock at phase N; `--noassayer` leaves it
 | `cave_root.gd` | `_ice_lamp()`, `_build_ice_shots()`, `_build_assayer_shots()`, `_assayer_sequence()`, the Assayer's construction and clock |
 | `project.godot` | subsurface scattering enabled, scale 0.10 |
 | `assayer.gd`, `materials.gd`, `mb.gd`, `chamber.gdshader` | **copied in verbatim from `spikes/godot/assayer/`. Not edited.** |
+
+---
+
+## 13. VERSION 3 — the ice is a dielectric, and nothing floats
+
+The designer, on `i02_beam_in_ice.png` from version 2:
+
+> *"that ice cave looks like dog shit. there are random icicles floating there attached to
+> nothing. and what the hell is that blue colored ice? it should be somewhat transparent,
+> reflect the light inside it when the flashlight shines on it. that looks like a room with blue
+> walls and floating icicles"*
+
+Both correct, and they are two separate bugs. The second is the one that mattered.
+
+### 13.1 The icicles were floating, and it was one missing lookup
+
+`_dress_ice` placed every object against an **analytic guess** at where the section was — an
+ellipse for the crown, `_floor_y()` for the floor. `_sweep_edge` was meanwhile emitting a ring
+displaced by up to **0.5 m** of silhouette noise, **0.10 m** of scallop hollow and, on a running
+conduit, a **0.26 m** meltwater notch. The guess and the geometry were never the same surface, so
+roughly half the icicles started inside the rock and half started in mid-air — and in an oblique
+frame the ones inside the rock are invisible and the ones in mid-air are all you see. That is the
+frame the designer got.
+
+**The fix is that the sweep now keeps the ring it emitted.** `st_ring[sid]` is the 40 world points
+of the station's own section, displacement and notch and all — about half a megabyte for 1 061
+stations — and **every ice object is placed on a vertex of it**:
+
+| object | anchor |
+|---|---|
+| crown fringe | a ring vertex with `s01 >= 0.65`, sunk 20 mm into the surface, **plus a rime fillet** — a squashed boss on that vertex's own outward normal, because ice does not meet a ceiling at a point |
+| floor boss | the ring vertex under the fringe it fell from |
+| **column** | apex vertex to the floor vertex directly under it, scaled to **exactly** that gap, and only generated when the gap is 0.6–3.4 m |
+| curtain, rib | a wall vertex, oriented by that vertex's own radius from the ring centre |
+| pool lid | the floor vertex nearest the ring centre |
+| reveal, and the lens over it | a wall vertex |
+| anything inside a bore | `_pitch_wall()`, which re-runs the four lines of displacement `_sweep_pitch` applied when it emitted the tube |
+
+**If the ring is not there, nothing is placed.** And the site dressing round the Assayer — which
+hung sixteen fringes and four 3.2 m curtains off the chamber **dome**, a surface no camera in this
+cave can see because the drive tube occludes it — now hangs them off the drive's own rings like
+everything else. Columns are also now refused in chambers: a chamber is where something *stands*,
+and a 3 m post in front of the subject was in the Assayer's own frame.
+
+### 13.2 The ice was blue paint, and this is why
+
+The diagnosis is exactly right and worth stating precisely: **version 2 got the physics of colour
+right and applied it to the wrong kind of material.** Beer-Lambert, a real 17:1 absorption ratio, a
+path length in metres — all correct, all bolted onto a **diffuse surface with a subsurface tint**.
+That is a matte wall that happens to be blue. Ice is a *dielectric solid you see into*, which is a
+different rendering problem, not a harder version of the same one.
+
+**So there are now two ice shaders, and the split is the design.**
+
+| | `ice.gdshader` — THE SHELL | `ice_clear.gdshader` — THIN ICE |
+|---|---|---|
+| what | walls, crown and floor of an ice passage | icicles, fringes, columns, curtains, pool lids, ribs, blocks |
+| thickness | metres | 50–300 mm |
+| pass | **opaque** | **transparent, refractive** |
+| "you see into it" | the structure **inside**: layered bubble trains and fracture sheets, marched 7 steps along the refracted view vector | the passage **behind**, screen-space refracted at IOR 1.31 |
+
+**Why the shell is opaque, and it is not a cop-out.** You cannot see through two metres of glacier
+ice to the rock behind it; what you see *into* a wall is its internal structure. There is also a
+hard engineering reason: a cave whose every surface is transparent has nothing behind anything.
+The screen texture a refractive shell would sample is the far wall of the same passage, which is
+also ice, which has also not been drawn yet. Thin ice never has that problem, because there is
+always an opaque wall behind an icicle.
+
+**The four things that were missing, and what was done about each:**
+
+1. **Transparency.** `ice_clear.gdshader` refracts `hint_screen_texture` by the view-space normal,
+   scaled `1/dist`, sampled at `roughness x 6` mip. It uses Godot's own premultiplied idiom —
+   `ALBEDO *= (1-o)`, `EMISSION += behind * through`, `ALPHA = 1.0` — so the object still writes
+   depth and sorts against opaque geometry **by the depth buffer** rather than by AABB centre.
+   That is what keeps a field of instanced icicles from swapping order as the camera turns.
+2. **Specular.** Roughness went from `mix(0.62, 0.105)` **plus up to 0.23 of added noise** — a
+   matte plaster wall — to `mix(0.34, 0.065)` with a tenth of the noise. And 0.065 rather than
+   0.030 for a measured reason: at 0.03 the GGX lobe on a flat wall is **smaller than a pixel** and
+   simply vanishes with no temporal AA. A highlight you cannot see is not a highlight. The normal
+   is quieter too — bump 1.15 to `mix(1.05, 0.34, polish)` — because a bumpy normal on a glassy
+   material turns one hard highlight into a field of sequins.
+3. **Light reflecting inside it.** A **fracture field**: `1 - |2f - 1|` thresholded hard, which is
+   an isosurface and therefore a *sheet* rather than a blob. Every sheet the march crosses returns
+   a **glint** weighted by the gradient of the field against the lamp direction, so the ice
+   sparkles from the inside as the beam moves across it. One extra sample per step.
+   And the sheets are **layered, not veined**: the sample coordinate is compressed 3.4:1 in Y,
+   because ice is *deposited* and its beds are near-horizontal. The first tuning used an isotropic
+   field and the wall came back looking like polished onyx.
+4. **Colour from thickness, not from a constant.** Two mechanisms:
+   - the shell takes **the distance the march travelled before it hit something**. Ice with a crack
+     60 mm down is nearly colourless; ice with nothing in it for two metres is a crevasse; both are
+     in the same wall, which is what a wall of glacier ice actually looks like.
+   - thin ice takes `thin_m`, the object's own thickness in metres, times the viewing angle:
+     `x |N.V|` for a round thing (a chord through a cylinder, so **fat middle blue, tip and edges
+     colourless**) and `/ |N.V|` for a slab. An icicle at 52 mm now carries about 4% of the
+     absorption of a 3 m wall.
+
+### 13.3 And one bug the split exposed: amber times cyan is green
+
+A saturated cyan **`ALBEDO`** is multiplied by every light that touches it, and the only other
+light in this cave is the beacons' amber. `i09_icefall` came back the colour of pond water.
+
+It is also wrong physically. What a surface returns as *diffuse* is the first-scatter rind, which
+has travelled centimetres and is near-neutral; the metres-long path belongs to light that came back
+out of the **body**, which is an additive term and is not multiplied by anybody's light colour. So
+`ALBEDO` now uses `min(thick, 0.85 m)` and the deep blue lives in `EMISSION`. **Split that way the
+blue survives and the green cannot happen.** It is the same two-path idea version 2 used and
+version 3's first draft had thrown away.
+
+### 13.4 What version 3 cost
+
+Transparency cannot be batched and does not get an early-z pass, and this build already had a
+worst-case regression to 42 fps. The measured numbers are the fourth column of §9's table.
+
+### 13.5 What is still wrong with the ice
+
+- **The wall reads like ice at two metres and like polished stone at eight.** Real glacier ice has
+  *fewer and larger* internal features than this, with much more empty clear ice between them. The
+  crack thresholds want another pass. The designer's own test — could you tell it from a photograph
+  of a glacier cave — is **not yet passed**. It is much closer than version 2 and it is not there.
+- **`ice_clear` is on MultiMesh instances**, so a chunk with two hundred icicles is two hundred
+  transparent draws with no early-z. The linear density is already halved (icicles occur along a
+  crack, not along a corridor, so every other station gets them and the rest get none); if this
+  becomes a frame-rate problem before the trailer, the answer is to bake a chunk's icicles into one
+  mesh, not to make them opaque again.
+- **`refract_str` is a single constant** and ignores the object's own thickness, so a 300 mm block
+  bends the background as much as a 50 mm icicle does. It should scale with `thin_m`.
+- **The pool lid and the frozen pool frame are still the weakest two**, for the same reason they
+  were in version 2: a flat wet sheet under a lamp two metres away is a specular problem, and it
+  has not had a scouting pass.

@@ -4,11 +4,11 @@ flags shadow=true fog=true props=true vis=true
 topology_hash=0x0C4AC8D1
 topology_schema=v2 levels=4
 vertical_range_m=83.3 reach_down=6924 reach_up=5322 pitches=9
-gen_ms topo=45.81 dress=1874.56 total=1920.37
-chunks=274 shell_tris=380766 instances=56256 multimeshes=2771
-fps mean=140.4 p50=134.0 p05=42.0 min=9.0
-gpu_ms p50=5.72 p95=14.97 max=157.94
-cpu_ms p50=8.66 p95=42.18 max=182.44
-draws p50=309 p95=373 max=847
-prims p50=271956 p95=1088066 max=2493086
-vram_mb p50=249.8 max=249.8
+gen_ms topo=49.28 dress=2091.90 total=2141.18
+chunks=272 shell_tris=380766 instances=55868 multimeshes=2768
+fps mean=150.2 p50=156.0 p05=70.0 min=57.0
+gpu_ms p50=5.30 p95=11.04 max=40.34
+cpu_ms p50=7.41 p95=19.38 max=41.09
+draws p50=289 p95=366 max=541
+prims p50=248150 p95=774168 max=1977366
+vram_mb p50=250.3 max=250.3
