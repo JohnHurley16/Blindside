@@ -48,7 +48,7 @@ Seven movements. No cards. No cuts to black except the one before the map.
 | 3 | **The village** | ~15 s | It wanders the ice village on the valley wall. Terraces, stairs, lit windows, people's things. Somewhere lived in. |
 | 4 | **The stairs, and the hole** | ~10 s | Down a flight of stairs, and off the edge of the built world it finds a natural cave entrance. Not the shaft, not machinery — a hole the ice opened. It goes in because that is what it does. |
 | 5 | **The cave** | ~30 s | Ice, water, blue, scalloped walls, a pitch dropping away. Beautiful before it is dangerous. Its lamp is the only light and the ice carries it. As it goes deeper the picture starts becoming what the machine sees: returns, rings, shadows. The two registers alternate rather than being announced. |
-| 6 | **Uncovering** | ~10 s | It finds something. Iron, in a cave that has been nothing but ice, which is the first sign somebody was here before. Fade to black. |
+| 6 | **What is down there** | ~15 s | It finds the Assayer: six and a half metres of ancient machine, standing in the ice, still working. Massive, bright, and making its own light in a place that has had none but the machine's own lamp. Fade to black. |
 | 7 | **The map** | ~12 s | Black, then the cave it just walked, drawn entirely out of its own returns, turning. Passages as passages, the pitch as a drop, its own trail through it, and the sensor shadows as holes. Then the title. |
 
 About 1:45. **Two structural rules only:** nothing is explained, and the map is last.
@@ -82,8 +82,27 @@ and that is the opportunity the old cave never took. The lidar cuts belong here,
 light fails rather than as a labelled section: returns resolving a passage ahead, a pitch with
 nothing coming back from the bottom, the world becoming data as it gets dark.
 
-**6. Uncovering.** One object, one moment. The first iron in a cave of ice. It does not need to be
-explained and must not be.
+**6. What is down there.** *(Changed 2026-09-10 on the designer's note: "it should end with the dog
+finding something massive and bright and scary in there.")* The machine finds the Assayer. This is
+the right ending and it is better than the one it replaces, for a reason worth writing down: a
+viewer has spent thirty seconds in a beautiful, silent, blue, natural place, and then there is a
+six-and-a-half-metre machine standing in it that is **still working**. Not a ruin, not a relic — a
+thing that is alive, glowing, and swinging a hammer, in a cave that has been nothing but ice and
+water.
+
+Its light is the whole shot and it already exists: the winch head and the anvil ring heat from
+1900 K to 2400 K over nine ratchet clicks and the strike is 4000 K, the only white light in the
+game. In a place lit solely by one lamp on a machine's back, a thing that makes its own light is
+frightening without any staging at all.
+
+Build it as a sequence rather than a shot: something at the edge of the lamp, getting closer,
+realising the scale, and then it moves. Three findings from the Assayer build apply — a dormant one
+emits nothing so it can only be found by the visitor's own beam and falls below the legibility
+floor past about five metres; the slew is only visible if the camera looks at the bearing race; and
+the wind cannot fit in four seconds, so the ratchet has to start under the shot before it.
+
+It stands in the ice with meltwater running off it and its footing frozen in, which is also why it
+is still running: the meltwater is what turns the wheel.
 
 **7. The map.** The payoff. It has to read as a *place* rather than a scatter, seen from outside, in
 black. Everything the trailer just showed, rebuilt from what one machine measured while walking
@@ -125,7 +144,7 @@ No text means sound carries everything, so it matters more than it did.
 |---|---|---|
 | The village has no interiors and nobody in it | Shot from outside, in falling snow, at machine height | People, or evidence of them, moving |
 | Only one chassis exists in the trailer | It is a single-animal story, so this costs nothing | The other three chassis |
-| The Assayer is built and has no place in this structure | Cut. It belongs to a later trailer about danger | Nothing — this is a scope decision |
+| ~~The Assayer has no place in this structure~~ | **Reinstated 2026-09-10 as the ending.** Cutting it was my call and it was wrong: it is the only thing in the world that is massive, bright and alive, which is exactly what the last movement needed | — |
 | The teaching loop is not in this trailer at all | Deliberately | A second trailer, which is the right place for it |
 
 **The teaching cut is the one real loss and it should be said plainly.** The old treatment's whole
