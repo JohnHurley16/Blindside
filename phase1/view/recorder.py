@@ -19,7 +19,7 @@ import numpy as np
 
 from .. import tuning as T
 from ..audio.mixer import Mixer
-from ..audio.voice import SAMPLE_RATE
+from ..audio import voice as _voice
 from ..match.match_view import MatchView
 from .taught_rule import TaughtRule
 from .view import View
@@ -147,7 +147,7 @@ class Recorder:
         with wave.open(str(path), "wb") as w:
             w.setnchannels(2)
             w.setsampwidth(2)
-            w.setframerate(SAMPLE_RATE)
+            w.setframerate(_voice.SAMPLE_RATE)
             w.writeframes(pcm.tobytes())
 
     def _mux(self, video_path: Path) -> Path:

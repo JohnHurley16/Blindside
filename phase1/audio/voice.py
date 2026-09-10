@@ -1,7 +1,6 @@
 """One sounding note, rendered into a stereo buffer."""
 from __future__ import annotations
 
-import sys
 
 import numpy as np
 
@@ -25,17 +24,16 @@ def set_sample_rate(rate: int) -> None:
     width) and therefore moves up with it; `Score.band_report` computes that corner at the
     score's own rate rather than assuming 44.1.
 
-    Every consumer reads the module global at call time, except the two that imported the
-    constant by name, so those are rebound here. Written as one function rather than left to
-    a caller poking module attributes, because a rate change that is invisible in this
-    package is a rate change nobody will find. See `spikes/score/NOTES.md`.
+    Every consumer reads this module's global at call time. That is a requirement rather
+    than a style: the first version of this function rebound the constant inside the two
+    modules that had imported it by name, reaching them through `sys.modules`, and
+    `phase1/match/invariant.py` rejected it on sight. It was right to. The audio package
+    declares that it reads Belief only, and a package holding a general "fetch me any
+    module" capability can fetch the one holding truth, whatever it happens to do today.
+    So the consumers changed instead. See `spikes/score/NOTES.md`.
     """
     global SAMPLE_RATE
     SAMPLE_RATE = int(rate)
-    for name in ("phase1.audio.mixer", "phase1.view.recorder"):
-        module = sys.modules.get(name)
-        if module is not None:
-            module.SAMPLE_RATE = SAMPLE_RATE
 
 
 class Voice:

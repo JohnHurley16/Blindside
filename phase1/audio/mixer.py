@@ -79,7 +79,8 @@ from .envelope_shape import EnvelopeShape
 from .placement import Placement
 from .ratchet import HAMMER, NOTCH, Ratchet
 from .tracker import Tracker
-from .voice import SAMPLE_RATE, Voice
+from . import voice as _voice
+from .voice import Voice
 from .waveform import Waveform
 
 MAX_VOICES: int = T.AUDIO_MAX_VOICES
@@ -126,7 +127,7 @@ class Mixer:
             return
         try:
             import sounddevice as sd
-            self.stream = sd.OutputStream(samplerate=SAMPLE_RATE, channels=2,
+            self.stream = sd.OutputStream(samplerate=_voice.SAMPLE_RATE, channels=2,
                                           blocksize=blocksize, dtype="float32",
                                           callback=self._callback)
             self.stream.start()          # type: ignore[union-attr]
@@ -165,7 +166,7 @@ class Mixer:
 
     def render_offline(self, seconds: float) -> np.ndarray:
         """Mix the queued voices to an array, for testing without a device."""
-        buf = np.zeros((int(seconds * SAMPLE_RATE), 2))
+        buf = np.zeros((int(seconds * _voice.SAMPLE_RATE), 2))
         with self.lock:
             for v in self.voices:
                 v.render(buf)
