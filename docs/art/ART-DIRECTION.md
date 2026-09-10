@@ -7,12 +7,28 @@ own visual language. §8 says where the two agree and where they must not.
 This document is one direction assembled from four independent passes, with the parts that
 did not survive measurement removed rather than softened. Where a number is measured, the
 probe that measured it is named. Where it is a guess, it is in the guesses list at the end.
-`CLAUDE.md` says ask rather than invent: the six questions that actually block are in
+`CLAUDE.md` says ask rather than invent: the questions that actually block are in
 **Needs a designer decision**, and the one I most want overruled is §11.
 
-**Everything here is a parameter, a node graph, or generator geometry.** Nothing in this
-document needs a modeller. That is a constraint, not a boast: the caves are generated, the
-agents are parametric, and there is no art team.
+**Revised 2026-09-09 for the ice age.** `DESIGN-PRINCIPLES.md` §10 gave the world a period and a
+shape: a society coming out of an ice age, living in a snowy valley under massive mountains with a
+town built into them, digging into the pre-ice-age civilisation whose machinery is in the caves.
+`docs/THE-ICE.md` is the reconciliation that decision asks for and it is this revision's
+specification; where it made a recommendation about this file, this revision follows it or says
+why not. **Every changed passage is dated and says what it replaces, and the full list is the
+changelog at the end.** The world above the collar — which this document previously had almost
+nothing to say about, because there was almost nothing above — is **§12**. It is numbered last
+rather than placed after the cave because five documents cite this one by section number and
+renumbering §4 through §11 would break nineteen references to §2.1 alone.
+
+**Everything here about the cave is a parameter, a node graph, or generator geometry.** That is a
+constraint, not a boast: the caves are generated per match, so they cannot be hand-modelled and
+cannot be unwrapped. *(Corrected 2026-09-09. It read "Nothing in this document needs a modeller",
+which was wrong in one direction and cost a stream of work before the designer caught it.
+`DESIGN-PRINCIPLES.md` §5 scopes it: **machines, modules, the ancients' machinery and the
+pit-head's fixed structures are authored, modelled assets**, exported and imported rather than
+rebuilt in engine, and `agent_model/` is already that model. §9 carries the full ruling.)* The
+agents are still parametric on top of an authored rig, and there is still no art team.
 
 ---
 
@@ -72,37 +88,100 @@ the lamp at runtime in `_fix_lamp()`.
 
 ## 1. The one sentence
 
-> **A drowned iron mine that never stopped working, photographed by one lamp somebody
-> carried in: cut rock and black castings inside a three-metre pool that falls off ninety
-> to one, nine-tenths of every frame true black, and the only bright surfaces in the world
-> are the ones something is still rubbing.**
+> **A cold white valley under peaks nobody can reach, and a machine lowered out of it into a
+> drowned iron mine that the meltwater started again, photographed below the collar by one lamp
+> somebody carried in: cut rock and black castings inside a pool that falls off ninety to one
+> across the frame, nine-tenths of every frame true black, and the only bright surfaces down
+> there are the ones something is still rubbing.**
+
+**Rewritten 2026-09-09.** It replaces *"A drowned iron mine that never stopped working,
+photographed by one lamp somebody carried in: cut rock and black castings inside a three-metre
+pool that falls off ninety to one, nine-tenths of every frame true black, and the only bright
+surfaces in the world are the ones something is still rubbing."* Four things moved and each is
+load-bearing:
+
+- **The valley is in it, and it is in it first**, because the picture the game makes is a descent
+  and the sentence should be one. `DESIGN-PRINCIPLES.md` §10: *"monotonous and snowy and pretty."*
+  The peaks nobody can reach are §2.1's new alpenglow row — the only warm light in the exterior
+  and deliberately out of the player's reach (`THE-ICE.md` §2.7).
+- **"never stopped working" → "that the meltwater started again."** `THE-ICE.md` §4 rules that it
+  froze, stood in still water for the ice, and resumed when the melt reached it, and §4.4 asked
+  this file for *"deliberately the weakest possible edit"* — *"still working"*. I have gone one
+  clause further than it recommended and named the meltwater, because the sentence is the only
+  place in the document where the water's *provenance* is stated, and *drowned by meltwater,
+  restarted by meltwater* is one image rather than two facts. **The ruling itself is PROPOSED and
+  not yet the designer's** (`THE-ICE.md` §9 Q1, default yes); if it comes back no, this clause
+  reverts to *"that never stopped working"* and nothing else in the sentence moves.
+- **"a three-metre pool that falls off ninety to one" → "a pool that falls off ninety to one
+  across the frame."** The ninety is real and the three metres was not: measured, a physically
+  correct lamp gives **≈ 7 : 1 across three metres** and **≈ 32 : 1 from near floor to far wall**,
+  and ninety to one is what you get across 1.6 m → 12 m, which is a frame. See §2.2.
+- **"the only bright surfaces in the world" → "down there."** There is now a bright world, and it
+  is above. That is a repair the ice forced and the sentence is better for it.
 
 The same sentence as a build contract, which is the form a shader author can start from on
 Monday:
 
-1. **One rock material, four scalars, world-space mapped, no image texture anywhere.**
-2. **Four light sources, all diegetic, world background strength zero.** If a pixel is lit,
-   name the fixture.
+1. **Two material families below the collar — rock and ice — four scalars each, world-space
+   mapped, no photographic texture anywhere.** Snow is the third, and it is §12.
+2. **Six light sources, all diegetic. Below the collar, world background strength zero.** If a
+   pixel is lit, name the fixture; above the collar the fixture is the sky and it is allowed to be.
 3. **Wear is gravity, not noise.** Mud low, dust on horizontals, scuff on leading edges.
-4. **Value carries meaning; hue does not.** One warm rock family. No biome colour.
+4. **Value carries meaning; hue does not — and where the setting supplies hue, saturation carries
+   the rule instead.** One warm rock family. Ice and snow are the exception the setting bought,
+   and they are governed by §8.4's saturation line rather than by a hue ban that a blue-white
+   world cannot keep. No biome colour.
 5. **Everything is ruined except what is still in use, and that is polished bright by the
-   work itself.**
+   work itself** — and under `THE-ICE.md` §4's restart, *in use* means about forty years of it, not fourteen
+   hundred. That is why there is a wear surface left to be bright (§5.2).
 
 ---
 
 ## 2. Light
 
-### 2.1 The economy — four sources, and a fifth that needs a ruling
+### 2.1 The economy — six sources, and a seventh that needs a ruling
+
+**Amended 2026-09-09: two rows added, none rewritten.** This is `THE-ICE.md` §2.7's
+recommendation taken verbatim, and it is the largest single saving the ice-age decision produced.
+The table below previously had four rows and ended at the shaft, and the decision looked at first
+like it broke it — a game with a snowy exterior cannot have the shaft as its only daylight.
+**The mountains reconcile it instead.** A valley floor in the shadow of an 1,800 m wall has no
+direct sun on it at all and is lit by the sky alone, which is a clear-sky north window at the
+scale of a landscape — on the order of 12000 K, `(0.60, 0.74, 1.00)`, which is exactly what the
+shaft row already said. So nothing here is amended, and the sentence that replaces *"the only cold
+light, and the only daylight"* is a better one than it:
+
+> **The valley's light and the shaft's light are the same light, arriving by different routes.**
+> The sky lights the floor; the sky lights the collar; the collar lights three metres of shaft and
+> then stops. **The shaft is not the only daylight in the game. It is the last of it**, and the
+> falloff down the collar is where daylight ends and the lamp economy begins.
+
+That is one continuous physical story from the peaks to the sump, it runs down a single axis
+(`THE-ICE.md` §5.4's `datum_mm`, the valley floor, from which the town's height and the cave's
+depth are both measured), and it means everything below the collar is unchanged.
 
 | source | who owns it | reach | colour | notes |
 |---|---|---|---|---|
 | **the work lamp** | any agent with `optical` | floor to ~6 m, walls to ~20 m | **white** `(1.00, 0.98, 0.95)` | 50° cone, tilted **8–10° down** so the pool lands inside the camera frustum |
 | **running lights** | every agent | lights nothing past ~1.5 m | team, at **strength ≤ 3** | see §4.5 — these may not be lamps at all |
 | **the machinery** | the world | rock legible to ~18 m | 1900 K → 2400 K, 4000 K at the strike | the 75-second cycle, §5.4 |
-| **the shaft** | the world, two of them | its own chamber | 12000 K `(0.60, 0.74, 1.00)` | the only cold light, and the only daylight |
+| **the shaft** | the world, two of them | its own chamber | 12000 K `(0.60, 0.74, 1.00)` | **the last of the daylight**, not the only daylight. See the falloff rule below |
+| **the sky** *(new, 2026-09-09)* | the world | the valley floor, and three metres down the shaft | 12000 K `(0.60, 0.74, 1.00)` | the same light as the shaft's. The exterior has **no direct beam on the ground the player stands on** — the sun is on the ridge and the peaks. §12.2 |
+| **alpenglow on the peaks** *(new, 2026-09-09)* | the world | nothing. It illuminates no surface the player can touch | ~2,000 K, on snow at 8–15 km | the only warm light in the exterior, present for minutes, and **deliberately unreachable**. It is `DESIGN-PRINCIPLES.md` §4's two-register collision handed over by the landscape rather than invented |
 | *(contingency)* **the residual circuit** | the world | its own bay, ~5 m | 2100 K `(1.00, 0.72, 0.42)` | **§2.8. Needs a ruling before anything is modelled against it.** |
 
-**World background strength is 0.** `agent_model/render.py:73` currently sets
+**The collar falloff, and it already exists.** `spikes/godot/surface/NOTES.md` §2.2 multiplies
+every collar lining ring's instance colour by `1/(1 + (depth/2.2)^2)` — *"the inverse-square a
+rectangular sky hole actually delivers. Three metres down it is 35%, at eight metres 7%: the shaft
+reads as a hole rather than a lit box."* **That is the rule for where daylight stops**, it is one
+line, it is built, and `THE-ICE.md` §5.2 points out that it is also exactly the falloff a shaft of
+daylight down a moulin wants. Use it for both.
+
+**World background strength is 0 below the collar.** *(Scope stated 2026-09-09; the sentence
+below was written when there was no surface and read as an absolute.)* Above the collar the
+illuminant **is** the sky, and a sky term there is a fixture in the fiction rather than light
+arriving from infinity through solid rock. §9's first rules-out line carries the same scoping.
+`agent_model/render.py:73` currently sets
 `(0.004, 0.006, 0.010)` at strength 1.0. In a cave that is light arriving from infinity
 through solid rock, and it is *cool*, which is the worst possible colour to leak into a
 world whose cool half means belief. It contributes almost nothing photometrically, which is
@@ -121,25 +200,64 @@ the same image as 600 W. A number in Blender watts also does not survive the mov
 Godot, whose light units differ.
 
 **So the durable part of this section is the ratios, and they should be what gets written
-into the client:**
+into the client.**
 
-| relationship | target |
-|---|---|
-| floor 3 m ahead, grazing | ≈ 0.08 relative luminance (about half mid-grey) |
-| near wall at 1.6 m | **blown, deliberately** |
-| brightest legible : dimmest legible, within one frame | **≈ 90 : 1 across three metres** |
-| wall at 8 m | ≈ 0.06 — the last thing that reads |
-| wall at 25 m | black |
+**Corrected 2026-09-09 against measurement.** `spikes/godot/materials/NOTES.md` §5.2 built the
+instrument this table always needed — a 30 m aggregate floor with a rock wall down one side, one
+lamp on the camera, exposure fixed at 1.0, linearised luminance, reproducible with `-- --expo` —
+and **two of the five numbers below were not reachable with a physically correct lamp, and not
+reachable together.** The `measured` column is that probe at the shipped `LAMP_ENERGY` of 140 with
+inverse-square decay. The table is not softened; the two wrong rows are struck through and
+replaced.
+
+| relationship | target | measured |
+|---|---|---|
+| floor 3 m ahead, grazing | ≈ 0.08 relative luminance (about half mid-grey) | **0.088** ✓ |
+| near floor at 1.6 m | **blown, deliberately** | 0.264 ✓ |
+| ~~brightest legible : dimmest legible, ≈ 90 : 1 across three metres~~ → **≈ 90 : 1 across the frame**, 1.6 m to 12 m | the frame's dynamic range | **7 : 1** across three metres; **32 : 1** near floor to far wall |
+| ~~wall at 8 m ≈ 0.06~~ → **wall at 8 m is the edge of legible, ≈ 0.01–0.02** | the last thing that reads | **0.012** |
+| wall at 25 m | black | **< 0.001** ✓ |
+
+**Why the ninety moved rather than being deleted.** A point source is inverse-square: from 1.6 m
+to 4.6 m that is 8.3 : 1 before anything else, and adding the cone falloff and the grazing cosine
+gets 7–10 : 1 on a floor. *"To reach 90 : 1 across three metres you need falloff of about
+d^-4.3, which is not a lamp."* The **ninety is right and the three metres was wrong**: 90 : 1 is
+what a frame spans from 1.6 m to 12 m, so the figure was always describing the frame's dynamic
+range and this document should have said which. It now does, here and in §1 and §2.3.
+
+**Why the 8 m wall moved.** *"Floor at 3 m = 0.08 and wall at 8 m = 0.06 cannot both hold: they
+are a ratio of 1.3 across a distance that inverse-square makes 7.1, even with the wall at normal
+incidence and the floor grazing."* One of the two had to move, and it is the one that was never
+measured. The **qualitative** claim survives and is the one that matters — 8 m is where the wall
+stops reading — and it is now stated at a luminance a lamp can actually produce.
 
 Pick the wattage that hits those on whatever renderer is in front of you, and re-derive it
 after the aim fix rather than inheriting a number from a pass that measured a broken lamp.
 
+**Ice does not obey this table, and should not be made to.** *(New 2026-09-09.)* Ice is
+translucent: a beam entering it scatters within a few centimetres and the surface glows rather
+than returning a hard pool, so an ice passage at the same power is **brighter, softer and flatter**
+than a rock one. `THE-ICE.md` §6.1's recommendation is that the ice band gets its own row and a
+softer falloff, and that this is a legitimate depth cue rather than a concession — **the shallow
+band is the friendly one, and it is the one place in the cave where the darkness relents.** I have
+taken it. The table above is a **rock contract**; §3.1's ice family and §2.9's ice band are where
+the other one lives.
+
 ### 2.3 The falloff is the style, and the near wall is allowed to clip
 
 **Do not compress the ramp.** No exposure compensation, no auto-exposure, no tone curve that
-rescues the far end. A 90:1 falloff across three metres is the one thing that says *carried
-light* rather than *lit level*, and it is precisely the thing ambient cannot fake. Keep AgX
-with a shoulder; let the near wall blow.
+rescues the far end. A 90:1 falloff **across the frame** — 7:1 in the first three metres of it,
+§2.2, corrected 2026-09-09 — is the one thing that says *carried light* rather than *lit level*,
+and it is precisely the thing ambient cannot fake. Keep AgX with a shoulder; let the near wall
+blow.
+
+**And the same discipline is what the exterior needs, which is not obvious.** *(Added
+2026-09-09.)* Sunlit snow on a peak against shadowed snow on the valley floor is somewhere in the
+region of **thirty to sixty to one inside a single frame** — `THE-ICE.md` §2.7's arithmetic, and
+it says so itself: its author's, not measured. That is the same problem this section already
+loves, moved outdoors and made twenty times wider, and the answer transfers exactly: **do not
+compress the ramp, let the peaks blow, and grade for the floor.** A frame in which the peaks are
+correctly exposed is a frame in which the valley is black, and that is the wrong picture. §12.2.
 
 ### 2.4 Backlight the agent by default — the honest silhouette pays for itself
 
@@ -274,11 +392,144 @@ Targets, **linearised**, per frame on the canonical set:
 | `> 0.05` legible | **3–20%** for a lamp frame; up to 50% for a shaft or a strike | below 3% is unplayable; above 20% something is unsourced |
 | `< 0.02` true black | **≥ 70%** for a lamp frame | the dark is the material |
 
+**One contract cannot cover a world with a sky in it, and the fix is a second column, not a
+looser first one.** *(Added 2026-09-09; `THE-ICE.md` §2.7 recommends it and the surface spike had
+already discovered it independently.)* `spikes/godot/surface/CINEMA.md` §8.1 is blunt about what
+happens if you try: *"'legible 3–20%' and 'true black ≥ 70%' describe a three-metre pool of
+carried light in a black room. A yard under an overcast sky is legible over **55–72%** of frame by
+construction… Applying the cave's floor to a daylight frame would fail every correct picture in
+this directory."* It asserted only the 3% blown ceiling, and **0 of 27 frames breached it, worst
+`t03_yard_drift` at 0.73%**.
+
+So: **the scene declares which band it is in, and CI runs that one.** Three bands, and the
+lamp-frame column above is untouched.
+
+| band | `> 0.50` blown | `> 0.18` mid | `> 0.05` legible | `< 0.02` black | status |
+|---|---|---|---|---|---|
+| **lamp frame** (below the collar, no daylight, no machinery) | ≤ 3% | 1–25% | 3–20% | ≥ 70% | measured, unchanged |
+| **ice band** (the shallow cave, §3.1) | ≤ 3% | 1–35% | **10–40%** | **≥ 40%** | **GUESS**, mine. `THE-ICE.md` §6.1 says only that ice will not hit the rock contract and should not be forced to; the numbers are mine and are chosen so the band reads as *relief* without reading as a lit level. **Provisional until an ice material exists to measure** |
+| **daylight frame** (above the collar, §12) | **≤ 8%** — the peaks are allowed to be most of it | 25–60% | — | **≤ 12%** | **GUESS**, `THE-ICE.md` §2.7's, and it says so. The measured surface today runs p50 ≈ 0.33 with under 2% dead black on a *yard*, not a snowfield, so these move when snow exists |
+
+**The important part is not the numbers; it is that an artist who lifts a cave frame to surface
+levels still fails the build.** And the lamp-frame column is currently tighter than anything built
+passes, in *both* directions, which is worth knowing before anybody treats a failure as a defect:
+`spikes/godot/cave`'s `lumcheck.py` **passes 9 of 12 frames before and after the photoreal pass,
+on different frames each time.** Today's three failures are `01_wide_passage` at **2.96% legible
+against a 3.0% floor** — 0.04 points under, and it is the direction the whole pass moved as the
+floor albedo came down (§3.1) — `05_two_registers` at **24.98% legible and 56.78% black**, and
+`08_waterline` at **68.49% black**. The materials library's `09_falloff_lamp`, the only shot there
+shaped like a real frame, lands at **0.6% blown / 29.7% legible / 62.1% true black**: slightly too
+legible and not quite black enough, *"which is what you would expect from a 3.2 m wide corridor
+with no ceiling and nothing to occlude."*
+
+**Two things that move the bands and are not lighting**, both new and both measured, and they are
+the reason the contract needs to say *where* it is measured:
+
+- **The lens is an exposure control.** Same scene, same lamp, no lighting change: 21 mm gives
+  5.56% legible, **35 mm gives 9.74%**, 50 mm gives 5.84% — **a 1.75× swing**. The reason is
+  physical: the work lamp is a 54° cone, and the lens whose horizontal field matches it is
+  **35.3 mm**. Anything wider is looking at rock the lamp is not lighting. **The focal length and
+  the lamp cone are one decision, not two.**
+- **The vignette can turn a passing frame into a failing one.** It costs about **7% of the frame
+  mean and 0.4 points of legible fraction**, and with the full lens stack on, two more cinematic
+  frames fall under the 3% floor. So **the contract has to say whether it is measured before or
+  after the lens.** My answer, and it is a ruling this section did not previously need: **before.**
+  The lens is a shot decision; the light economy is the thing being asserted, and a grade that
+  fails a build is a grade nobody will use.
+
+And **daylight arriving down a moulin (§3.7) invalidates the lamp-frame band for every frame it
+reaches.** That is a re-measurement, not a relaxation.
+
+### 2.10 Three things this document assumed the engine has, and it does not
+
+**New 2026-09-09.** All three were measured in `spikes/godot/`, all three are cheap to write down
+and expensive to discover, and the third one is a rule this document nearly got wrong on principle.
+
+**1. Per-light contact shadows do not exist in Godot 4.** `spikes/godot/cave/PHOTOREAL.md` §2.9:
+*"`Light3D` exposes `shadow_enabled`, `shadow_bias`, `shadow_normal_bias`,
+`shadow_reverse_cull_face`, `shadow_transmittance_bias`, `shadow_opacity`, `shadow_blur` and
+`shadow_caster_mask`, and nothing else; **the Godot 3 feature was removed.**"* The materials spike
+found the same thing independently. **So no proposal may rest on them.** What does the job instead,
+in order of how much it buys:
+
+- **Offset the lamp from the eye.** The single most useful lighting finding in the spikes, and it
+  is one vector: the cave's lamp sat at `(0.10, −0.16, 0)`, *"about 6° off the view axis at 1.5 m.
+  That means N·L ≈ N·V for every surface in the frame, and a diffuse surface lit from exactly the
+  direction it is seen from has almost no shading contrast: **a 30° bump changes the cosine by
+  13%.** No normal map of any quality produces form under that condition."* It is now
+  `(0.26, −0.22, 0.10)`. §0 is the same class of finding — a lamp pointing the wrong way — and
+  this is its sibling.
+- **Bury things.** Every stone sunk a quarter to three-quarters of its own radius, *"its own body
+  draws the contact shadow that shadowless instances cannot cast for themselves."*
+- **Material AO from the height field, with `AO_LIGHT_AFFECT = 1.0`**, so it darkens *direct*
+  light. *"That pairing is what makes a wall read at all under a headlamp."*
+
+The residue is honest and should be stated: *"a stone never casts a shadow on the stone beside
+it."* Fixing that properly needs a parallax shadow march along the light vector, and **Godot does
+not expose the light direction in `fragment()`**, so it means writing the whole BRDF. A day.
+
+**2. SSAO does nothing in this world, and it is the most expensive thing in the frame.** It only
+modulates *ambient*, and §2.1 sets ambient to zero. Measured in the cave: **4.35 ms of an 8.68 ms
+GPU frame**, responsible for every 60 ms spike in the walk, for a **0.25% mean absolute pixel
+difference**. Cut. (It is a different calculation above the collar, where there is a sky: the
+surface spike measures SSAO at **4.2 ms of a 13.7 ms frame — 31%** — and says plainly that it is
+*"what stops 84,864 props hovering above the ground"*, and that nobody gets to choose there
+because it is measured. §12.4.)
+
+**3. Screen-space reflections were measured and cut, and the reason is the interesting part.** The
+first instinct is to ban SSR as ambient in a costume. That is wrong, and the spike argued it
+correctly before measuring: *"SSR is not an ambient term in the sense §9 forbids. It has no source
+at infinity; it is the reflection of actually lit geometry that is in this frame, and if the frame
+goes black the reflection goes black with it. That is categorically different from a sky term,
+which invents light where there is none."* **It was cut on cost, not on principle:**
+
+> *"It did not earn its place here, and the honest reason is that **there is nothing to reflect.**
+> Under one lamp with zero ambient, nine-tenths of the frame is black, so a mirror returns black.
+> The measured difference between the two shots is **0.0049 vs 0.0058 at p90 — under 1%. SSR costs
+> about 5 ms and buys almost nothing in this world. Leave it off.**"*
+
+**So the rule is a costing, not a prohibition**, and it should be written that way because it
+inverts above the collar: the surface spike ranks SSR its **number one remaining job** — *"a wet
+yard that does not reflect the thing standing in it is the largest single remaining tell."* Same
+technique, opposite verdict, and the variable is whether there is a lit world to return. **One
+exception is already shipping and is correct**: the cave's water shader runs its own
+Fresnel-weighted 14-step screen-space reflection, because §3.5's *"a mirror at grazing angle"*
+cannot be had any other way and a reflection probe **would** be a light leak.
+
+**And the consequence all three share, which is a design finding rather than an art one.** Both
+cave documents and the materials library reach it independently: *"a lamp at the eye is a
+photometric problem, not an art problem… **a second source — even §2.8's contingency circuit at its
+low end — would do more for photorealism than any shader I could write. This is a design question,
+not an art one."*** It is §2.8's ruling and §11's kill test, and three separate measurement passes
+now want it. Recorded, not decided.
+
 ---
 
 ## 3. The cave
 
-### 3.1 One rock material, four scalars, no hue axis
+**Reframed 2026-09-09.** Everything in this section was written for a horizontal mine: a plan of
+passages, one waterline, one material family, and a depth axis that was graph distance from the
+shaft rather than a direction you could fall in. `DESIGN-PRINCIPLES.md` §10 replaced that:
+*"The cave stops being a flat plan of passages and becomes a place with levels, drops, and things
+below other things… going deeper becomes literal."* Three things follow and they are the frame for
+everything below.
+
+1. **The cave has a vertical axis, and it is the same axis the town is on.** `THE-ICE.md` §5.4's
+   `datum_mm` is the valley floor: the town runs +90 to +520 m from it and the cave runs 0 to
+   −250 m, so the game is one section about eight hundred metres long with the shaft in the middle.
+   Depth is now a number in metres as well as a BFS band, and §7 carries both.
+2. **There are three media, not one, and they interleave by depth.** Ice, rock, and the ancients'
+   workings. §3.1 gains a second material family and §3.7 says how they are stacked.
+3. **Down is cheap and up is not.** `THE-ICE.md` §5.1: *"A drop is free, fast, and one-way."* That
+   is a gameplay consequence rather than an art one, but it decides what the art has to make
+   legible — a pitch has to read as a pitch *before* a machine is standing at the lip of it, and
+   §6.2's lidar cannot see down (`THE-ICE.md` §6.2). See §3.4.
+
+**What survives untouched, and it is most of the section:** one rock family, world-space mapping,
+the 1.2 m module, the scale rule, and every one of the eight axes. The ice is a **setting**, not a
+biome, and nothing below turns into a palette swap.
+
+### 3.1 Two material families, four scalars each, no hue axis
 
 Eight world axes × naive material variation is a combinatorial content problem that will be
 solved with hue, and hue will make the season system a palette swap. **No axis gets its own
@@ -294,19 +545,128 @@ hue.** Everything is one shader driven by four numbers plus a waterline.
 Three rock values in the entire game, all desaturated, all one warm buff family
 (≈ +22% R / −28% B off neutral):
 
-```
-dry, lit            (0.340, 0.260, 0.175)   #9E8B74
-wet, above the line (0.190, 0.150, 0.105)   #796C5B
-submerged           (0.090, 0.075, 0.062)   #554D46
-tide-mark crust     (0.520, 0.470, 0.400)   #BFB6AA
-scoured floor       (0.420, 0.360, 0.280)   #ADA290
-```
+**Corrected 2026-09-09. The five triples below were about four times too bright, and two agents
+found it independently.** They were stated as albedo — they are exactly the linear form of the hex
+codes beside them — and `spikes/godot/materials/NOTES.md` §5.1 measured what that means:
+*"**0.34 linear is a pale limestone or new plaster.** It is 4× the reflectance of the dark wet
+rock the brief asks for and about 5× what an iron mine's walls measure."* And it named the damage:
+*"I think it is the direct cause of what the designer was looking at: `spikes/godot/cave/rock.gdshader`
+uses ART's numbers verbatim, and `spikes/godot/cave/shots/03_underfoot.png` is a peach-coloured
+surface with blown highlights and no shadow in it. **A too-bright albedo is the fastest way to make
+a surface look like painted plastic**, because the specular response stops being able to carry any
+shape."* `THE-ICE.md` §2.10 lists the same conflict as open and says the ice **forces** the ruling,
+because snow and ice are genuinely bright and the rock now has to be settled *against* them rather
+than beside them.
+
+**So the numbers below are the measured band, and the hue ratio is kept.** They are the materials
+library's, not mine, and they are bands rather than points because a single value is the strongest
+tell that a surface was authored rather than weathered.
+
+| what | albedo, linear | was | note |
+|---|---|---|---|
+| dark rock, wet | **0.030 – 0.095** | 0.340 / 0.190 | the dark-rock band shifted down for a wet iron mine. ART's warm ratio (+22% R / −28% B) kept |
+| rock, freshly broken | **0.045 – 0.140** | — | no patina: lighter and greyer than the weathered outside, and **the strongest readable difference between two rocks in the game** |
+| rock, long weathered | **0.020 – 0.080** | — | iron patina darkens; the joints have opened and hold shadow |
+| tide-mark crust | **0.090 – 0.240** | 0.520 | §3.5's ×1.7 off 0.06 is 0.10; the top of the band is a thick mineral crust. **The rule survives, the anchor moved** |
+| silt / fines, dry | **0.070 – 0.175** | — | dry silt measures 0.15–0.25; iron-rich mine fines are darker |
+| mud, saturated | **0.010 – 0.055** | — | water in the pores roughly halves it again |
+| aggregate / ballast | **0.025 – 0.130** | — | the same rock, but each stone is a different stone: ±34% per voronoi cell |
+| **scoured floor** (§5.3) | **0.190, 0.158, 0.122 dry; ×0.54 where soaked** | 0.420 / 0.360 / 0.280 | **the second, independent correction**, and it came from the other spike |
+
+**Two agents found this separately, on different instruments, and that is why it should be taken as
+settled.** The materials library measured the whole set with a calibration render — each material's
+`ALBEDO` unlit, orthographic, tone mapper LINEAR at exposure 1.0, *"so the value in the PNG is the
+number"*, read back and failed if it leaves plausible albedo — and the cave's photoreal pass
+arrived at the scoured floor independently: *"That is a lit schematic value and it is far outside
+anything measurable off a wet mine floor, which is muck at 0.05–0.12 linear… **This directly
+contradicts a written number and needs a ruling.**"* It also reports the consequence in one line —
+*"the floor albedo went from the schematic's 0.42 to a measured-plausible 0.19. Lamp energy
+4.2 → 5.4"* — which is §2.2's point exactly: the ratios are the contract and the wattage is
+derived.
+
+**The two spikes do not fully agree with each other, and that is the open part.** The materials
+library's measured `aggregate` mean is **0.0434**; the cave's dry scoured floor is **0.190**. They
+are about 4.4× apart, and they are not measuring the same thing — one is a ballast stone, the other
+is trammed bedrock the industry scoured clean (§5.3 says the scour has *no fines* and should be
+*brighter* than what surrounds it). **Both corrections stand; the gap between them is a real
+question about what a mine floor is**, and it is item 8 in **Needs a designer decision**.
+
+**One measured effect that pulls the other way and should stop this reading as a pure darkening.**
+The cave's exposure histograms got *more* legible across the set while the floor albedo went down,
+and the pass diagnosed why: *"'Legible' going UP across the set while the floor albedo went DOWN is
+the wetness field. A wet surface returns a specular lobe where a dry one returned nothing, so more
+of the frame now carries information at the same lamp power. That is §2.7's argument — a wet
+passage stays findable and a dry one does not — showing up in the histogram."* **§2.7 was right and
+it is now measured.**
+
+**The old triples are not deleted, they are demoted**, because one reading of them is still
+defensible and somebody has to rule: `materials/NOTES.md` asks whether *"ART's triples were
+intended as albedo or as the rendered value under the lamp,"* and notes that as rendered values
+they are consistent with §2.2's *"floor 3 m ahead ≈ 0.08"* only at a much lower irradiance than
+either spike uses. **My answer is that they were albedo and they were wrong** — the hexes beside
+them are their exact sRGB encodings, which is what an albedo statement looks like — and a rendered
+value has no business in a material table anyway. It is item 8 in **Needs a designer decision**.
 
 `palette.py`'s `ROCK #15110D` / `ROCK_LIT #3A2E22` are the same pair at the schematic's
-weights. Use them as the shared anchor — that is where the two registers agree for free.
+weights, and they are **unaffected** — they were always schematic weights rather than reflectances.
+Use them as the shared anchor; that is where the two registers agree for free, and the correction
+above moves the world side *toward* them rather than away.
 
 **Rock type changes surface, never colour.** This is the single place where "biome = hue
 swap" will be reached for, and it must be refused in writing now.
+
+**And there is now a second family, and it is ice.** *(New 2026-09-09.)* `THE-ICE.md` §5.2 puts
+ice in the shallow band and as plugs, floor ice and bridges further down, and none in the workings.
+It is one shader with its own four scalars, and it is **a material and a place, never a biome**:
+
+| scalar | drives | is really |
+|---|---|---|
+| `clarity` 0→1 | subsurface radius, the length of the path light takes before it comes back | bubble content. Glacier ice is white because it is full of air; meltwater-refrozen conduit ice is clear |
+| `polish` 0→1 | roughness 0.55→0.03, and the normal-incidence specular flash | whether running water shaped it. It is also §3.5's footing axis and §6.2's sensor axis |
+| `debris` 0→1 | entrained rock, gravel and silt frozen in — a volume mask, not a surface one | the ice is a *fill*, so it carries what it pushed into. This is the term that keeps ice inside the warm rock family, because what is suspended in it is the cave |
+| `depth_of_medium` | the blue | see below |
+
+**The blue is a path-length effect, not a tint, and that is what keeps the no-hue rule honest.**
+`THE-ICE.md` §6.1: *"Thin ice is neutral; thick ice is blue because the light travelled far.
+Implemented as depth-of-medium rather than as an albedo, it satisfies the no-hue-axis rule
+honestly: the material has one colour and the distance is what is doing the work."* Take it as
+written. A shader that reaches for a blue albedo has failed the rule; a shader that reaches for an
+absorption coefficient has not, and it is the same instrument §5's mine-water absorption
+(`0.85, 0.30, 0.18` per metre) already uses to make deep water read blue-green *with no blue
+anywhere in the palette*.
+
+**Ice is the only material in the game with a defensible subsurface-scattering term**, which §9's
+old ice ban was implicitly forbidding and §9 now permits. Two consequences already noted elsewhere:
+it is why an ice passage does not obey §2.2's ratio table, and it is why §2.9 gives the ice band
+its own exposure row.
+
+**And a third, which is the strongest argument for ice that nobody has made yet.** The materials
+spike found the same failure twice, in two different materials, and stated it as a general law:
+*"a wet surface is convincing because it reflects a world. Under one carried lamp with zero
+ambient, a pool reflects one hotspot and otherwise reflects black"*, and *"a metal has no diffuse
+term at all, so all it can show is a reflection of its surroundings, and its surroundings are
+black."* Its verdict on both: *"the resolution is content, not code — put something lit near the
+water."* **Ice is the one specular-family material that does not fail this way, because a
+subsurface term returns the lamp's own light rather than a reflection of a black room.** An ice
+wall lit by a carried lamp glows from inside; a water surface and a bare casting do not. So the
+shallow band is not only the friendly band, it is **the one place where the one-lamp economy makes
+a material better rather than worse** — and that is worth knowing before anybody proposes a second
+light source to rescue the other two.
+
+**Two warnings the same spike attaches, and both apply to ice directly.**
+
+- **Do not build a smooth conduit out of the rock family's primitive.** *"The `lump` test mesh is a
+  noise-displaced sphere and at high material frequency it reads as coral or dough rather than as
+  broken rock… this material family on a rounded form looks wrong."* A water-polished ice bore is
+  precisely a rounded form, and it needs the anisotropic, flow-shaped primitive the library says it
+  does not have — *"the fix is a second pattern primitive — anisotropic, directional, flow-shaped —
+  which nothing here has."* **That is the one real new shader the ice costs.**
+- **Everything in the rock family shares one voronoi and it shows.** *"Rock joints, mud cracks,
+  concrete cracks, aggregate stones and rotten-timber cubical rot are all the same cellular
+  function at different frequencies, and at a glance they look related in a way real materials of
+  those kinds do not."* Ice built from the same function will join that family, which is exactly
+  what it must not do — it is the one material that is supposed to look like it came from somewhere
+  else.
 
 ### 3.2 World-space mapping, and never a UV
 
@@ -316,10 +676,40 @@ single dome that happens to equal world space. The moment `blindside-gen` chunks
 every seam. **Use `Geometry → Position`, triplanar.** One node, and it must land before the
 shader touches a generated cave.
 
-And the harder rule: **there is not one image texture, UV map or bitmap in this repo, and
-there must never be one.** A generated cave cannot be unwrapped. World-space procedural is
-not an optimisation here, it is the only option — and it is why this direction can ship as
-numbers and node rules rather than as an asset library.
+And the harder rule, **restated 2026-09-09 so that its intent survives its letter.** It used to
+read: *"there is not one image texture, UV map or bitmap in this repo, and there must never be
+one."* The first half is still true — the surface spike reports **zero imported assets** and the
+only `Image` anywhere is three code-generated 128 × 128 decal masks. The second half was too wide,
+and §9 now carries the amended version with its reason. The rule that actually matters is
+unchanged and is the one to enforce:
+
+> **A generated cave cannot be unwrapped. Nothing in this world may depend on a UV layout, and
+> nothing may come from a photograph or a painted map.** World-space procedural is not an
+> optimisation here, it is the only option — and it is why this direction can ship as numbers and
+> node rules rather than as an asset library.
+
+**What that permits and what it still forbids.** Generating a small 3D noise volume at load and
+sampling it is *not* a bitmap asset: it is the same procedural function, evaluated once instead of
+per fragment, and it reintroduces no art pipeline. `PROCEDURAL-AND-GODOT.md` §4.5 wants it for a
+concrete measured reason — triplanar voronoi at `fracture` 3–14 is three sample sets in the
+fragment stage and is ALU-heavy — and it is that document's **question 5**, whose recommended
+answer is *yes, allowed*. `DESIGN-PRINCIPLES.md` §6 records the same conflict and treats the
+intent as binding and the letter as amendable. **The default holds here.** What stays forbidden:
+an authored bitmap, a photographic source, a UV unwrap of anything generated, and an asset library.
+
+**Two node-level rules the spikes measured that belong with this one**, because they are what
+world-space mapping actually costs if you get it wrong:
+
+- **Gradient noise, not value noise, with rotated octaves.** *"Value noise on an axis-aligned
+  lattice puts a visible square check into every mask built on it, and at ~1 m cell size on the
+  hardstanding that check was the single most artificial thing in the underfoot frame"*
+  (`surface/PHOTOREAL.md`). The cave spike hit the same thing and replaced its RNG with a 3-round
+  integer bit-mix for it.
+- **Normalise the fbm range.** Four octaves land in about **0.32–0.68**, so every `smoothstep`
+  written against 0..1 operates on a third of its intended range: *"masks that should have covered
+  15% of the concrete covered none, and albedo variation that should have been 3:1 was 1.3:1. This
+  is the single most consequential line in the file."* It costs one clamp-and-scale and it is the
+  difference between the four scalars in §3.1 doing anything and doing nothing.
 
 ### 3.3 The scale rule, and it is the most valuable rule in this document
 
@@ -339,7 +729,25 @@ frame. And the anchor a viewer learns in one shot and never forgets:
 This is carved geometry and surface marks — exactly what a procedural generator is best at
 — and it is the difference between a cave system and *a place worth robbing*.
 
-### 3.4 Form, by how much the industry touched it
+**And there is now a second ruler, running the other way.** *(Added 2026-09-09.)* The 1.2 m module
+is a horizontal ruler and it does nothing for a drop. A vertical cave needs a vertical one, and
+`THE-ICE.md` supplies two that cost nothing:
+
+- **Depth is in metres from the valley floor, and it is the same zero the town is measured from**
+  (`datum_mm`, §5.4 there). A player who has stood in the valley has already calibrated it.
+- **The collar's own lining is the ruler for the first ten metres of the descent.** The built
+  surface lines the top **3 m** of the shaft in iron plate rings at **750 mm** and then goes to
+  **2.5 m** rock rings — a change of pitch you can count, at exactly the height where the daylight
+  falloff (§2.1) is doing its work. A moulin re-bored through the ancients' own shaft keeps those
+  rings where the water could not scour them away (`THE-ICE.md` §5.2), so **the ruler and the
+  fiction are the same object.**
+
+**The anchor rule is unchanged and now has a vertical twin:** the agent fits between the rails, and
+**a pitch is measured in agents.** A 4 m drop is five Surveyors stacked, and that is legible from
+the lip if — and only if — something at the lip has known size. That is what the bolt line, the
+collar rings and a rail end sticking out over the void are for.
+
+### 3.4 Form, by how much the industry touched it — and, now, by which way it runs
 
 Three registers; the generator interpolates on `worked`.
 
@@ -352,17 +760,43 @@ Three registers; the generator interpolates on `worked`.
 - **Machine ground.** Stopes, the scour, bolt rings, the Bus conductor overhead, launders,
   collapsed sets, pump chambers with the pumps still under water.
 
-### 3.5 The eight axes, each with one visual rule
+**A fourth register, added 2026-09-09, and it is a second profile family rather than a fourth value
+of `worked`.** This is the one place in §3 where the ice costs real geometry work, and
+`THE-ICE.md` §2.3 found the exact reason: the built cave sweeps a shell profile that is *"a floor,
+two legs and a crown"* along a spine, and **a vertical shaft cannot be expressed by that function
+at all.** *"A moulin needs a second profile family beside the sweep, not a modification of it."*
+
+- **The pitch — moulin, winze, aven, collar, stope, crevasse.** A bore rather than a passage:
+  round or elliptical in section, its axis vertical, its wall shaped by what cut it. **Water-cut
+  ice is smooth, round, polished and featureless** — that is the same surface `polish` scalar in
+  §3.1, and it is why the sensor loses its grip in one (§3.5, and `THE-ICE.md` §6.2). **Water-cut
+  rock keeps its joints** and is scalloped rather than smooth. **A worked shaft is neither**: it is
+  a rectangle with iron rings in it, and it is the one pitch that has a ruler on the wall (§3.3).
+- **Where the two profiles meet is the most valuable geometry in the cave**, because it is where
+  the player commits. A lip. Whether the generator makes it legible from four metres back is a
+  gate on the whole vertical axis, and it is not an art rule — §6.2's lidar physically cannot see
+  down, so the *lamp* is the only thing that can show it, and the lamp is tilted 8–10° down for
+  exactly that reason. **Nothing may be added to make a pitch legible that a machine could not
+  sense.** A painted edge line is a lie the world does not get to tell.
+
+### 3.5 The eight axes, each with one visual rule — and a ninth, which is the medium
+
+**Amended 2026-09-09: one row added, one row rescoped.** The added row is `medium`
+(`THE-ICE.md` §5.4 note 4 puts it on `Passage` and `Pitch` as a single `u8`-sized enum:
+`Rock | Worked | Ice | IceOverRock`). It keys the material, the sensor response, the acoustic cost
+and the footing all at once, and it is *"the only new axis the ice needs."* The rescoped row is
+**depth**, whose *"not altitude"* was written when there was no altitude.
 
 | axis | what changes | what must **not** change |
 |---|---|---|
+| **medium** *(new, 2026-09-09)* | which family §3.1 draws: rock, ice, or ice over rock with the rock legible through it. Ice adds translucency, a normal-incidence flash, and entrained debris; it does not add a hue | **never a biome.** Ice is a *place in the depth stack* (§3.7), not a season, not a region type, and not a palette. The rock family underneath it is unchanged, and what is frozen into the ice is the cave's own material |
 | **flooding** | a **waterline** and everything one does: a **0.12 m mineral tide-mark crust** above it (albedo ×1.7, matte — one detail that says *the water moved*); below it albedo ×0.6, roughness 0.10, drips; the surface IOR 1.33, roughness 0.02, **a mirror at grazing angle** — which is exactly why `BLD-85` has lidar return it as a wall | not a blue tint. `WATER #16202E` is cool because water is cool, not because flooding is a colour |
 | **passage width** | proportion, read against the 1.2 m module and the rail gauge. A crawl is where a Hauler's 0.32 m stops | never a fog or brightness change |
 | **rock type** | roughness, fracture frequency, bedding contrast | **never a hue** |
 | **sediment** | volumetric only, per-cell, 0.008 → 0.15 | not a surface effect |
 | **magnetic character** | **nothing, ever.** If noisy rock glows, the magnetometer is redundant and the false-find mechanic dies. At most a *geological* tell present in noisy rock **and** in real deposits — a suggestion, never a confirmation | anything legible |
 | **structural integrity** | geometry: fresh spall on the floor, open joints in the back, a fracture set that runs, **one timber set failed while its neighbours stand.** Static, so it is learnable *before* the sensor speaks | not a warning colour |
-| **depth** | §7 | not altitude |
+| **depth** | §7 | **not altitude *on the display*.** *(Rescoped 2026-09-09.)* `THE-ICE.md` §2.9's replacement, taken as written: *"On the display, depth is drawn as darkness. The display has no vertical axis and must not acquire one; a schematic that tries to show levels shows neither. In the rendered world, depth is altitude, because it is."* §8.4 carries the same scoping |
 | **thermal layering** | the **cause, never the effect**: a 0.3 m haze band at the layer height that a beam flares crossing; condensation on the wall above it and not below; a thermocline shimmer in flooded sections | never draw the shadow zone. Draw the layer; let the player infer |
 
 ### 3.6 At ten metres, and at a hundred
@@ -399,6 +833,66 @@ from geometry rather than from taste. Two rules fall out:
 And one level-design consequence, also measured: **no landmark may be required to be visible
 across a chamber.** The largest chamber in the cave is 14.4 m across, which is about one
 lamp wide.
+
+**Three of the numbers above are measured on a cave that no longer exists, and a vertical cave
+reverses two of the conclusions.** *(Flagged 2026-09-09; `THE-ICE.md` §2.4 is the source and calls
+this out as a warning to whoever re-runs the probes rather than as a correction, because nothing
+has re-measured it yet.)*
+
+1. **"There is no hundred metres" is the claim most at risk.** Every number above comes from
+   sightlines cast across a *plan*. **A 40 m winze looked down is a single straight line longer
+   than anything the cave currently contains**, and it is a line with a light at the top of it.
+   Median sightline almost certainly does not move — most of the cave is still passage — but the
+   tail does, and the tail is what the art budget was scoped against.
+2. **"Spend no art budget past 15 m" survives horizontally and fails vertically.** The rule was
+   always *"nothing is far enough away to need a decimated version"*, and
+   `PROCEDURAL-AND-GODOT.md` §4.4 turned that into *"visibility ranges replace LOD entirely."*
+   **LOD comes back.** The cave spike's own post-photoreal ablation prices it: turning visibility
+   ranges off costs **≈ 45 ms (6.16 ms → 51.43 ms)**. The ranges are not insurance any more, they
+   are the frame, **and a vertical sightline is exactly what defeats them.**
+3. **§5.5's "the mast buys exactly zero extra cells of visibility" partially reverses**, and this
+   is the constructive half. It was measured from ground level on a plane. **From a level above
+   the Assayer's chamber, looking down into it, a 6.6 m mast with a winch head that emits during
+   the wind is exactly the landmark §5.5 said it could not be.** That partially resolves this
+   document's own design problem 6, which currently blocks one of the four gate questions. See
+   §5.5.
+
+**What does not change: the wide shot is still a schematic and the close shot is still a
+photograph.** The vertical axis adds a third thing that is neither — *a light a long way below
+you* — and it is a Contact in `GLOSSARY`'s exact sense: position without identification. Draw it
+as one. Nothing about a distant light should resolve until you are near it.
+
+### 3.7 The depth stack, and it is three media rather than one cave
+
+**New 2026-09-09**, from `THE-ICE.md` §5.2. **The interleave is the design, not the list**, and
+every depth below is that document's own GUESS, chosen to be legible rather than surveyed — *"the
+ratios matter more than the numbers: the ice band is thin, the karst is the transition, and most
+of the cave is the mine."*
+
+| band | what it looks like | ancients | water | ice |
+|---|---|---|---|---|
+| **0 — the collar and the fill**, 0 to ~30 m | the valley's own glacial fill and the **dead ice** buried in it. Meltwater conduits cut through it: round, polished, steep and smooth. §3.1's `polish` at 1.0 | none — below their surface works, above their workings | running, seasonally | **most of it.** Ice walls, ice floor, ice ceiling |
+| **1 — the karst**, ~30 to ~80 m | bedrock. Natural cave re-cut by meltwater that found the old joints. Shallow: natural karst with a bit of rail in it | first marks. Low item numbers, corroded, half-buried in flowstone **and now also in ice** | running, then ponded | plugs, floor ice, rime near the drafts |
+| **2 — the workings**, ~80 to ~250 m | the mine as §3.4 already describes it. Drives, stopes, the Bus, the Haulage, the pump house | all of it | flooded to the tide mark, and rising | none. Below the freezing front, and always was |
+| **3 — past the sump**, ~250 m+ | the deepest Assayer, the underwater scour, clear water | the highest numbers | fully submerged | none |
+
+**Two rules that fall out of this and are worth more than the table.**
+
+- **The ice is a *fill*, not a layer.** The glacier pushed into the openings it found, so band 1
+  is not *"no ice"* — it is ice where the drafts and the drainage put it. An adit half-choked with
+  a plug. **A stope with a floor of clear ice over a muck pile you can see and cannot reach.** A
+  winze with an ice bridge over it. That is a placement rule against §3.1's `medium`, not a new
+  geometry system, and the middle example is the best single image the ice produces: *value,
+  visible, and behind a metre of the thing that is stopping you.*
+- **The melt front is a place.** Somewhere in band 1 or the top of band 2 there is a boundary the
+  water has not crossed, and past it the mine is dry, cold and silent with a machine standing in
+  it that has not fired in fourteen hundred years (`THE-ICE.md` §5.2, §4.2). **Everything above it
+  is running and everything below it is not**, so it is a line the world changes character across
+  and it is drawn by one number in the plan. Art rule: **no boundary marker of any kind.** Like
+  the scour (§5.3), it is legible because of what stops — no drip, no glow, no wind, dry rock
+  where wet rock was — and drawing a line on it would be the same mistake as tinting the scour.
+  **PROVISIONAL**: this whole depth stack is downstream of `THE-ICE.md` §9 questions 1, 2 and 8,
+  none of which the designer has ruled on.
 
 ---
 
@@ -627,7 +1121,11 @@ systems:
   mid-body — the one element that says *this displaces water*; `leg_stow` so its rest pose
   folds the legs flat, because a swimmer does not stand; flat plate feet instead of ball
   feet. **No fins, no thrusters.** Keep the walk: a bottom-crawler in a flooded mine is more
-  distinctive than another ROV, and it keeps the locomotion honest.
+  distinctive than another ROV, and it keeps the locomotion honest. **And the ice hands it the job
+  it was missing.** *(Added 2026-09-09.)* `THE-ICE.md` §5.6: meltwater is cold, moving and
+  **vertical**, and *"a bottom-crawler in a flooded winze is a different animal from one in a
+  flooded drive."* Its class does not change and its meaning does. Nothing above needs editing;
+  the chassis simply acquired somewhere that is only reachable by it.
 
 New on `ChassisSpec`: `class_gesture`, `leg_stow`, `chine`, `ballast`. Numbers, not
 modelling.
@@ -682,6 +1180,32 @@ This is the whole material idea, and it is the strongest single rule any pass pr
   and leaves a soft graphite shell that keeps the shape. Black, non-metallic, velvety,
   roughness 0.98. **Intact in silhouette and dead in surface** is precisely what *"dead iron
   bolted into stone"* means, and it is one material swap on a Z threshold.
+
+**The ice age is what makes all three of these survivable, and it is worth knowing which way the
+argument runs.** *(Added 2026-09-09.)* `THE-ICE.md` §1.1 uses this section as **evidence for**
+§4’s restart ruling rather than treating it as a casualty of it: *"Cold, anoxic, still fresh water
+is the best iron-preserving environment that exists on land. A machine that spent 1,150 years
+submerged in meltwater at 1-4 °C with no oxygen and no motion comes out graphitised and shaped,
+which is exactly the material this section already specifies. **Under “it never stopped” the same
+1,150 years are 480 million hammer blows and there is no brake band left.**"* The arithmetic:
+under the restart the Assayer has run about **17 million cycles**, one thirty-fifth of what
+continuous operation requires. **The bearing steel is bright because it has only been working for
+forty years**, and *"a viewer reads it is still running off the shine on the bearing"* is a claim
+about a wear surface that fourteen centuries of hammering would have turned into a hole. Nothing in
+this section changes; it just acquired its reason.
+
+**Two measured corrections to how the iron is built**, from `spikes/godot/cave/PHOTOREAL.md` §2.7,
+because they contradict the numbers a naive reading of the three ages produces:
+
+- **`METALLIC` is 0 or 1.** Cast iron was built at 0.55, *"which is not a material."* The one
+  legitimate in-between is the rust transition, and it is a mask.
+- **A metal’s albedo is its F0** - **0.56** for iron and steel, **0.91** for aluminium - not a
+  diffuse colour. And the consequence caught the pass out: *"a rough bare metal under a co-located
+  lamp has no diffuse term and returns almost nothing, so **every unrusted patch of cast iron went
+  black.**"* There is now a floor under the corrosion coverage of anything ferrous, *"which is also
+  simply true, since nothing ferrous in a drowned mine is bare."* **That is this section’s own rule
+  arriving as a shader constraint**, and it is why "never orange rust" needs its companion: never
+  *bare* iron either.
 
 `palette.py` has already decided the colour relationship and the world should obey it:
 `ASSAYER_MAST/IRON/HAMMER` are `ROCK_LIT × 2.3 / 2.6 / 3.2` — one material at three weights,
@@ -760,6 +1284,30 @@ both constructive:
    the machinery its own architecture is a free depth cue.
 2. **Vertical landmark presence is bought with light, not with geometry**, because light
    goes round corners and a mast does not. That is what §5.4's winch-head beacon is for.
+
+**Partially reversed 2026-09-09, and this is the constructive half of the vertical cave.** Every
+number above was measured *from ground level on a plane*, which was the only cave that existed.
+`THE-ICE.md` §2.4: *"From a level **above** the Assayer's chamber, looking down into it, a 6.6 m
+mast with a winch head that emits during the wind is exactly the landmark §5.5 said it could not
+be."* So:
+
+- **The measurement stands and its scope is now stated.** At ground level, on the same level, the
+  mast buys zero cells. That is still true and it is still why item 2 above is right.
+- **What reverses is the design problem, not the measurement.** This document's own design problem 6
+  — that `THE-MACHINERY.md` §2.1's *"you can see which way the boom is pointing from the next
+  chamber"* is true of the schematic and false of a ground-level viewer — **is answered by a level
+  above rather than by a chamber beside.** It currently blocks one of the four gate questions, and
+  the vertical axis unblocks it for free.
+- **Item 1's generator rule survives and gets easier.** A chamber that holds something worth seeing
+  must be taller than the passages that reach it; `THE-ICE.md` §5.5 notes that this becomes
+  *"trivially satisfiable when the generator thinks in elevations"* rather than being a
+  post-condition somebody has to test for.
+
+**And one thing that does not reverse and is worth saying loudly**: a machine standing above the
+chamber still cannot *see down* into it, because the sensor's steepest downward beam is −30°
+(`DESIGN-PRINCIPLES.md` §8, and `THE-ICE.md` §6.2's arithmetic). **The mast is a landmark for the
+spectator and for the lamp, and it is not a landmark for a policy.** That is §8's rule applied to
+the one case that most invites breaking it.
 
 ### 5.6 The siblings, each getting a material rather than a palette
 
@@ -878,6 +1426,11 @@ Two rules:
 
 - **Beacons are `WARM_DIM #7A6650`, not team-coloured.** The display already decided this.
   If colour identified the owner, spoofing would be detectable by colour.
+- **A chain going down a shaft is the same image rotated ninety degrees, and it is better.**
+  *(Added 2026-09-09.)* `THE-ICE.md` §1.1 makes the point: a beacon chain descending a pitch is a
+  vertical string of small lights receding, and the thing it is receding into is a drop the machine
+  chose to make. **Same emissive, same rule, and the trail now reads as commitment rather than as
+  distance.** Nothing in the beacon changes.
 - **A spoofed beacon is pixel-identical to an honest one. No tell. Not a subtle one.**
   `ARCHITECTURE.md`: *"Nothing in the type system distinguishes a lie. That is the point."*
   The renderer must not leak what the types refuse to, and the temptation to add "just a
@@ -932,6 +1485,23 @@ where you are.
 
 ## 7. Depth
 
+**Amended 2026-09-09: depth is now altitude in the world, and still darkness on the display.**
+`SPECTATOR-DISPLAY.md` §6.7's rule was written for a schematic with no vertical dimension, and
+`DESIGN-PRINCIPLES.md` §10 gave the cave one. `THE-ICE.md` §2.9's replacement scopes it rather
+than deleting it, and I take it as written:
+
+> *"On the display, depth is drawn as darkness. The display has no vertical axis and must not
+> acquire one; a schematic that tries to show levels shows neither. **In the rendered world, depth
+> is altitude, because it is.**"*
+
+**Two fields, not one, and neither replaces the other.** `depth_band` — BFS graph distance from the
+shaft — keeps all seven of its documented consumers, and `depth_mm` — metres below the valley
+floor — arrives beside it. `THE-ICE.md` §5.4 note 1 is emphatic that substituting one for the other
+*"breaks all seven for one `i32` of convenience"*, and that the generator's post-condition should
+be that they **correlate but are not identical**, which is true of real mines and is the reason a
+long horizontal drive at depth still reads as deep. The six cues below all run off `depth_band` and
+are unchanged; **the seventh runs off `depth_mm` and is new.**
+
 `SPECTATOR-DISPLAY.md` §6.7 already rules: *"Depth is drawn as darkness, not as altitude."*
 The world consumes the same BFS field and adds six things darkness cannot carry. Measured:
 graph distance from the player shaft runs **0 → 262 cells, median 158**, with the eleven
@@ -958,10 +1528,24 @@ chambers at 0 / 18 / 37 / 39 / 58 / 58 / 63 / 77 / 78 / 92 / 95%.
    the last one is behind them. *"Past where the beacon chain still holds"* is the design's
    own phrase, and it becomes a thing you can literally see.
 
+7. **The medium changes, and this is the seventh cue and the only one that is not a gradient.**
+   *(New 2026-09-09, §3.7.)* Shallow is ice, middle is karst, deep is the workings. That is a
+   **stack**, not a ramp: a player crossing from ice to rock knows they have crossed, because the
+   light stops being soft (§2.2), the sensor stops dropping out (§8.2), and the floor stops being
+   slippery. Where the six cues above are all *"a bit more of the same"*, this one is a door. **The
+   melt front is the second door**, and it is deeper, drier and quieter than everything above it.
+
 And the inversion this game wants, which falls out rather than being imposed: **deeper is
 simultaneously darker (more water, no shaft, no daylight) and more lit (more machines, and
 machines are the only world light).** The dangerous place is the visible place. That is the
 correct feeling for an extraction game, and it is why depth does not collapse into mud.
+
+**And the vertical axis adds a second inversion the ice supplies for free**: *(added 2026-09-09)*
+**shallow is the bright, forgiving, low-contrast place and it is the one with nothing in it.** The
+ice band relents (§2.2), the daylight still reaches part of it (§2.1), and it has no ancients, no
+iron and no loot. Everything worth having is in the dark. `DESIGN-PRINCIPLES.md` §2's
+*"the cool things are found by depth"* is now legible as a lighting gradient as well as a loot
+table, and a player learns *value is where the light stops* without being told.
 
 ---
 
@@ -1038,6 +1622,17 @@ It should look like **a survey, not a fog.**
   outside without one.
 - **The floor decal is demoted** to an option for the widest replay camera. It was the only belief
   element with area; the ground rings are now a fabric with area of their own.
+- **Ice is where the map goes thin, and that is content too.** *(Added 2026-09-09;
+  `THE-ICE.md` §6.2, PROPOSED and not yet ruled — it is the material decision
+  `THE-SENSOR-AND-SLAM.md` §1 explicitly did not make when it decided water returns a plane.)*
+  Near-infrared is strongly absorbed by ice, so a clean ice wall gives **sparse, low-intensity,
+  dropout-ridden returns** — not a mirror and not a hole. Wet ice at grazing incidence returns
+  nothing and at normal incidence flashes, so **a machine walking a polished conduit sees a bright
+  patch straight ahead and almost nothing at the walls: the returns collapse into a narrow forward
+  cone.** This needs no new belief signals — returns per sweep and how much of the last sweep came
+  back are already published — so **a player learns *the map goes thin here* by watching it
+  happen.** It is the same intensity channel this section already gives the visible slot to, doing
+  a second job for free.
 - **Never smooth it into a mesh.** A mesh is a model, and the machine does not have one.
 
 That last constraint produces the answer to the whole art problem:
@@ -1070,7 +1665,8 @@ both sides, and nothing on either side is drawn at a z that claims a measurement
 **Agree — write these down as shared rules:**
 
 1. Warm/filled is real; cool/sparse is believed.
-2. Depth is darkness, not altitude — the same BFS field on both sides.
+2. Depth is darkness **on the display**, and altitude in the world — the same BFS field on both
+   sides, plus `depth_mm` on the world side only. *(Rescoped 2026-09-09, §7.)*
 3. The same two rock anchors: `ROCK` / `ROCK_LIT` on the display, wet stone / dry dust in the
    render.
 4. Player is `BONE`, rival is `EMBER`.
@@ -1082,21 +1678,42 @@ both sides, and nothing on either side is drawn at a z that claims a measurement
 
 **Must not:**
 
-1. **Cyan is belief. No cyan in the world** — not a team, not a lamp, not an LED.
+1. **Cyan is belief. No cyan in the world** — not a team, not a lamp, not an LED. **Restated as a
+   saturation rule 2026-09-09, because a blue-white exterior cannot keep a literal no-blue rule and
+   should not try.** `THE-ICE.md` §2.6's enforceable version: *"`SENSED #63D6F7` and
+   `GHOST #9FE8FF` are **saturated and bright**. Skylit snow is high-value and low-saturation, and
+   skylit shadow is low-value. **Nothing in the world may use belief's saturation at belief's
+   brightness.**"* And one hard line that survives without any scoping at all: **no emissive in the
+   world is ever cyan.** Not a status LED, not a window, not a vehicle light, not a screen seen
+   from outside. **The ground may be the colour the sky makes it; nothing may *emit* belief's
+   colour.** The reason the collision is survivable at all is that belief and the exterior almost
+   never share a frame — belief is drawn underground, and on the surface it appears on a screen in
+   the world, which is allowed to be cyan because it is a screen.
 2. **The 2× glyph exaggeration does not transfer.** The display draws a 2.4-cell glyph over a
    0.6-cell footprint and argues for it at length; it is right for a diagram. **In the world
    things are their real size.**
 3. **The invented 8-cell wall extrusion does not transfer.** §6.7 is explicit that it is a
-   legibility device over a grid with no vertical dimension. Phase 3 has a real heightfield.
+   legibility device over a grid with no vertical dimension. **Phase 3 has real elevation.**
+   *(Last clause replaced 2026-09-09; it read "a real heightfield", and `THE-ICE.md` §5.3 rules
+   that out — a heightfield is single-valued in z and cannot hold a passage under a chamber. The
+   recommended shape is a small stack of levels, 2–4 deep, each still a heightfield within itself.
+   The rule this bullet states is unaffected either way.)*
 4. **The display's fixed world light does not transfer.** Four compass face brightnesses is a
    *sun*, and it is correct for a diagram that needs to read as solid stone. **The rendered
-   world has no sun and must never borrow one.** It gets its solidity from falloff, from
-   silt extinction, and from the fact that the light moves with the machine.
+   world below the collar has no sun and must never borrow one.** It gets its solidity from
+   falloff, from silt extinction, and from the fact that the light moves with the machine.
+   *(Scoped 2026-09-09.)* **Above the collar there is a sun and it is on the peaks**, and even
+   there it is not on the ground the player is standing on (§2.1, §12.2) — so the display's
+   four-face cheat does not transfer to the surface either, for a different reason: the exterior's
+   illuminant is a sky, which lights every face, and what separates surfaces there is orientation
+   against a *dome*, not against a compass.
 5. **Signal colour is overlay vocabulary, not paint.** A diagram can guarantee that green
    means the objective; a rendered world cannot, because a green thing on a wall is just a
    green thing. **The world uses material; accents are for overlays only** — with two
    sanctioned exceptions where the fiction supplies the source: the shaft (naturally cold and
-   bright) and the machinery's fire (naturally violent).
+   bright) and the machinery's fire (naturally violent). **A third is added 2026-09-09 and it is
+   the same exception as the first: the sky, and the alpenglow it does not reach.** Both are the
+   fiction supplying a source, neither is a signal, and neither may ever be used to mean anything.
 
 ---
 
@@ -1104,28 +1721,95 @@ both sides, and nothing on either side is drawn at a z that claims a measurement
 
 Short list, so that a later "while I was in there" has something to fail against.
 
-- **No ambient light, ever, in any costume.** No sky term, no fill, no rim, no bounce card,
-  and no phosphorescent mineral. If a pixel is lit, a fixture in the frame or in the fiction
-  is lighting it.
+**Seven lines were amended 2026-09-09 and seven were added, and every amendment carries its
+reason.** Four of the seven the setting forced, two were already open questions
+(`DESIGN-PRINCIPLES.md` §6 records both), and one was simply wrong. **None of them is weakened.** A
+rules-out list that cannot survive a setting decision is a list somebody will quietly stop citing,
+and a rule that is amended in the open with its intent restated is stronger than one that is
+silently ignored. **Where a line has moved, what it used to say is quoted.**
+
+- **No ambient light, ever, in any costume — below the collar.** No sky term, no fill, no rim, no
+  bounce card, and no phosphorescent mineral. If a pixel is lit, a fixture in the frame or in the
+  fiction is lighting it. **(Scoped 2026-09-09.)** It read as an absolute because there was nothing
+  above the collar when it was written. Above it, the sky is the fixture — §2.1's fifth row — and a
+  sky term there is not a costume, it is the source. The surface spike is explicit that without it
+  *"the shadowed sides of every sample go to true black and the surface reads as a night scene with
+  one hard sun, which is not overcast daylight"*, and it keeps ambient **off, hard, in both cave
+  conditions.** The line between the two regimes is a physical one and it is drawn at
+  `1/(1 + (depth/2.2)²)`, §2.1.
 - **No world accumulation.** Lit ground goes black when the beam leaves. Memory belongs to
-  belief, which is honest about being a memory.
+  belief, which is honest about being a memory. **One exception, and it is above the collar: snow
+  records what walked on it** (§12.1). That is not the world remembering light; it is the world
+  being deformed, it is truth rather than belief, and it is the single most valuable thing the ice
+  age produces.
 - **No hue axis on anything.** One warm rock family. Rock type, magnetic character, depth,
-  structural integrity and biome all change *surface*, never colour.
-- **No crystal, no ice, no bioluminescence, no glowing ore.** That is fantasy-cave vocabulary
-  and it pulls the world toward hue-swap biomes, which is the exact failure this direction
-  exists to prevent.
-- **No image texture, UV map or bitmap.** A generated cave cannot be unwrapped.
-- **No hand-modelled asset.** If a proposal cannot be expressed as a parameter, a node graph
-  or generator geometry, it does not ship. (Flowstone in named places on the Assayer was cut
-  for exactly this reason: it is a displacement shader driven by a downward-flow and curvature
-  mask, or it is nothing.)
+  structural integrity and biome all change *surface*, never colour. **PROVISIONAL, and it is the
+  one line here I cannot repair on my own authority.** `DESIGN-PRINCIPLES.md` §6 records the
+  conflict and leaves it open: *"Real rock varies in hue as well as value, and mineral staining in
+  a wet iron mine is strongly coloured. Photorealism and the no-hue rule cannot both hold
+  literally."* Both spikes then bent it in the same direction and both said so — mineral staining
+  moving chroma by **±3.5%** off one low-frequency noise, iron ochre at `(0.115, 0.052, 0.018)`
+  which is *"clearly orange, not a value change"* — and both preserved the intent with the same
+  sentence: **hue is a material property keyed to *position*, never an axis, and *"it cannot be
+  used as a legend."*** Snow and ice are the third party to that argument (`THE-ICE.md` §2.6) and
+  they are governed by §8.4's saturation rule. **Until the designer rules, treat the intent as
+  binding and the letter as amendable: one rock family, nothing signals by hue, no biome colour, no
+  second hue axis.**
+- **No crystal, no bioluminescence, no glowing ore. Ice is a material and a place, never a biome
+  and never a hue axis**: it changes surface, translucency and sensor response, and the rock family
+  underneath it is unchanged. **Nothing in this world glows because it is cold.** *(Replaced
+  2026-09-09. It read "**No crystal, no ice, no bioluminescence, no glowing ore.** That is
+  fantasy-cave vocabulary and it pulls the world toward hue-swap biomes, which is the exact failure
+  this direction exists to prevent." The replacement is `THE-ICE.md` §2.5's, taken verbatim, and
+  its argument is the one that matters: **the reason behind the old rule was to stop the season
+  system becoming a palette swap, and ice arriving as a setting rather than as a biome does not
+  threaten that.** The rest of the old line is untouched — crystal, bioluminescence and glowing ore
+  are still fantasy-cave vocabulary and still banned, and §6.5's "there is no glowing item on the
+  floor anywhere in this game" is unaffected.)*
+- **No photographic texture, no authored bitmap, and nothing unwrapped.** A generated cave cannot be
+  unwrapped, and nothing in this world may depend on a UV layout or come from a photograph or a
+  painted map. **Generated noise, including noise baked to a generated texture at load, is not a
+  bitmap asset and is allowed.** **(Amended 2026-09-09.)** It read "**No image texture, UV map or
+  bitmap.** A generated cave cannot be unwrapped." The first sentence is the intent and it is
+  unchanged; the letter forbade the generated noise textures that physically based materials need,
+  which is `PROCEDURAL-AND-GODOT.md` **question 5**, recommendation **yes**, unruled, and
+  `DESIGN-PRINCIPLES.md` §6 says photorealism *"depends on that default holding."* The cave's
+  photoreal pass now depends on it outright — four seamless 64³ noise volumes generated at load
+  from the cave seed, **786 KB of VRAM and ~130 ms**, turning a ~700-hash fragment into a ~30–60
+  fetch one — and says what happens if the ruling goes the other way: *"If the answer comes back
+  no, most of §2 goes with it."* The one UV anywhere is on a printed label, and a label is applied
+  to a manufactured part in a factory. **This remains PROVISIONAL until Q5 is ruled on**, and it is
+  item 9 in Needs a designer decision.
+- **No hand-modelled *generated* content.** The cave is generated per match, so nothing in it may
+  be hand-modelled and nothing in it may be unwrapped: if a proposal about the cave cannot be
+  expressed as a parameter, a node graph, generator geometry or an instanced kit part, it does not
+  ship. (Flowstone in named places on the Assayer was cut for exactly this reason: it is a
+  displacement shader driven by a downward-flow and curvature mask, or it is nothing.)
+  ***Authored* content is a different thing and this rule never applied to it.**
+  **(Scoped 2026-09-09, and this one is a correction rather than a concession.)**
+  `DESIGN-PRINCIPLES.md` §5 was
+  amended by the designer on this exact point: *"This applies to GENERATED content, not to AUTHORED
+  content, and the difference is not subtle… **Machines, modules, the ancients' machinery and the
+  pit-head's fixed structures are modelled assets**, and `agent_model/` — a Blender rig with all
+  four chassis, their legs, slots, modules, skins and a working gait — is the model. It gets
+  exported and imported, not rebuilt in engine. Rebuilding an authored asset procedurally because a
+  rule about caves said 'procedural' is a category error, and it cost a stream of work before the
+  designer caught it."* **The header of this document says "nothing in this document needs a
+  modeller" and that sentence is now wrong in one direction**: nothing in the *cave* needs a
+  modeller, and the machines already have one. The intent — that a generated cave cannot be
+  unwrapped — is exactly as strong as it was.
 - **No visual for magnetic character.** If noisy rock is legible, the magnetometer is
   redundant and the false-find mechanic dies.
 - **No tell on a spoofed beacon.** Not a flicker, not a hue shift, not a subtle one.
 - **No second red.** No red strips, no red LEDs, no red-hot metal. `KILL` and `HURT` only.
 - **No cyan anywhere in the world.**
-- **No long shot.** Nothing may be required to be visible across a chamber, and no art budget
-  is spent past 15 m.
+- **No long shot *horizontally*.** Nothing may be required to be visible across a chamber, and no
+  art budget is spent past 15 m of passage. **(Scoped 2026-09-09.)** **A vertical sightline is the
+  exception and it is a real one**: a pitch looked down is a straight line longer than anything the
+  horizontal cave contains, and `PROCEDURAL-AND-GODOT.md` §4.4's *"visibility ranges replace LOD
+  entirely"* is downstream of a number that a winze breaks. Measured: turning visibility ranges off
+  costs **≈ 45 ms**, so they are the frame rather than insurance. **LOD comes back for the vertical
+  axis and for the exterior**, and §3.6 and §12.5 carry it. The horizontal rule is unchanged.
 - **No permanent honest wayfinding grid.** Nothing in the world may act as a third Fix source
   and compete with the beacon.
 - **No glowing item on the floor.** Deposits are worked faces, discoveries are transactions,
@@ -1133,6 +1817,32 @@ Short list, so that a later "while I was in there" has something to fail against
 - **No world-readable inventory in the live player view** (§8's rule): glowing cargo segments
   and emptying beacon caps are spectator/replay vocabulary, because `Return::Optical` carries
   occupancy and not radiance.
+
+**Added 2026-09-09, with the setting:**
+
+- **No ice event.** No melting plug, no collapsing bridge, no roof that drops. `THE-ICE.md` §6.6:
+  *"An ice hazard that acts converts the place into a haunted house."* The one exception is already
+  in the fiction and is not an event: **the melt front is a place** (§3.7). It does not move during
+  a match.
+- **No marker on the melt front, the trimline or the snowline.** All three are lines the world
+  draws by *changing*, and every one of them is one `smoothstep`. Drawing an edge on any of them is
+  the same mistake as tinting the scour (§5.3).
+- **No seasonal Assayer.** `THE-ICE.md` §4.5: more meltwater in summer and a faster cycle is
+  obvious and it would delete the clock, the landmark and the learnable behaviour. **The tank fills
+  in 75 seconds. It always has.**
+- **No snowline that moves on its own.** It may only move as a deliberate published world event
+  (`ROADMAP.md` Phase 9), never between matches and never during one. A world that visibly changes
+  on its own is a weather system, and this world is one arithmetic, frozen.
+- **No cave city.** The town is terraced and open to the sky. A society that lives *inside* rock
+  puts the safe place underground and collapses `DESIGN-PRINCIPLES.md` §3's whole contrast. §12.3.
+- **No person as a character.** People are visible in the town at distance and never nearer than
+  the far side of a street: lit windows, moving vehicles, smoke, figures two pixels tall. And
+  underground, `WHAT-HAPPENED-HERE.md`'s rule is *strengthened* by the ice rather than relaxed:
+  **there are no remains, no bodies and no personal effects, ever, anywhere in this game**, and the
+  ice will make somebody want to put a frozen person in a crevasse. Do not.
+- **No blue snow shader.** Snow's diffuse term is achromatic; the blue lives in the shadow, which
+  is the sky's colour, and in path length through ice, which is absorption (§3.1). A material that
+  reaches for a blue albedo has failed the rule.
 
 ---
 
@@ -1153,7 +1863,7 @@ orders phases: by how much damage a wrong answer does, weighted by uncertainty.
 | 7 | **The worked-passage geometry** — horseshoe profile, shot-hole rounds, gutter, rail at 600 mm, sets and bolts at 1.2 m, plates at 4.8 m | 4 | Where "a place worth robbing" gets built, and it is all carved geometry |
 | 8 | **The wreck** — `WreckSpec` with roll *and* per-leg pose, a hull ground-contact solve, `shed`, dead emissives, spilled cargo, the clean handle | 4 | Highest narrative value on the list, and **the only item here that needs an artist's eye rather than a number** — measured: ride height alone reads as crouching, roll alone floats (§6.2) |
 | 9 | **The Assayer, dressed** — three ages of iron, the nine-click ramp, two hot points, the de-silted scour | 4 | The geometry is already fully specified in cells; this is material and cycle |
-| 10 | **The point cloud as oriented discs** + the floor silhouette + the two-layer replay composition | 3 | ROADMAP says this screen gets the most polish |
+| 10 | **The point cloud as opaque depth-tested points with ring structure preserved** + the two-layer replay composition | 3 | ROADMAP says this screen gets the most polish. *(Reworded 2026-09-09 to match §8.2, which was rewritten the same day: the oriented disc and the 45 mm constant are deleted, and the floor decal is demoted to an option for the widest replay camera. The days are unchanged.)* |
 | 11 | **Depth as one BFS field with six consumers** | 2 | |
 | 12 | Module silhouette fixes — `passive_acoustic` vane, `structural_monitor` spike, beacon caps, cargo fill | 3 | |
 | 13 | Damage rungs and the `damage` geometry exception | 2 | |
@@ -1163,9 +1873,34 @@ orders phases: by how much damage a wrong answer does, weighted by uncertainty.
 every existing image in the project. That is the honest first pass, and item 1 is four
 minutes of it.
 
-**What needs no building at all:** any hand-authored asset. The cave is a shader, the agents
-are parameters, the machinery is a spec in cells, and the found objects are poses and
-emissive states.
+**What needs no building at all:** any hand-authored *cave* asset. The cave is a shader, the
+machinery is a spec in cells, and the found objects are poses and emissive states. *(Corrected
+2026-09-09: the agents are parameters **on an authored rig**, per `DESIGN-PRINCIPLES.md` §5 and
+§9 above.)*
+
+**Not re-costed for the ice, deliberately.** *(Added 2026-09-09.)* The table above is a Phase 5
+cost for one cave biome and one chassis, and every item in it still has to happen. What the ice
+adds is scoped in `THE-ICE.md` §2's ranking table, which prices the *shape* of the setting in weeks
+and its *look* in days, on the strength of a real observation about the built spikes: both have
+already survived a total rebuild of the layer below the layout/dressing seam without moving their
+content hash. **So: snow, ice, light and palette are a dressing change and cost nothing above the
+line; a valley and a vertical cave are layout and topology changes and cost the plan, the hash, the
+determinism tests and everything downstream.** Three art items are new and belong on this list
+whenever it is re-costed, and I am naming rather than pricing them because two of them are
+downstream of rulings nobody has made:
+
+| new item | why it is not costed here |
+|---|---|
+| **the ice family** (§3.1) — one shader, one new anisotropic flow-shaped noise primitive, a subsurface term | needs `THE-ICE.md` §9 Q8 (is there ice in the cave at all) |
+| **snow, and tracks in it** (§12.1) | it is the highest-value item in the whole ice decision and it does **not** depend on the valley, the town or the vertical cave. `THE-ICE.md` §11 puts it third in its own order and I agree |
+| **the three lines on the wall** (§12.3) — trimline, town, snowline | two `smoothstep`s and a silhouette, and between them they put the entire setting on screen with no text. `THE-ICE.md` §11 puts it immediately after the snow |
+
+**And one item on the list above got cheaper.** Item 7, the worked-passage geometry, is where
+*"a place worth robbing"* gets built; the pitch profile family (§3.4) is new work beside it rather
+than instead of it, and `THE-ICE.md` §2.3 reports that the built cave's topology layer is *"428
+lines of pure integer code"* of which most rules survive verbatim — **it is the topology layer that
+is rewritten, and it is the small file.** The expensive half is the dressing side's profile
+function, which is one function.
 
 ---
 
@@ -1209,6 +1944,306 @@ not before), and show it to somebody who has never seen the game. Two questions:
 it is already derived from a claim the fiction has made, it costs two meshes and a point
 light, and it buys the Bus tell and the worked-ground depth gauge on the way past. It should
 be ruled on then, on evidence, rather than bought now on an argument.
+
+**The ice age changes the shape of this risk twice, and the two changes pull in opposite
+directions.** *(Added 2026-09-09.)*
+
+**It gets better, in two ways that are real.**
+
+- **There is now a bright place, and the player comes from it.** The fatigue argument was made
+  against a game that was black from the title screen. `DESIGN-PRINCIPLES.md` §10's surface is
+  *"monotonous and snowy and pretty… a valley under a large sky"*, and §3's structure is that the
+  player leaves somewhere worth being. **A frame that is 90% black reads differently at minute six
+  when minute one was white**, and the descent is now three legs long (§12.6) rather than a cage
+  and a cut.
+- **The shallow band relents.** §2.2 and §2.9 give the ice band a softer falloff and its own
+  exposure row. The first minutes underground are the friendly ones by construction, which is the
+  cheapest possible answer to *"after a minute, do you want the lights on?"* — for the first
+  minute.
+
+**It gets worse in one way, and it is the one that would actually kill it.** The failure mode was
+never darkness, it was **fatigue**, and the ice does nothing about minute six. Worse: **§3.7 puts
+everything worth having below the ice band**, so the friendly part of the cave is the part with no
+reason to be in it, and every minute of the match that matters is still black. A player who is
+relieved at 0–30 m and exhausted at 200 m has had the problem moved, not solved.
+
+**So the kill test in this section is unchanged and gains one leg.** Render the sixty seconds as
+specified, and render **a second clip that starts on the valley and goes down**, because what is
+being tested is a contrast the old build could not produce. Same two questions, same encode-first
+rule. If question 2 still comes back yes, the fallback is still §2.8.
+
+---
+
+## 12. The surface
+
+**New 2026-09-09.** This document previously had almost nothing about the world above the collar,
+because there was almost nothing above it: `DESIGN-PRINCIPLES.md` §3 gave the game a pit-head on
+2026-09-08, and §10 gave it a valley, a town and an ice age the next day. **It is numbered 12 and
+sits at the end so that §4 through §11 keep their numbers** — five documents cite this one by
+section, nineteen times to §2.1 alone — and it should be read immediately after §3.
+
+`docs/THE-ICE.md` §7 is the specification and every number below is its. **They are all GUESSes and
+that document says so** — *"chosen so the frame reads rather than measured from anything, and they
+are offered as a set because they only work together"* — so treat the ratios as the decision and
+the values as provisional. `THE-ICE.md` §9 question 5 asks the designer to confirm them in order of
+magnitude, and questions 3, 4, 19, 20, 21 and 22 decide the shape of the place.
+
+**And one honest statement of what this section is.** Everything in `spikes/godot/surface/` is a
+**wet brown industrial pit-head at 174 × 148 m under overcast**, tuned against one seed. There is
+no snow, no ice, no valley, no mountain and no town anywhere in it. So §12 is **specifying, not
+documenting**, and the reader should hold it to a lower standard of evidence than §2 or §3. Where a
+built number exists it is cited, and it is usually cited as *the thing that has to change*.
+
+### 12.1 Build this first, and it is not a picture
+
+Before the town, before the valley, before the terrain: **snow records what walked on it.**
+
+`DESIGN-PRINCIPLES.md` §3 puts teaching on the surface. §7's correction was that *"clear ground is
+a feature — traffic lanes, turning circles, the apron in front of a bay and the ground a machine
+walks are kept clear, and their emptiness reads as use."* Snow does that automatically, and it does
+something concrete could not: **it keeps a record.** A training course in snow shows the machine's
+own path, every run, as a physical mark on the ground — where it hesitated, where it turned, where
+it went twice, where it went wrong.
+
+> **The floor of the training course draws the policy.**
+
+That is the highest-value object the ice-age decision produces and it is not an art win, it is a
+teaching win. This project's own recorded lesson is to check every stream against *does this make
+the player teach the agent sooner?* — and a course whose ground draws the answer is the only item
+in this section that answers yes. **It does not need the valley, the town, or the vertical cave**,
+and it should be built ahead of all three.
+
+The instrument is a deformation or decal accumulation on the course ground. The built site already
+bakes a **wear field on a 1 m grid, 183 × 157 cells, in about 90 ms**, from the walkway polylines
+and the haul road — *"the site already knew where everything was"* — and a track record is that
+field written at run time by one agent instead of at build time by a layout. **PROPOSED**, and it
+is `THE-ICE.md` §7.1's, taken whole.
+
+### 12.2 Light, and it is the same light as the shaft's
+
+§2.1 carries the economy and its two new rows; this is what they mean on the ground.
+
+- **There is no direct beam on the ground the player stands on.** The valley floor sits in the
+  shadow of an 1,800 m wall for most of the day, so it is lit by the sky alone — a clear-sky north
+  window at the scale of a landscape, on the order of **12000 K, `(0.60, 0.74, 1.00)`**. The sun is
+  on the ridge and on the peaks and never on the floor.
+- **Skylight in a shadowed valley is roughly a tenth to a seventh of full sun** (`THE-ICE.md`
+  §2.6, its own arithmetic and it says so). Snow at 0.8 albedo under a tenth of the illumination is
+  comparable in luminance to the built yard's 0.24 concrete under full overcast, **possibly
+  darker.** So **the snow does not automatically dominate the frame by value**, which is what makes
+  a blue-white exterior survivable next to a cyan belief layer at all.
+- **The in-frame dynamic range goes up, not down**: sunlit peak against shadowed floor is roughly
+  **thirty to sixty to one** inside one frame. §2.3's discipline transfers exactly — do not
+  compress, let the peaks blow, grade for the floor.
+- **Alpenglow is the only warm light and it is unreachable.** Minutes long, at 8–15 km, illuminating
+  nothing the player can touch. It is the second register `DESIGN-PRINCIPLES.md` §4 demands, handed
+  over by the landscape instead of invented. **The town's lit windows are the other warm element
+  and they are at human scale.**
+
+**What the built rig says, and what has to change.** `weather.gd` runs three states and no
+time-of-day system: overcast at sun `(−46°, 132°)`, colour `(1.00, 0.985, 0.962)`, energy 1.50,
+angular size 3.6°, ambient 1.30, `tonemap_exposure` **0.70**, fog density 0.0016. That sun is
+**near-neutral on purpose**, and the reason is measured: the previous pass made the surface sun
+*be* the shaft's light and the underfoot frame came back at **B/R = 1.30 — a monochrome blue
+image**; with a neutral sun and a cold sky it measures **B/R = 1.01**.
+
+> **`surface/PHOTOREAL.md` §3.4 asked for a ruling and §2.1 now answers it in its favour, without
+> overruling it.** The sun stays near-neutral and correct. It simply is not on the ground the
+> player is standing on. *"Real overcast diffuse is 6500–7500 K, not 12000 K; 12000 K is a
+> clear-sky north window"* — and a shadowed valley floor under a clear sky **is** a clear-sky north
+> window.
+
+Everything else in that rig is re-derived rather than reused. **Every exposure number has to move**:
+the yard's hardstanding is **0.24 linear** *"because the yard is meant to be a hellscape"*, fresh
+snow is **0.7–0.9 linear**, and the photoreal pass's own image targets (p50 ≈ 0.33, under 2% dead
+black) were fitted to a ground three times darker than the one this setting has. Two built numbers
+worth keeping anyway: **the sky must be a shader, not `ProceduralSkyMaterial`, and it must run
+`PROCESS_MODE_REALTIME`** — QUALITY re-bakes the radiance cubemap every frame and took the overcast
+pass from 93 fps to **9**. And **the sky's lower hemisphere has to be about as bright as its
+horizon**, because `fog_aerial_perspective` samples the sky in the pixel's view direction and a
+dark ground colour paints every downward ray black.
+
+### 12.3 The valley, the town, and the three lines that date the world
+
+| quantity | proposal | why |
+|---|---|---|
+| valley floor, wall toe to wall toe | **1.2 km** | wide enough to separate town from pit-head; narrow enough that **both walls are in almost every frame**, which is what makes it a valley rather than a plain |
+| valley length in view before it turns | **6–8 km** | one aerial-perspective ramp |
+| wall height above the floor, to the ridge | **1,800 m** | the smallest number that reads as *massive* rather than as *hill* |
+| the peaks behind | **2,600–3,200 m** | they carry the only sunlight |
+| pit-head to the far wall | **~900 m** | deliberately close: the town must read as **buildings**, not as texture |
+| to the nearest big peak | **4–6 km**; alpenglow peaks **8–15 km** | aerial perspective needs range |
+| **the trimline** | **+310 m** | the ice's high-water mark |
+| **the permanent snowline, today** | **+1,100 m** | above the whole town, well below the peaks, and it has moved up within living memory |
+| the glacier's terminus | **~3 km up-valley** of the pit-head | far enough to be scenery, near enough to be the reason the pit-head exists |
+| the town | foot **+90 m**, main body **+120 to +380 m**, oldest quarter **+520 m** | below |
+| the cave | **0 to −250 m** | §3.7 |
+
+**Which gives the game one vertical axis end to end: +520 m to −250 m, with the shaft in the
+middle of it**, and `datum_mm` — the valley floor — is the single zero both halves are measured
+from. A player standing on the floor can see both ends. **That is the strongest structural idea in
+the setting and it costs one `i32`.**
+
+**One correction to the obvious reason for wanting mountains, because it changes what gets built.**
+A mountain does not make a machine read small. **A chain of known sizes does**, and one enormous
+thing at 5 km with nothing between it and the machine reads as a backdrop. What delivers absolute
+scale is the sequence *machine → bay → building → town on the wall → ridge → peak*, and the
+load-bearing link is **the town**, because it is the only element whose size a viewer already
+knows. **So the mountains are the thing you see and the town is the thing that does the work.**
+
+**The town: terraces above a trimline, and it has been coming downhill for a thousand years.** The
+constraint does the design. A glacier fills a valley from the bottom up, so the floor is the *last*
+ground to come free. Above the trimline — the line the ice's own upper limit scours across both
+walls — the rock was cold and exposed but never buried. **So the society survived the ice on the
+walls, above the trimline, and has been walking downhill ever since.**
+
+- **Terraces and galleries cut back into the wall, open to the sky.** Shelves quarried into rock,
+  buildings standing on them, roads switching back between them, everything facing out across the
+  valley. **Not tunnelled** — §9 bans the cave city, and the reason is that a society living inside
+  rock puts the safe place underground and collapses `DESIGN-PRINCIPLES.md` §3's whole contrast.
+- **It is oldest and highest.** The upper quarter at +520 m is the survival town: small, dense,
+  weathered, built for a climate nobody now has to live in. The main body is modern and
+  manufactured. The foot at +90 m is new construction on ground that was under ice.
+- **So the town's stratigraphy runs downward and gets newer** — which is the mine's index running
+  downward and getting newer (§7 cue 5), a thousand years apart, in one frame. **Two societies,
+  both working downward, both getting better as they went, and the player stands in the second one
+  looking at the first one's shaft.**
+
+**And the ice age becomes visible without a word.** Three horizontal lines on the wall, all visible
+from the floor, none explained, and no number, name or date anywhere:
+
+| the line | at | what it says | how it is drawn |
+|---|---|---|---|
+| **the trimline** | +310 m | where the ice stood at its greatest. Weathered, jointed, lichened rock above; scoured, polished, freshly exposed rock below | **one `smoothstep` on world height** in the wall material |
+| **the town** | +90 to +520 m | it straddles the trimline. Old and dense above, modern and manufactured below | silhouette and window light |
+| **the snowline** | +1,100 m | where the ice is *now*. Not geological — current, and moving. The tell is a band below it that is bare, raw and colonised by nothing, because it came out from under the ice inside a lifetime | **one `smoothstep` on world height** |
+
+> **The valley has a tide mark and it is three hundred metres high.**
+
+That is the same instrument as §3.5's *"0.12 m mineral tide-mark crust above it — one detail that
+says the water moved"*, at a thousand times the scale, and it obeys `WHAT-HAPPENED-HERE.md`'s
+no-date, no-era, no-calendar rule absolutely. **A player who never thinks about it still sees that
+the town straddles a line.**
+
+### 12.4 Materials, and the pit-head is still a pit-head
+
+**The pit-head survives the setting change, moves up the valley, and keeps its props.** That is the
+finding that saves the built work (`THE-ICE.md` §7.4): the surface is now **three places** — the
+town on the wall, the valley floor and its haul road, and a private pit-head at the retreat margin
+— and everything in `spikes/godot/surface/` is the third one. Its ground material changes, its
+lighting changes, its arrangements do not.
+
+**`DESIGN-PRINCIPLES.md` §7's arrangement vocabulary is unchanged and is *more* correct in snow**,
+because a swept bay in snow reads as use ten times more strongly than a swept bay on tarmac. The
+twelve arrangements, the 1.2 m module the bays are cut on, the 0° / 90° yaw discipline, the ±2°
+jitter that exists on exactly one object, the margins-only rule for debris and standing water, and
+the numbered bay plate at the head of every stand — all of it stands. **The one thing snow adds is
+that clear ground now has to be *cleared by somebody*, and the marks of the clearing are the
+dressing.** A ploughed edge, a bank at the end of a lane, a swept apron with a rim: that is
+`DESIGN-PRINCIPLES.md` §7's *"somebody swept this yard this week"* made literal.
+
+**Snow is cheap as a material and expensive as a look**, and the split is worth stating exactly.
+
+*Cheap.* A `"snow"` row in the material table is one line of ten numbers, no shader edit. The
+`g_wet` global-uniform mechanism is exactly the pattern a `g_snow` copies, so snow accumulation as
+a season lever costs one uniform. And **the slope term already exists**: the ground shader has
+`smoothstep(0.86, 0.985, wnorm.y)` and the solid shader already drives its dirt term off
+`clamp(wnorm.y, 0, 1)` — dust settling on up-facing surfaces. **Snow on up-facing surfaces is that
+term with a different colour and a harder threshold.**
+
+*Expensive.* Four things, none optional.
+
+1. **Snow needs subsurface scattering to read, and nothing in any of the three material systems has
+   a translucency term.** It is the same term §3.1's ice needs, which is the argument for building
+   them together.
+2. **Snow's silhouette is the known open weakness.** *"A flat plane with a heightfield on it is
+   still a flat plane. POM gives apparent depth and it works well… but the silhouette is unchanged,
+   so at grazing the ground shows a clean straight edge."* **Drifts, and snow banking against
+   objects, are exactly the case parallax cannot do**, and they are the whole read of snow at
+   ground level. That is instanced geometry, not a shader.
+3. **`g_wet` and `g_snow` are not independent sliders.** Wet darkens albedo and drops roughness;
+   snow does the opposite. They need one combined model rather than two knobs that fight.
+4. **Snow will crawl unless it carries the same per-band Nyquist fades the aggregate does**, and
+   the spike has already seen exactly this failure wearing exactly this costume: a 23 mm worley
+   cell aliasing on a spoil tip *"came back as pale blotches crawling over the spoil tips that read
+   exactly like snow."* The fade table is the reusable part. **The rule underneath it is §3.2's:
+   fade bands by pixel footprint, and what a faded band turns into is roughness.**
+
+*Also gone:* the puddles (ice now, or buried), the weeds in the margins, and the overcast rig.
+*Also honest:* the ground shader is about 800 lines whose entire subject is weathered concrete —
+slab joints, arris, lippage, spalling, repaired patches, hairline cracks, exposed aggregate, oil,
+tracked mud, ruts, puddles. **It is the most expensive asset the photoreal pass produced and this
+setting makes it the least visible.** That is a sunk cost rather than a new one, and the
+consolation is §12.1.
+
+**And one rule from below the collar inverts up here and must be allowed to.** SSAO does nothing in
+a cave because it only modulates ambient and there is none (§2.10); on the surface it is *"what
+stops 84,864 props hovering above the ground"* and it costs **4.2 ms of a 13.7 ms frame**. Both are
+correct. **The variable is whether there is ambient, and the collar is where it changes.**
+
+### 12.5 Scale, and what is ruled out up here
+
+**The mountains are the cheapest large thing this game can add, and that is not intuitive.** At
+4–15 km they are silhouette, aerial perspective and a snow line, and nothing else: no material
+detail, no props, no shadow casting, no collision, and LOD that never has to be good. §3.6's
+*"spend no art budget past 15 m"* is exactly the right rule inverted: **spend nothing past 500 m
+except silhouette and air.**
+
+**The inhabited wall at 900 m is where the money goes.** Close enough that buildings need edges,
+roofs, glazing and a believable street logic; far enough that none of it can be instanced from the
+yard kit at yard density. Pitched roofs, glazing and terracing do not exist in any built dressing
+layer. **Budget the town, not the mountains.**
+
+**And the valley saves something real: it is a room.** A valley floor is walled, so the *view* is
+enormous and the *drawn extent* is bounded by two ridges at 900 m and a head wall at 6 km — a far
+more tractable scene than an open snowfield with a true horizon in every direction. **Rooms are
+what this project already knows how to build.**
+
+**The one measured risk, and it is a hard number.** The built pit-head runs at **13.72 ms mean and
+18.06 ms worst in overcast — a 40 fps worst case, not a 60 fps one** — and its own earlier claim
+that *"it never drops below 60"* is false as built. **There is no headroom to spend on a town and a
+mountain range.** So the mountains have to be free by construction, which they are, and the town
+has to buy its own budget back, which it does not yet. Hold every estimate against that number, and
+against the spike's own warning that the same build measured anywhere between **4.89 ms and
+65.03 ms** on identical code depending on thermal state — *"a 13:1 spread"*. **Nothing under a 20%
+difference between two measurements up here is real.**
+
+**Ruled out on the surface** (and repeated in §9 so the list stays in one place): no cave city; no
+person as a character; no snowline that moves on its own; no blue snow shader; no ice event; no
+marker on any of the three lines. And one more that belongs only here: **no weather that acts.**
+The exterior gets states, not events — the built rig already has three and switches between them —
+because `WHAT-HAPPENED-HERE.md`'s thesis is that this world is one arithmetic, frozen, and a valley
+at the foot of a retreating glacier is beautiful and provisional at once without anything needing
+to happen in it.
+
+### 12.6 The descent is three legs now, and each is colder than the last
+
+| leg | how | register |
+|---|---|---|
+| the town to the floor | an inclined railway down the terraces — the players' technological register made obvious | warm → cold. You leave the last building |
+| the floor to the pit-head | 3–5 km of haul road up the valley, walls on both sides, the glacier ahead | cold → empty. **The only leg where the whole vertical axis is in one frame** |
+| the collar to the dark | the cage, about twenty seconds | empty → black |
+
+`TRAILER.md` §1's reversal — *"you spend the first act being shown a machine you are preparing and
+teaching, in daylight, with your hands on it. Then it goes down the shaft and you never touch it
+again"* — now has two middles, and the picture runs **warm → white → black** across them.
+
+**`GLOSSARY.md`'s Commit is unchanged and must stay unchanged.** It is *"the moment control leaves
+the player, roughly 20 seconds after descent"*, and it is **the cable coming out of the charge port
+at the collar** — not the town gate and not the road. Three legs of travel do not get three
+commits; they get one, at the bottom.
+
+**Where teaching happens, relocated rather than changed** (`DESIGN-PRINCIPLES.md` §3 is unchanged
+in substance). **The course stays at the pit-head**, on the flat by the collar, now in snow — it is
+outdoor, cold, and it is the last thing before the descent. **The bench and the tally board move to
+the town**, where it is warm. And the beat that falls out of that: *(PROPOSED, `THE-ICE.md` §7.7)*
+**the winding house keeps the *ancients'* tally board, empty and cast; the player's board is the one
+in town; and the two are the same object a thousand years apart.**
+
+**Still open and not answered here:** whether anything is at stake on the surface
+(`DESIGN-PRINCIPLES.md` §3 leaves it open and the ice does not change it), and the vision board's
+*"an open-topped daylight course cannot teach darkness"*, which is unchanged and still a real
+problem.
 
 ---
 
@@ -1279,10 +2314,14 @@ flooding.
   about 36% too small.
 - **The lamp's 8–10° downward tilt**, and the ratios in §2.2. Derived from a 0.01 legibility
   floor at albedo 0.30, re-derived after the aim fix, but not validated in a real cave mesh.
-- **Rock albedo 0.30** as the light-end anchor. `wet_rock` currently ramps 0.015 → 0.11 (wet
+- ~~**Rock albedo 0.30** as the light-end anchor. `wet_rock` currently ramps 0.015 → 0.11 (wet
   black basalt); this is a dust-covered dolomite. Both are physically real; I picked the
   brighter because the mine is dusty, and because below ~0.25 the bounce budget collapses and
-  the machine is never lit by its own lamp.
+  the machine is never lit by its own lamp.~~ **Wrong, and measured wrong twice.** §3.1 carries
+  the correction and the two independent measurements. The reasoning quoted above is also where
+  the error came from: *"below ~0.25 the bounce budget collapses"* is an argument about bounce
+  light in a world that has none — §2.1 sets ambient to zero — so it was defending a brightness
+  the lighting model cannot use. *(Struck 2026-09-09.)*
 - **The 1.2 m industrial module**, 600 mm rail gauge, 2.4 × 2.4 m drive, 340 mm shot-hole
   spacing, 1.6 m rounds. Chosen to be legible against a 0.77 m agent, not from a source.
 - **The Assayer emits light only while winching and at the strike.** `THE-MACHINERY.md`
@@ -1293,6 +2332,46 @@ flooding.
 - **Cast iron rather than steel**, graphitisation below the waterline, and the
   "one-to-four-centuries and you cannot tell which" age rule.
 - Every colour hex here that is not already in `palette.py`.
+
+**Added with the ice, 2026-09-09.** Everything in this block is either mine or `THE-ICE.md`'s, and
+the attribution says which. None of it is the designer's except where §10 of
+`DESIGN-PRINCIPLES.md` is quoted directly.
+
+- **The one sentence's "that the meltwater started again."** Mine. `THE-ICE.md` §4.4 recommended
+  the weaker *"still working"*; I went one clause further and said why in §1. **The underlying
+  ruling is PROPOSED and unmade.**
+- **§3.1's four ice scalars** — `clarity`, `polish`, `debris`, `depth_of_medium`. Mine. `THE-ICE.md`
+  §6.1 decides only that the blue is path length rather than tint; the parameterisation is my
+  invention and it is the same shape as the rock family's on purpose.
+- **§2.9's ice-band exposure row.** Mine, entirely. `THE-ICE.md` §6.1 says only that ice will not
+  hit the rock contract; the four numbers are chosen so that *relief* does not become *lit level*
+  and nothing has measured them.
+- **§2.9's daylight band.** `THE-ICE.md` §2.7's, and it flags them as guesses. They were fitted
+  against nothing; the built surface's own targets were fitted to a yard three times darker than
+  snow.
+- **§3.4's claim that the pitch lip is the most valuable geometry in the cave**, and that a lip has
+  to be legible from four metres back. Mine, and it is an assertion about a gate that has not been
+  played.
+- **§3.7's depth stack and its 30 / 80 / 250 m boundaries.** `THE-ICE.md` §5.2's, marked GUESS
+  there. *"The ratios matter more than the numbers."*
+- **§7's seventh depth cue** — that the medium change is a door rather than a gradient. Mine.
+- **§8.2's ice sensor behaviour.** `THE-ICE.md` §6.2's, PROPOSED. `THE-SENSOR-AND-SLAM.md` §1
+  decided water and explicitly decided nothing else.
+- **§12's entire valley table.** `THE-ICE.md` §7.2's, every value a GUESS, offered as a set.
+- **That the society survived above the trimline and has been building downhill since**, and that
+  the town's stratigraphy therefore rhymes with the mine's index. `THE-ICE.md` §7.3's, and it calls
+  it *"the second-most load-bearing guess in the document."*
+- **That the valley floor is in shadow most of the day and is lit at roughly a tenth of full sun**,
+  and the thirty-to-sixty-to-one in-frame range that follows. `THE-ICE.md` §2.6/§2.7's arithmetic,
+  which says plainly that it is arithmetic and not measurement. **§2.1's entire reconciliation rests
+  on it.**
+- **That scale comes from the chain and not from the mountain**, so the town is the element to build
+  properly. `THE-ICE.md` §7.2's.
+- **That the mountains are nearly free and the inhabited wall is not.** `THE-ICE.md` §7.5's, stated
+  from the surface spike's numbers but not measured on anything that exists.
+- **That ice is the one specular-family material that does not fail under one lamp**, because a
+  subsurface term returns the lamp's own light. Mine, argued from the materials spike's measured
+  failures of water and metal, and **not measured on ice, because no ice exists.**
 
 ## Needs a designer decision
 
@@ -1315,6 +2394,36 @@ Ordered by how much they block.
 7. **May `damage` touch geometry when `Skin` may not?** (§4.2) I say yes, and the reason is
    that damage is truth rather than livery.
 
+**Added 2026-09-09.** Three of these were already open before the ice and the ice forces two of
+them; the rest are the ice's own. `THE-ICE.md` §9 has twenty-four questions with defaults and this
+list names only the ones that block *art*.
+
+8. **Are §3.1's rock triples albedo, and were they wrong?** (§3.1) **This is now the highest
+   blocker on the list, above metres-per-cell**, because it is measured, it is contradicted by two
+   independent probes, and one of them names it as the direct cause of what the designer was
+   looking at when he asked for photoreal. My answer: they were albedo and they were about four
+   times too bright. The sub-question nobody can answer without a ruling is what a *scoured floor*
+   is — the two spikes are 4.4× apart on it.
+9. **Are generated noise textures allowed?** (§3.2, §9) `PROCEDURAL-AND-GODOT.md` question 5,
+   recommendation yes, unruled. `DESIGN-PRINCIPLES.md` §6 says photorealism depends on the default
+   holding, and the cave's photoreal pass now depends on it outright: *"If the answer comes back
+   no, most of §2 goes with it."* My answer: yes.
+10. **Is §9's "no hue axis" amended, and how?** (§9) `DESIGN-PRINCIPLES.md` §6 records that
+    photorealism and the literal rule cannot both hold, and leaves it open. Both spikes have
+    already bent it and both said so. My answer: hue is a material property keyed to position,
+    never an axis, never a legend, chroma held to about ±3.5%.
+11. **Did the machinery stop and restart?** (§1, §5.2) `THE-ICE.md` §9 Q1, default yes. It changes
+    one clause of the one sentence and nothing else in this document; it is the difference between
+    a bearing that has run 17 million cycles and one that has run 590 million.
+12. **Is there ice inside the cave, or only snow outside it?** (§3.1, §3.7, §8.2) `THE-ICE.md` §9
+    Q8, default *yes, in the shallow band only*. **Saying no deletes §3.1's second family, §3.7,
+    §2.2's ice paragraph and §2.9's ice row**, and makes this a rock cave under a snowy surface.
+13. **Are §12's valley numbers right in order of magnitude?** (§12.3) `THE-ICE.md` §9 Q5. The
+    ratios are the decision, not the values, and vague scale delivers no scale at all.
+14. **Does the surface get its own exposure band in CI, leaving the lamp-frame targets untouched?**
+    (§2.9) `THE-ICE.md` §9 Q23. Without it, either the peaks fail the build or the cave stops being
+    enforced.
+
 ## Design problems found, not art problems
 
 Per `CLAUDE.md`: these are things the design does not survive, said plainly rather than built
@@ -1327,8 +2436,14 @@ around.
 2. **The active sonar bar is lit continuously.** *Do I ping?* is stated to be the central
    decision of a match, and the model asserts the opposite by having the transducer glowing
    all the time. One line to change, real design meaning.
-3. **`blindside-gen` must make flooding rise monotonically with depth.** `THE-MACHINERY.md`
-   §7 says *"the deepest ground is the wettest"*, and the whole deep-is-wet-is-dark-is-specular
+3. **~~`blindside-gen` must make flooding rise monotonically with depth.~~ Closed 2026-09-09 by
+   the vertical cave, and this is the cleanest thing the ice-age decision does to this list.**
+   `THE-ICE.md` §5.5: when the generator thinks in elevations, *"G10 stops being a tested
+   post-condition and becomes a consequence: water finds the lowest place."* The requirement below
+   is still the requirement; what has changed is that it no longer needs a 1,000-seed test to
+   enforce, because a plan with real elevation in it cannot violate it. Original text kept for the
+   record:
+   `THE-MACHINERY.md` §7 says *"the deepest ground is the wettest"*, and the whole deep-is-wet-is-dark-is-specular
    chain in §3, §5 and §7 rests on it. Measured on the Phase 1 cave, flooding by depth
    quartile is **0.0% / 17.1% / 30.8% / 0.0%** — the deepest quarter is bone dry. **This is
    not a bug**: `phase1/truth/cave.py` is a hand-authored dict of eleven chambers in a phase
@@ -1336,11 +2451,97 @@ around.
    requirement to carry into `blindside-gen`, and the art cannot fix it from outside.
 4. **`blindside-gen` must make chambers taller than the passages that reach them.** (§5.5)
    Otherwise a 6.6 m mast does not fit under a 4.8 m ceiling, and nothing in a chamber is
-   visible from outside it.
+   visible from outside it. *(2026-09-09: still required, and now trivially satisfiable —
+   `THE-ICE.md` §5.5. Also worth recording that the invariant as currently written in
+   `PROCEDURAL-AND-GODOT.md` §1.6 **cannot be checked**: it asserts a chamber is taller than every
+   passage that reaches it, and `Passage` has no ceiling field. Found while reading for the ice,
+   not caused by it.)*
 5. **The Swimmer has no visual identity** while the design gives it the most distinctive job
    of the four chassis. (§4.6)
 6. **`THE-MACHINERY.md` §2.1's "you can see which way the boom is pointing from the next
    chamber" is true of the schematic and false of a ground-level viewer.** (§5.5) Since *a
    hazard is identifiable before it fires* is a design requirement, this needs either an
    amendment to the doc or the generator rule in item 4 — and it currently blocks one of the
-   four gate questions.
+   four gate questions. **Partially resolved 2026-09-09 by the vertical cave**: from a level
+   *above* the chamber it is true, which is a third answer neither of the two above anticipated.
+   The residue is that it is true for a *viewer* and never for a *policy*, because the sensor
+   cannot look down. §5.5.
+
+7. **Three separate measurement passes now want a second light source, and nobody has ruled on
+   it.** *(New 2026-09-09, and it is the loudest thing in the spikes.)* The cave's photoreal pass:
+   *"A lamp at the eye is a photometric problem, not an art problem… a second source — even §2.8's
+   contingency circuit at its low end — would do more for photorealism than any shader I could
+   write. **This is a design question, not an art one.**"* Its cinema pass: *"A second source would
+   do more for this than the whole post stack."* The materials library reaches it from the material
+   side — wetness and bare metal both fail because there is nothing lit to return — and concludes
+   *"the resolution is content, not code."* And the cave spike's own risk register says the quiet
+   part: *"the frame currently survives because ~90% of it is black and the eye forgives what it
+   cannot see… **The spike proves the pipeline at one lamp. It does not prove the look at two.**"*
+   **This does not change my recommendation** — §2.8 stays a fallback and §11's kill test stays the
+   thing that decides it — but the evidence has moved and the decision should be taken with the
+   evidence in front of it rather than on the original argument.
+
+8. **The built pit-head is a 40 fps worst case and the setting adds a town and a mountain range to
+   it.** *(New 2026-09-09.)* 13.72 ms mean, 18.06 ms worst in overcast, with SSAO alone at 4.2 ms
+   of it, and its own *"it never drops below 60"* claim now retracted. §12.5. The mountains are free
+   by construction; **the town is not, and nothing has bought its budget back.**
+
+---
+
+## Changelog
+
+Every revision to this document, what it touched and why. `§8.2` was rewritten earlier the same day
+by a different pass and is listed for completeness.
+
+### 2026-09-09 — the ice age
+
+`DESIGN-PRINCIPLES.md` §10 gave the world a period, a valley, a town and a vertical cave.
+`docs/THE-ICE.md` is the reconciliation and is this revision's specification. **Where it made a
+recommendation about this file I followed it; the four places I went further or differently say so
+in the text.**
+
+| § | what changed | why |
+|---|---|---|
+| header | *"Nothing in this document needs a modeller"* corrected and scoped to the cave | `DESIGN-PRINCIPLES.md` §5 was amended by the designer on exactly this point; authored assets were never covered by the rule and treating them as if they were cost a stream of work |
+| header | revision note added, pointing at `THE-ICE.md` and at §12 | somebody reading this cold has to know it moved |
+| **1** | **the one sentence rewritten**, and the build contract's items 1, 2, 4 and 5 with it | the valley, the restart, the meltwater, and the falloff figure. The old sentence is quoted in full and each of the four moves is argued |
+| 2.1 | **two rows added** (the sky, alpenglow); the shaft's row restated as *the last of the daylight*; world-background-zero scoped to below the collar; the collar falloff rule imported from the surface spike | `THE-ICE.md` §2.7 recommends adding rows rather than amending, and the mountains reconcile the light economy rather than breaking it. Its recommendation taken whole |
+| 2.2 | **the ratio table corrected against measurement**, two rows struck and replaced; an ice paragraph added | 90:1 across three metres needs d^-4.3 falloff and measures 7:1; *"floor 3 m = 0.08"* and *"wall 8 m = 0.06"* cannot both hold. Both from `materials/NOTES.md` §5.2 |
+| 2.3 | *"across three metres"* → *"across the frame"*; the exterior's dynamic-range paragraph added | consistency with 2.2, and the same discipline applies to the peaks |
+| **2.9** | **a second and third exposure band added** (ice, daylight); the current cave failures corrected; **the lens and the vignette added as exposure controls**, with a ruling that the contract is measured *before* the lens | one contract cannot cover a world with a sky. `THE-ICE.md` §2.7's recommendation, and the surface spike had found it independently. The lens finding is the cave cinema pass's and was not in this document at all: same scene, same lamp, **a 1.75× swing in legible fraction from focal length alone** |
+| **2.10** | **new.** Contact shadows do not exist in Godot 4; SSAO does nothing under zero ambient; SSR measured and cut on cost rather than on principle | three assumptions in this document that the engine does not support, all measured. The SSR reasoning is the part worth keeping: it inverts above the collar |
+| 3 (intro) | **new.** The vertical axis, the three media, and down-is-cheap | the section assumed a horizontal mine throughout |
+| **3.1** | **rock albedo corrected** (~4× too bright, found independently by two agents); the scoured floor corrected separately; **a second material family added for ice** | the strongest measured contradiction in the repo, and `THE-ICE.md` §2.10 says the ice forces the ruling. Ice as a family, not a biome |
+| 3.2 | the no-bitmap absolute restated as its intent; generated noise permitted with its reason; two measured node-level rules added | `PROCEDURAL-AND-GODOT.md` Q5, and `DESIGN-PRINCIPLES.md` §6's *"intent binding, letter amendable"* |
+| 3.3 | a vertical ruler added beside the 1.2 m module | the module is horizontal and does nothing for a drop |
+| 3.4 | **a fourth register added: the pitch, as a second profile family** | a swept floor-legs-crown profile cannot express a shaft at all |
+| 3.5 | **`medium` row added**; the depth row rescoped | one enum keys material, sensor, sound and footing. *"Not altitude"* was written when there was no altitude |
+| 3.6 | the three measured reversals flagged; LOD comes back | every sightline number was cast across a plane |
+| **3.7** | **new.** The depth stack: ice, karst, workings, past the sump — and the melt front as a place | `THE-ICE.md` §5.2 |
+| 4.6 | one sentence on the Swimmer | the ice hands the weakest chassis identity a job |
+| 5.2 | the restart as *evidence for* the three ages of iron; two measured metallic corrections | 17 million cycles against 590 million is why there is a wear surface left to be bright |
+| 5.5 | **partially reversed** — the mast is a landmark from above | measured from ground level on a plane, which is no longer the cave |
+| 6.3 | one bullet: a beacon chain down a shaft | the same image rotated, and better |
+| **7** | depth is altitude in the world and darkness on the display; `depth_mm` beside `depth_band`; **a seventh cue**; a second inversion | `THE-ICE.md` §2.9's replacement taken as written. Neither field replaces the other |
+| 8.2 | one bullet: ice is where the map goes thin | *(the section itself was rewritten earlier today for the scanning sensor; checked for consistency with §10's cost table, which still said "oriented discs" and no longer does)* |
+| 8.4 | cyan restated as a saturation rule; three must-nots rescoped; the sky added as a sanctioned exception | a blue-white exterior cannot keep a literal no-blue rule, and pretending otherwise is how a rule stops being cited |
+| **9** | **four lines amended, each with its reason and its old text quoted; seven added** | the ice ban, the bitmap ban, the hand-modelled ban and the ambient ban all needed care. The intent of every one of them is unchanged or stronger |
+| 10 | item 10 reworded to match §8.2; the ice explicitly **not** re-costed, with the three new items named | re-costing Phase 5 is not this revision's job; naming what is missing is |
+| 11 | the risk restated in both directions | the surface makes the contrast better and does nothing about minute six |
+| **12** | **new: the surface.** Light, the valley, the town, the three lines, materials, scale, what is ruled out, the three descents | the document had almost nothing above the collar. Numbered 12 to protect ~120 cross-references from five documents |
+| guesses | the old rock-albedo guess struck; sixteen new entries with attribution | |
+| decisions | seven added; the rock albedo promoted above metres-per-cell | it is measured, contradicted twice, and named as the cause of what the designer was looking at |
+| design problems | item 3 closed, items 4 and 6 partially resolved, **two added** | the vertical cave closes one for free and the spikes opened two |
+
+**What was deliberately left alone.** §0 (the lamp aim finding), §2.4–§2.8, §4 apart from one
+sentence in §4.6, §5.1, §5.3, §5.4, §5.6, §6.1, §6.2, §6.4, §6.5, §8.1, §8.3, and the probes
+appendix. None of them is touched by the setting, and a revision that rewrites what it does not
+have to is a revision nobody can review.
+
+### Earlier
+
+- **2026-09-09, §8.2 rewritten** for a real simulated scanning sensor, replacing text written
+  against a sparse range/bearing model. `DESIGN-PRINCIPLES.md` §8; measurements in
+  `spikes/godot/cloud/LIDAR.md`.
+- **Original**, assembled from four independent passes, with the parts that did not survive
+  measurement removed rather than softened.
