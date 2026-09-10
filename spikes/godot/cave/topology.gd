@@ -1074,29 +1074,53 @@ func _assign_works() -> void:
 				if level_main_edge[L2] == st[S_EDGE]:
 					on_main = true
 					break
-		if worked > 90 and st[S_STATE] == DRY and on_main:
+		# --- RULE V9a: THE THRESHOLDS ARE A FUNCTION OF THE SCHEMA ----------
+		# 2026-09-10, ICE-CAVE.md. The layered cave puts three media in one
+		# system and the flat cave had only one, so the works thresholds that
+		# were right for a cave that was ALL mine are wrong for a cave whose
+		# top two bands are not. Under the old numbers band 1 -- the karst,
+		# which THE-ICE 5.2 describes as "first marks, low item numbers,
+		# corroded, half-buried in flowstone AND NOW ALSO IN ICE" -- came out
+		# carrying timber sets, ground support, rail, a gutter and a bolt line.
+		# That is not first marks. That is a mine, 15 m under the surface,
+		# which is why a viewer meeting this cave met a coal mine.
+		#
+		# So every threshold moves up on the layered path, and one moves DOWN:
+		# the cast survey index plate, because the plate is the FIRST IRON. A
+		# machine should cross a lot of ice and rock and then find one plate
+		# bolted to a natural wall with a number on it. THE-ICE 5.2's "low item
+		# numbers" is a thing you read off an object, so the object has to be
+		# there before anything else is.
+		#
+		# The `levels == 1` arm is the pre-change rule VERBATIM and it is what
+		# holds 0xAD83E3ED. S_WORKS is field 7 and is inside SCHEMA_V1_FIELDS,
+		# so nothing here may touch the flat path.
+		var flat: bool = levels == 1
+		if worked > (90 if flat else 168) and st[S_STATE] == DRY and on_main:
 			wk |= WK_RAIL
-		if worked > 55 and along % 2 == 0:          # sets on the 1.2 m module
-			wk |= WK_SETS
+		if worked > (55 if flat else 132) and along % (2 if flat else 4) == 0:
+			wk |= WK_SETS                            # sets on the 1.2 m module
 			if st[S_INTEG] < 95 and draw_pct(31, i, 0) < 32:
 				wk |= WK_SETFAIL
-		if worked > 120:
+		if worked > (120 if flat else 182):
 			wk |= WK_BOLTLINE
-		if worked > 100:
+		if worked > (100 if flat else 175):
 			wk |= WK_GUTTER
-		if worked > 140 and draw_pct(32, i, 0) < 72:
+		if worked > (140 if flat else 196) and draw_pct(32, i, 0) < 72:
 			wk |= WK_PIPE
-		if worked > 205:
+		if worked > (205 if flat else 224):
 			wk |= WK_BUS
 		if worked > 215 and draw_pct(33, i, 0) < 45:
 			wk |= WK_LAUNDER
 		# ground support is the ancients'. There is none in dead ice, and the
 		# `levels == 1` clause keeps the flat path's rule exactly as it was.
-		if st[S_INTEG] < 115 and (levels == 1 or worked > 40):
+		if st[S_INTEG] < (115 if flat else 95) and (flat or worked > 150):
 			wk |= WK_MESH
-		if worked > 70 and draw_pct(34, i, 0) < 24:
+		if worked > (70 if flat else 150) and draw_pct(34, i, 0) < 24:
 			wk |= WK_SPOIL
-		if worked > 110 and along % 12 == 3:
+		# THE FIRST IRON. Down, not up: one plate, on a natural wall, a long
+		# way above anything else the ancients left.
+		if worked > (110 if flat else 58) and along % (12 if flat else 17) == 3:
 			wk |= WK_PLATE
 		if st[S_KIND] == K_CHAMBER and worked > 195:
 			wk |= WK_PLANT
@@ -1104,12 +1128,16 @@ func _assign_works() -> void:
 		# --- the brought --------------------------------------------------
 		if (wk & WK_BOLTLINE) != 0 and draw_pct(35, i, 0) < (58 - d100 / 3):
 			wk |= WK_TRAY
-		if worked > 150 and draw_pct(36, i, 0) < (32 - d100 / 5):
+		if worked > (150 if flat else 200) and draw_pct(36, i, 0) < (32 - d100 / 5):
 			wk |= WK_DUCT
 		var every: int = 13 + (d100 * 27) / 100
 		if along % every == 5 or (st[S_KIND] == K_JUNCTION and d100 < 75):
 			wk |= WK_BEACON
-		if draw_pct(37, i, 0) < (17 - d100 / 8):
+		# and nothing BROUGHT above the karst either. A modern crate standing in
+		# a meltwater conduit fifteen metres under the snow is the same mistake
+		# as a timber set there: it says somebody has already been, and the
+		# first ice a machine meets has to be a place nobody has been.
+		if worked >= (0 if flat else 46) and draw_pct(37, i, 0) < (17 - d100 / 8):
 			wk |= WK_KIT
 
 		# --- discoveries, by DEPTH, which is now literal -------------------

@@ -34,6 +34,10 @@ var cfg := {
 	# the current trailer was rendered against seed 7 / 240 / 1 levels. 2..4 is
 	# the layered cave of THE-ICE section 5. See VERTICAL.md.
 	"levels": 1,
+	# THE ASSAYER. It is only ever built on the layered cave, because it stands
+	# in the ice band and the flat cave has no ice in it. `--p=` parks its clock
+	# at a phase; the stills use it, the sequence sweeps it.
+	"assayer": true, "phase": -1.0,
 }
 
 var sub: SubViewport
@@ -121,6 +125,10 @@ func _parse_args() -> void:
 			cfg["levels"] = clampi(int(a.substr(9)), 1, 4)
 		elif a == "--vertical":
 			cfg["levels"] = 4
+		elif a.begins_with("--p="):
+			cfg["phase"] = float(a.substr(4))
+		elif a == "--noassayer":
+			cfg["assayer"] = false
 
 func _stage(msg: String) -> void:
 	# stdout is fully buffered when Godot's output is redirected, so progress
@@ -203,7 +211,11 @@ func _ready() -> void:
 		# anisotropy 0.55 (forward-scattering, like silt in water), colour
 		# (0.85,0.86,0.90) so it does not blue-shift.
 		env.volumetric_fog_enabled = true
-		env.volumetric_fog_density = 0.011
+		# 0.011 is the top of ART-DIRECTION 2.6's 0.008-0.012 band and it was
+		# chosen against a rock cave. Ice returns about twice as much light, so
+		# the same density reads as milk in the ice band; 0.009 is inside the
+		# same band and keeps the beam without hazing the walls.
+		env.volumetric_fog_density = 0.009
 		env.volumetric_fog_anisotropy = 0.55
 		env.volumetric_fog_albedo = Color(0.85, 0.86, 0.90)
 		env.volumetric_fog_emission_energy = 0.0
@@ -311,8 +323,66 @@ func _ready() -> void:
 			sky.omni_attenuation = 2.6
 			sky.shadow_enabled = false
 			world_root.add_child(sky)
+			sky_light = sky
 			print("daylight         : collar at %s, 12000 K, range %.1f m" % [
 				str(sky.position.round()), sky.omni_range])
+
+	# --- THE ASSAYER ------------------------------------------------------
+	# spikes/godot/assayer/ built the machine; this brings it in. Four files
+	# were copied verbatim (assayer.gd, materials.gd, mb.gd, chamber.gdshader)
+	# and NOTHING in them was edited -- the cycle, the mechanism, the two hot
+	# points and the calibrated 72 are that spike's and stay that spike's.
+	#
+	# It stands in the largest chamber on level 0, in the ice. See
+	# dressing.gd's _dress_assayer_site() for why that is a fiction decision
+	# and how it is reconciled.
+	if cfg["assayer"] and topo.levels > 1:
+		var wy: float = -1000.0
+		if topo.level_water_mm.size() > 0 and topo.level_water_mm[0] > -1000000:
+			wy = float(topo.level_water_mm[0]) * 0.001
+		asy_mats = AssayerMaterials.new()
+		asy_mats.build(cfg["seed"], wy)
+		machine = Assayer.new()
+		var ap: Vector3 = dress.assayer_pos()
+		# _base_y is captured inside build(), so the position has to be set
+		# BEFORE it: the recoil is measured from wherever it was standing.
+		machine.position = ap
+		world_root.add_child(machine)
+		machine.build(asy_mats, cfg["seed"])
+		machine.set_phase(0.0)
+		# THE ANVIL RING LEAKS THROUGH THE SHELL, and the fix is NOT shadows.
+		#
+		# The assayer spike's chamber was the entire world, so nothing was ever
+		# outside it; here the chamber is a 6.4 m dome with eighty metres of
+		# passage around it, and six shadowless omnis at the mast foot light
+		# the dome from the inside and make it glow like a paper lantern from
+		# any camera in the drive. The first `a9_the_room` was a photograph of
+		# exactly that: a lit egg, seen from outside, in a black void.
+		#
+		# I turned shadows on for them and the machine went dark, which is
+		# assayer/NOTES.md 4.1's first bug arriving on schedule: the ring sits
+		# at r = 0.62, INSIDE the anvil's own chamfer, so a shadowed source
+		# there is a source sealed in a casting. That is why the ring is
+		# shadowless, and it stays shadowless. The range comes down instead --
+		# 12 m reaches the dome, 6.0 dies before it -- and the cameras stay
+		# inside the room, which they have to anyway.
+		for ol in machine.anvil_lights:
+			(ol as OmniLight3D).omni_range = 6.0
+		# AND THE HOT ENERGY IS RE-DERIVED, which assayer/NOTES.md 4 requires
+		# rather than permits: "It is a RATIO, not a wattage, and
+		# ART-DIRECTION 2.2 is explicit that it does not survive a change of
+		# renderer." It does not survive a change of ROOM either. 72 was
+		# calibrated against a chamber of rock at albedo 0.19-0.32; this
+		# machine stands in a tube of ice whose first-scatter albedo is 0.34
+		# to 0.60, so the same output comes back about twice as strong and the
+		# whole sequence measured 0.1-3.6% true black against a 70% floor.
+		# Halving it puts the ice band back inside the contract and, more to
+		# the point, makes the strike read as a FLASH instead of as a flood.
+		machine.hot_energy = 34.0
+		machine.set_phase(0.0)
+		print("assayer          : chamber %d at %s   %d tris   mast %.1f m, chamber r %.1f m" % [
+			dress.assayer_chamber(), str(ap.round()), machine.stat_tris,
+			Assayer.MAST_TOP, dress.assayer_radius()])
 
 	# --- the camera and the one lamp --------------------------------------
 	cam = Camera3D.new()
@@ -570,6 +640,12 @@ func _build_shot_list() -> void:
 	if String(cfg["shotset"]) == "vertical":
 		shot_list = _build_vertical_shots()
 		return
+	if String(cfg["shotset"]) == "ice":
+		shot_list = _build_ice_shots()
+		return
+	if String(cfg["shotset"]) == "assayer":
+		shot_list = _build_assayer_shots()
+		return
 	if String(cfg["shotset"]) == "photoreal":
 		# The photoreal pair set. Format is deliberately different from the
 		# legacy one so a pose is an ABSOLUTE eye height, yaw offset and pitch
@@ -596,7 +672,10 @@ func _pose_for(shot: Array) -> Array:
 	# topology's own geometry (a pitch axis, a chamber floor) rather than
 	# against a station index on one drive, because there is no longer one
 	# drive.
-	if shot.size() == 6 and typeof(shot[5]) == TYPE_STRING:
+	# "VW" is an absolute world pose. A SEVENTH element on a VW shot is the
+	# Assayer's phase for that frame -- the machine is a pure function of one
+	# clock, so a still of it is a camera plus a number.
+	if shot.size() >= 6 and typeof(shot[5]) == TYPE_STRING and String(shot[5]) == "VW":
 		return [shot[1], float(shot[2]), float(shot[3]), float(shot[4])]
 	var ids: PackedInt32Array = topo.edges[0]
 	var idx: int = clampi(shot[1], 1, dress.path_points.size() - 2)
@@ -786,6 +865,401 @@ func _build_vertical_shots() -> Array:
 	# 9 -- the workings, for the comparison. Same cave, three media.
 	out.append(_drive_pose("v9_the_workings", mini(2, topo.levels - 1), -1, 0.45, 1.15, 6, 52.0, 0.10))
 	return out
+
+# ===========================================================================
+# THE ICE SHOT SET
+# ===========================================================================
+# Fourteen frames of the glacial cave, posed against the topology. The set the
+# vertical pass shot was a set about STRUCTURE -- here is a level, here is a
+# level under it. This one is about MATERIAL and LIGHT, because that is what
+# was wrong: the structure was right and the place still read as a mine.
+#
+# The rule for every frame here is the one CINEMA.md already states: photograph
+# a thing, not a place. Each of these is aimed at one object.
+
+# a station on `level`'s main drive matching a predicate, searched forward from
+# `frac`, never in a chamber or at the mouth of a pitch
+func _ice_find(level: int, pred: Callable, frac: float) -> int:
+	if level >= topo.level_main_edge.size():
+		return -1
+	var ids: PackedInt32Array = topo.edges[topo.level_main_edge[level]]
+	var n: int = ids.size()
+	var start: int = clampi(int(float(n) * frac), 2, maxi(2, n - 6))
+	for k in range(n - 6):
+		var i: int = 2 + (start - 2 + k) % maxi(1, n - 8)
+		var st: PackedInt32Array = topo.stations[ids[i]]
+		if st[CaveTopology.S_KIND] != CaveTopology.K_DRIVE:
+			continue
+		if st[CaveTopology.S_PITCH_HEAD] >= 0 or st[CaveTopology.S_PITCH_FOOT] >= 0:
+			continue
+		# NEVER FRAME A CRAWL. A 0.75 m half-width conduit with a 1.3 m crown
+		# puts the lens inside the wall at any eye height a machine has, which
+		# is what produced the first i10 -- a full-screen slab of nothing. The
+		# crawls are the best thing about the ice band and they are shot from
+		# OUTSIDE, looking in.
+		if st[CaveTopology.S_WIDTH] < CaveTopology.WC_NARROW:
+			continue
+		# and never stand where the section flares: a chamber four stations
+		# away still owns the dome the camera is inside
+		# +-8 STATIONS, not +-3. Three is 1.8 m, and there is now a 6.6 m machine
+		# standing in one of these chambers: `i02_beam_in_ice` was rendered one
+		# metre from the Assayer's ladder, which is a rusted iron rack in a
+		# frame whose entire job is to have no iron in it.
+		var bad: bool = false
+		for k2 in range(-8, 9):
+			var jj: int = clampi(i + k2, 0, n - 1)
+			if topo.stations[ids[jj]][CaveTopology.S_KIND] == CaveTopology.K_CHAMBER:
+				bad = true
+		if bad:
+			continue
+		if pred.call(st, ids[i]):
+			return i
+	return -1
+
+# the local frame of the drive at index i on `level`: [pos, tangent, right,
+# halfwidth, height]. Every wall-aimed frame in this set needs it.
+func _drive_frame(level: int, i: int) -> Array:
+	var ids: PackedInt32Array = topo.edges[topo.level_main_edge[level]]
+	i = clampi(i, 0, ids.size() - 2)
+	var p: Vector3 = dress._st_pos(ids[i])
+	var q: Vector3 = dress._st_pos(ids[mini(ids.size() - 1, i + 1)])
+	var tg: Vector3 = (q - p).normalized()
+	if tg.length() < 0.5:
+		tg = Vector3(1, 0, 0)
+	var rt: Vector3 = tg.cross(Vector3.UP).normalized()
+	var st: PackedInt32Array = topo.stations[ids[i]]
+	return [p, tg, rt, dress._hw(st), dress._ht(st)]
+
+# stand back along the drive and look at a point on the wall. This is the pose
+# that shows a MATERIAL rather than a corridor, and it is the only way to get
+# the lamp onto a surface at an angle when the lamp is bolted to the eye.
+func _wall_pose(nm: String, level: int, i: int, side: float, up: float,
+				back: float, fov: float) -> Array:
+	var f: Array = _drive_frame(level, i)
+	var p: Vector3 = f[0]
+	var tg: Vector3 = f[1]
+	var rt: Vector3 = f[2]
+	var hw: float = f[3]
+	var tgt: Vector3 = p + rt * (side * hw * 0.92) + Vector3.UP * up
+	var eye: Vector3 = p - tg * back + Vector3.UP * 1.15 - rt * (side * hw * 0.25)
+	return _look_pose(nm, eye, tgt, fov)
+
+func _build_ice_shots() -> Array:
+	var out: Array = []
+	var ICE: int = CaveTopology.MED_ICE
+	var IOR: int = CaveTopology.MED_ICE_OVER_ROCK
+	var p0: int = _main_pitch(0)
+	var ice_base: float = float(CaveTopology.BAND_ICE_BASE_MM) * 0.001
+
+	# --- 1. the wide ice passage. One lamp, and the ice carries it. --------
+	var i_wide: int = _ice_find(0, func(st, _sid): return st[CaveTopology.S_MEDIUM] == ICE 		and st[CaveTopology.S_WIDTH] >= CaveTopology.WC_PASSAGE, 0.22)
+	if i_wide < 0:
+		i_wide = _level_station(0, ICE, 0.30, CaveTopology.WC_NARROW)
+	out.append(_drive_pose("i01_ice_passage", 0, ICE, 0.22, 1.15, 14, 58.0, 0.16))
+
+	# --- 2. THE BEAM ENTERING THE ICE -------------------------------------
+	# The frame the whole task turns on. Stand a metre and a half off a wall
+	# and point the lamp INTO it: on rock that is a hard pool with a black
+	# edge, on ice it is a white patch with a blue halo that is bigger than
+	# the beam. ice.gdshader computes that halo against a 62-degree cone where
+	# the lamp's own is 27, which is the whole trick.
+	var ice_pred := func(st: PackedInt32Array, _sid: int) -> bool:
+		return st[CaveTopology.S_MEDIUM] == ICE
+	var i_beam: int = _ice_find(0, ice_pred, 0.38)
+	if i_beam < 0:
+		i_beam = i_wide
+	out.append(_wall_pose("i02_beam_in_ice", 0, i_beam, 1.0, 0.80, 2.45, 52.0))
+
+	# --- 3. the scallops, oblique and close -------------------------------
+	var i_sc: int = _ice_find(0, ice_pred, 0.60)
+	if i_sc < 0:
+		i_sc = i_wide
+	out.append(_wall_pose("i03_scallops", 0, i_sc, -1.0, 0.85, 3.40, 50.0))
+
+	# --- 4/5/6. the moulin ------------------------------------------------
+	if p0 >= 0:
+		var pr0: PackedInt32Array = topo.pitch(p0)
+		var b0: float = float(pr0[CaveTopology.P_BORE_MM]) * 0.001
+		# from ABOVE: stand at the lip and look down it, off-axis so the far
+		# wall of the bore is in frame and the hole has a shape
+		var lip: Vector3 = dress.pitch_axis(p0, 0.0)
+		out.append(_look_pose("i04_moulin_above",
+			_on_drive(0, pr0[CaveTopology.P_FROM_ST], -6, 1.20),
+			dress.pitch_axis(p0, 0.22), 62.0))
+		# --- FROM BELOW, and it is the COLLAR rather than the moulin --------
+		# The moulin lands on level 1 at -26 m, eleven metres BELOW the ice
+		# base, so standing at its foot and looking up is eleven metres of
+		# unlit rock before any ice: 98% true black, which is what the first
+		# attempt measured. The collar is the shaft that DOES read from
+		# underneath, because it is ice all the way and it has the only
+		# daylight in the game at the top of it.
+		var cf0: PackedInt32Array = topo.pitch(0)
+		var axf: Vector3 = dress.pitch_axis(0, 0.92)
+		out.append(_look_pose("i05_moulin_below",
+			Vector3(axf.x + 0.25, dress._st_pos(cf0[CaveTopology.P_TO_ST]).y + 0.65, axf.z + 0.15),
+			dress.pitch_axis(0, 0.0), 76.0))
+		# INSIDE the bore: look DOWN it rather than at it, from off the axis,
+		# so the bore recedes and the frozen fall runs out of frame
+		var t6: float = 0.14
+		var h6: float = float(pr0[CaveTopology.P_DROP_MM]) * 0.001
+		var a6: float = 0.9 + PI + t6 * h6 * 0.26
+		out.append(_look_pose("i06_moulin_icefall",
+			dress.pitch_axis(p0, t6) - Vector3(cos(a6), 0.0, sin(a6)) * (b0 * 0.30),
+			dress.pitch_axis(p0, t6 + 0.34) + Vector3(cos(a6), 0.0, sin(a6)) * (b0 * 0.30), 66.0))
+		# --- 11. THE ICE-TO-ROCK TRANSITION, inside the same shaft --------
+		var t11: float = _pitch_t_at_y(p0, ice_base)
+		if t11 > 0.05 and t11 < 0.95:
+			out.append(_look_pose("i11_ice_to_rock",
+				dress.pitch_axis(p0, maxf(0.02, t11 - 0.26)),
+				dress.pitch_axis(p0, minf(0.98, t11 + 0.30)), 56.0))
+
+	# --- 7. the frozen pool -----------------------------------------------
+	var pool_pred := func(st: PackedInt32Array, _sid: int) -> bool:
+		if st[CaveTopology.S_MEDIUM] != ICE:
+			return false
+		return st[CaveTopology.S_STATE] == CaveTopology.FLOODED 			or (st[CaveTopology.S_WORKS] & CaveTopology.WK_STANDWATER) != 0
+	var i_pool: int = _ice_find(0, pool_pred, 0.30)
+	if i_pool < 0:
+		i_pool = _ice_find(0, func(st, _sid): return st[CaveTopology.S_MEDIUM] == ICE 			and st[CaveTopology.S_WET] > 180, 0.30)
+	if i_pool >= 0:
+		var fp: Array = _drive_frame(0, i_pool)
+		out.append(_look_pose("i07_frozen_pool",
+			(fp[0] as Vector3) - (fp[1] as Vector3) * 3.4 + Vector3.UP * 1.20,
+			(fp[0] as Vector3) + Vector3.UP * 0.12, 50.0))
+
+	# --- 8. icicles and columns -------------------------------------------
+	var i_ice2: int = _ice_find(0, func(st, _sid): return st[CaveTopology.S_MEDIUM] == ICE 		and st[CaveTopology.S_WET] > 150, 0.55)
+	if i_ice2 < 0:
+		i_ice2 = i_wide + 10
+	if i_ice2 < 0:
+		i_ice2 = i_wide
+	var f8: Array = _drive_frame(0, i_ice2)
+	# 2.6 m back and aimed at the crown put the lens in the wall: at that
+	# standoff the sight line to a 3 m crown leaves the section before it gets
+	# there. Stand five metres off and let the fringe recede.
+	out.append(_look_pose("i08_icicles_columns",
+		(f8[0] as Vector3) - (f8[1] as Vector3) * 5.0 + Vector3.UP * 1.10,
+		(f8[0] as Vector3) + Vector3.UP * ((f8[4] as float) * 0.52), 50.0))
+
+	# --- 9. the frozen waterfall on a wall --------------------------------
+	out.append(_wall_pose("i09_icefall", 0, i_ice2, 1.0, 0.90, 3.6, 52.0))
+
+	# --- 10. the meltwater cutting the floor ------------------------------
+	var i_ch: int = _ice_find(0, func(st, _sid): return st[CaveTopology.S_MEDIUM] == ICE 		and st[CaveTopology.S_WET] > 120 and st[CaveTopology.S_STATE] != CaveTopology.FLOODED, 0.10)
+	if i_ch >= 0:
+		var f10: Array = _drive_frame(0, i_ch)
+		# The lamp pool on an ice floor is twice as bright as it is on a rock
+		# one, so a near-level camera two metres off the ground puts a blown
+		# ellipse across a quarter of the frame. Stand further back, higher,
+		# and narrower, so the channel recedes instead of the pool filling it.
+		out.append(_look_pose("i10_meltwater_channel",
+			(f10[0] as Vector3) - (f10[1] as Vector3) * 4.2 + Vector3.UP * 1.45,
+			(f10[0] as Vector3) + (f10[1] as Vector3) * 5.0 + Vector3.UP * 0.35, 44.0))
+
+	# --- 12. THE FIRST IRON -----------------------------------------------
+	# One cast survey plate on a natural wall, and nothing else the ancients
+	# left anywhere in frame. This is the frame the works reduction was for.
+	var i_iron: int = _ice_find(1, func(st, _sid): return (st[CaveTopology.S_WORKS] & CaveTopology.WK_PLATE) != 0, 0.05)
+	if i_iron >= 0:
+		# AIMED AT THE OBJECT. A cast index plate is 160 x 100 mm; at 2.6 m and
+		# 44 degrees it is two per cent of the frame width and the frame is
+		# about a wall. dressing.gd puts it at right * hw * 0.96, 1.40 m up, so
+		# the camera is told exactly that and stands 1.7 m off it.
+		var fI: Array = _drive_frame(1, i_iron)
+		var pI: Vector3 = fI[0]
+		var tI: Vector3 = fI[1]
+		var rI: Vector3 = fI[2]
+		var plate: Vector3 = pI + rI * (float(fI[3]) * 0.80) + Vector3.UP * 1.40
+		out.append(_look_pose("i12_first_iron",
+			pI - tI * 2.30 + Vector3.UP * 1.30 - rI * (float(fI[3]) * 0.55), plate, 30.0))
+
+	# --- 13. UNCOVERING ---------------------------------------------------
+	for lv in [0, 1]:
+		var rev_pred := func(st: PackedInt32Array, sid: int) -> bool:
+			var m: int = st[CaveTopology.S_MEDIUM]
+			return (m == ICE or m == IOR) and dress._reveal_at(sid)
+		var i_rev: int = _ice_find(lv, rev_pred, 0.0)
+		if i_rev >= 0:
+			var ids2: PackedInt32Array = topo.edges[topo.level_main_edge[lv]]
+			var sd: int = ids2[i_rev]
+			var f13: Array = _drive_frame(lv, i_rev)
+			var side: float = 1.0 if (sd % 2 == 0) else -1.0
+			var org: Vector3 = f13[0]
+			var tgv: Vector3 = f13[1]
+			var rtv: Vector3 = f13[2]
+			var hwv: float = f13[3]
+			var tgt: Vector3 = org + rtv * (side * hwv * 0.97) + Vector3.UP * (0.35 + float(sd % 5) * 0.16)
+			var eye: Vector3 = org - tgv * 1.55 + Vector3.UP * 0.95 - rtv * (side * hwv * 0.35)
+			out.append(_look_pose("i13_uncovered_L%d" % lv, eye, tgt, 34.0))
+			break
+
+	# --- 14. the collar, and the only daylight in the game -----------------
+	if topo.pitches.size() > 0:
+		var c0: PackedInt32Array = topo.pitch(0)
+		var cf: Vector3 = dress._st_pos(c0[CaveTopology.P_TO_ST])
+		var cax: Vector3 = dress.pitch_axis(0, 0.0)
+		var away: Vector3 = (cf - cax)
+		away.y = 0.0
+		if away.length() < 0.5:
+			away = Vector3(1, 0, 0)
+		away = away.normalized()
+		out.append(_look_pose("i14_collar_daylight",
+			cf + away * 3.6 + Vector3.UP * 1.25, cax + Vector3.UP * 1.6, 62.0))
+	return out
+
+# ===========================================================================
+# THE ASSAYER, FOUND
+# ===========================================================================
+# The designer, 2026-09-10: "it should end with the dog finding something
+# massive and bright and scary in there."
+#
+# THIS IS A SEQUENCE, NOT A SHOT, and the order is the whole effect:
+#
+#   1  something at the edge of the lamp        it is not ice and not rock
+#   2  closer                                    it is made
+#   3  the footing, frozen in                    it has been here longer than
+#                                                the ice
+#   4  the scale                                 look up. It does not end
+#   5  it moves                                  and it was never a ruin
+#   6  the wind, click one                       it is counting
+#   7  click nine                                and it is nearly done counting
+#   8  THE STRIKE                                4000 K, the only white light
+#                                                in the game
+#   9  the room, at the strike                   what it has been standing in
+#  10  the decay                                 and it goes back to waiting
+#
+# THREE FINDINGS FROM spikes/godot/assayer/ ARE OBEYED HERE RATHER THAN
+# REDISCOVERED, and each of them decides a camera:
+#
+#   * A DORMANT ASSAYER EMITS NOTHING. It can only be found by the visitor's
+#     own lamp, and at nine metres the mast is below the legibility floor. So
+#     the approach starts at seven and the first two frames are lit entirely by
+#     the machine that is looking at it.
+#   * THE SLEW IS ONLY VISIBLE IF THE CAMERA LOOKS AT THE BEARING RACE. The
+#     lamp is a child of the camera and the race at 5.4 m sits outside its
+#     cone, so frame 5 is aimed at the race and not at the boom.
+#   * THE WIND CANNOT FIT IN FOUR SECONDS. Nine clicks are nine seconds, so the
+#     ratchet has to have STARTED before the shot -- frame 6 is click one at
+#     p = 62.4 and the sequence below enters mid-wind rather than at p = 62.
+
+func _asy_drive_index() -> int:
+	var ci: int = dress.assayer_chamber()
+	if ci < 0 or topo.level_main_edge.size() == 0:
+		return -1
+	var sid: int = topo.chambers[ci * CaveTopology.CH_ROW + CaveTopology.CH_SID]
+	var ids: PackedInt32Array = topo.edges[topo.level_main_edge[0]]
+	for i in range(ids.size()):
+		if ids[i] == sid:
+			return i
+	return -1
+
+# a camera standing `back` metres along the drive from the machine, at `eye`,
+# looking at a point `up` metres above its footing. The camera stands ON THE
+# CENTRELINE -- VERTICAL.md 5: a chamber dome is a hemisphere with a 2.9 m tube
+# through it and anywhere off the centreline is inside the tube's wall.
+func _asy_pose(nm: String, back: float, eye: float, up: float, fov: float,
+			   phase: float, lat: float = 0.0) -> Array:
+	# STAND ON THE DRIVE, STATION BY STATION, not on a straight line from the
+	# chamber centre. The first version walked back along ONE tangent, which is
+	# the tangent at the chamber and not the tangent anywhere else: the drive
+	# wanders by a cell every four stations, so at seven metres out the camera
+	# was a metre and a half off the centreline and inside the tube's wall.
+	# Every one of the first ten assayer frames was a photograph of the inside
+	# of a wall. Cells are 0.6 m, so `back` metres is back/0.6 stations.
+	# LATERAL IS ZERO EVERYWHERE IN THIS SET, and that is the second thing the
+	# first sequence taught. VERTICAL.md 5 already records it: "the chamber
+	# dome is a 5-7 m hemisphere with a 2.9 m tube running through it, so
+	# anywhere off the centreline by more than the tube's half width is INSIDE
+	# the tube's wall." A camera 0.9 m off the line in a room that is really a
+	# tube photographs the OUTSIDE of the tube, which is the pale featureless
+	# mass that filled two thirds of every early frame. The room a viewer sees
+	# here is therefore the DRIVE -- 5.9 m wide and 6.75 m tall at a chamber
+	# station -- and a 6.6 m machine standing in a 6.75 m drive is a better
+	# scale reveal than a dome would have been, because it nearly touches.
+	var i: int = _asy_drive_index()
+	var ap: Vector3 = dress.assayer_pos()
+	var from: Vector3 = ap + Vector3.UP * eye
+	if i >= 0:
+		var ids: PackedInt32Array = topo.edges[topo.level_main_edge[0]]
+		var j: int = clampi(i - int(round(back / 0.6)), 0, ids.size() - 1)
+		from = dress._st_pos(ids[j]) + Vector3.UP * eye
+		if absf(lat) > 0.001:
+			var f2: Array = _drive_frame(0, j)
+			from += (f2[2] as Vector3) * lat
+	var pose: Array = _look_pose(nm, from, ap + Vector3.UP * up, fov)
+	pose.append(phase)
+	return pose
+
+func _build_assayer_shots() -> Array:
+	if machine == null:
+		return _build_ice_shots()
+	var out: Array = []
+	# 1 -- AT THE EDGE OF THE LAMP. Seven metres, dormant. The lamp reaches
+	# about six on a floor, so what comes back is the footing and one edge of
+	# the anvil block: an object, in a place that has had no objects in it.
+	out.append(_asy_pose("a1_edge_of_the_lamp", 6.1, 1.15, 1.3, 52.0, 22.0))
+	# 2 -- closer. Five metres is where the mast crosses the legibility floor.
+	out.append(_asy_pose("a2_closer", 4.9, 1.15, 1.9, 54.0, 30.0, 0.0))
+	# 3 -- THE FOOTING, FROZEN IN. Low and close: the ice has come up the
+	# anchor pads, and the meltwater running off it is the reason it is running.
+	out.append(_asy_pose("a3_footing_frozen", 2.9, 0.62, 0.75, 46.0, 38.0, 0.0))
+	# 4 -- THE SCALE. Stand at its foot and look up the mast. This is the
+	# moment: the chamber crown is 8.4 m and the mast is 6.6, so the top of it
+	# is nearly in the roof.
+	out.append(_asy_pose("a4_the_scale", 3.0, 0.55, 5.30, 82.0, 46.0, 0.0))
+	# 5 -- IT MOVES. Aimed at the bearing race at 5.4 m, mid-slew, because the
+	# race is the only part of a 36-degree turn a camera can see.
+	out.append(_asy_pose("a5_the_slew", 4.6, 1.35, 5.40, 44.0, 55.6, 0.0))
+	# 6 -- the wind, click one. It has started counting.
+	out.append(_asy_pose("a6_click_one", 3.2, 1.05, 2.55, 66.0, 62.4, 0.0))
+	# 7 -- click nine. Same camera, so the count is the only thing that changed.
+	out.append(_asy_pose("a7_click_nine", 3.2, 1.05, 2.55, 66.0, 70.6, 0.0))
+	# 8 -- THE STRIKE. 4000 K, and it is the only white light in the game.
+	out.append(_asy_pose("a8_the_strike", 3.2, 1.05, 2.55, 66.0, 71.05, 0.0))
+	# 9 -- THE ROOM, at the strike. What it has been standing in all along, seen
+	# for one frame because the machine lit it.
+	out.append(_asy_pose("a9_the_room", 4.6, 1.30, 2.20, 74.0, 71.05, 0.0))
+	# 10 -- the decay, and it goes back to waiting.
+	out.append(_asy_pose("a10_the_decay", 4.6, 1.30, 2.20, 74.0, 74.2, 0.0))
+	return out
+
+# --- the moving sequence ---------------------------------------------------
+# Thirty-two frames at 1280x720: a dolly from 8.6 m to 3.1 m while the clock
+# runs from p 58 to p 72.5, so the approach, the slew, all nine clicks and the
+# strike happen while the camera is closing. That is the shape of the beat --
+# the machine does not wait for the visitor to arrive.
+func _assayer_sequence() -> void:
+	# the stills already go into shots/ice/assayer/, so the sequence goes in
+	# beside them rather than into a second directory of the same name
+	var dir: String = shot_dir
+	if not dir.ends_with("assayer/"):
+		dir = shot_dir + "assayer/"
+
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(dir))
+	var N: int = 32
+	sub.size = Vector2i(1280, 720)
+	await RenderingServer.frame_post_draw
+	for i in range(N):
+		var u: float = float(i) / float(N - 1)
+		# ease the dolly so it slows as it arrives
+		var e: float = 1.0 - pow(1.0 - u, 2.2)
+		var back: float = lerp(6.1, 3.0, e)
+		var eye: float = lerp(1.20, 0.95, e)
+		var up: float = lerp(1.3, 2.6, e * e)
+		var fov: float = lerp(52.0, 70.0, e)
+		var ph: float = lerp(58.0, 72.5, u)
+		var pose: Array = _asy_pose("seq", back, eye, up, fov, ph, 0.0)
+		cam.fov = pose[4]
+		cam.global_transform = Transform3D(Basis.from_euler(Vector3(pose[3], pose[2], 0)), pose[1])
+		cam.force_update_transform()
+		_ice_lamp()
+		machine.set_phase(ph)
+		for k in range(3):
+			await RenderingServer.frame_post_draw
+		var img: Image = sub.get_texture().get_image()
+		img.save_png(ProjectSettings.globalize_path(dir + "seq_%03d.png" % i))
+	sub.size = Vector2i(1920, 1080)
+	print("assayer sequence : %d frames at 1280x720 in %s" % [N, dir])
 
 # ===========================================================================
 # THE SECTION. ART-DIRECTION 3.6: "the wide shot in Blindside is a schematic."
@@ -978,10 +1452,54 @@ func _shot_section() -> void:
 	mi.queue_free()
 
 # ---------------------------------------------------------------------------
+# ===========================================================================
+# THE LAMP, HANDED TO THE ICE
+# ===========================================================================
+# ice.gdshader computes its internal scattering against the REAL lamp -- a
+# position, an axis and a cone -- rather than against a point source at the
+# camera, which is what the first pass did and why the glow had no shape. It
+# is four uniforms and it has to be written wherever the camera moves,
+# INCLUDING inside the screenshot loop, because that loop sets `busy` and
+# _process returns early.
+var sky_light: OmniLight3D = null
+var machine: Assayer = null
+var asy_mats: AssayerMaterials = null
+var cycle_t: float = 0.0
+
+func _ice_lamp() -> void:
+	if dress == null or lamp == null:
+		return
+	var lt: Transform3D = lamp.global_transform
+	dress.set_ice_param("lamp_pos", lt.origin)
+	dress.set_ice_param("lamp_dir", -lt.basis.z)
+	dress.set_ice_param("lamp_energy", lamp.light_energy if lamp.visible else 0.0)
+	dress.set_ice_param("lamp_range", lamp.spot_range)
+	dress.set_ice_param("lamp_cos", cos(deg_to_rad(lamp.spot_angle)))
+	# the wide cone is the effect: the light bleeds past the edge of its own
+	# beam because inside ice it does. 27 deg of lamp, 62 deg of glow.
+	dress.set_ice_param("lamp_cos_wide", cos(deg_to_rad(minf(78.0, lamp.spot_angle * 2.3))))
+	if sky_light != null:
+		dress.set_ice_param("sky_pos", sky_light.global_position)
+		dress.set_ice_param("sky_energy", sky_light.light_energy)
+		dress.set_ice_param("sky_col", Vector3(sky_light.light_color.r,
+			sky_light.light_color.g, sky_light.light_color.b))
+
 func _process(delta: float) -> void:
+	_ice_lamp()
 	if busy:
 		return
 	t += delta
+	# ONE CLOCK, the assayer spike's rule kept: everything the machine does is
+	# a pure function of cycle_t and nothing else in the scene moves with it.
+	if machine != null:
+		if float(cfg["phase"]) >= 0.0:
+			machine.set_phase(float(cfg["phase"]))
+		else:
+			cycle_t += delta
+			if cycle_t >= Assayer.PERIOD:
+				cycle_t -= Assayer.PERIOD
+				machine.advance_cycle()
+			machine.set_phase(cycle_t)
 	match phase:
 		0:
 			warmup_frames += 1
@@ -1122,6 +1640,10 @@ func _do_shots() -> void:
 		var pose: Array = _pose_for(shot)
 		cam.fov = pose[3]
 		cam.global_transform = Transform3D(Basis.from_euler(Vector3(pose[2], pose[1], 0)), pose[0])
+		cam.force_update_transform()
+		_ice_lamp()
+		if machine != null and shot.size() >= 7 and typeof(shot[6]) == TYPE_FLOAT:
+			machine.set_phase(float(shot[6]))
 		# let the volumetric fog and the shadow atlas settle
 		for k in range(8):
 			await RenderingServer.frame_post_draw
@@ -1139,6 +1661,8 @@ func _do_shots() -> void:
 		print("     cam %s  fwd %s   lampfwd %s  dot %.3f" % [
 			str(cam.global_position.round()), str(cf.snapped(Vector3(0.01,0.01,0.01))),
 			str(lf.snapped(Vector3(0.01,0.01,0.01))), cf.dot(lf)])
+	if String(cfg["shotset"]) == "assayer" and machine != null:
+		await _assayer_sequence()
 	if String(cfg["shotset"]) == "vertical" and topo.levels > 1:
 		await _shot_section()
 	busy = false

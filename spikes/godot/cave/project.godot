@@ -29,3 +29,14 @@ environment/ssao/quality=1
 environment/ssao/half_size=true
 environment/ssao/blur_passes=2
 environment/ssao/adaptive_target=0.4
+; ICE. SSS_STRENGTH in ice.gdshader needs the screen-space subsurface pass
+; enabled or it is silently a no-op. Medium quality, and the scale is in
+; METRES of assumed transmission -- ice is not skin, so it is much larger than
+; the default 0.05.
+environment/subsurface_scattering/subsurface_scattering_quality=2
+; MEASURED: 0.30 is a blur radius wide enough to bleed a curtain's silhouette
+; halfway across the frame -- the first ice frames had a translucent veil in
+; them that was not an object. Ice is not skin but it is not a fog bank
+; either; 0.10 diffuses the light across a scallop and stops at the edge.
+environment/subsurface_scattering/subsurface_scattering_scale=0.10
+environment/subsurface_scattering/subsurface_scattering_depth_scale=0.02
