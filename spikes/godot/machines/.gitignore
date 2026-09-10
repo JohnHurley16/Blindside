@@ -1,2 +1,6 @@
 .godot/
 *.import
+# The .glb regenerate from the tracked Blender source (export.sh). Root .gitignore
+# had them at models/*.glb; they now live under machines/ so all three projects mount
+# them at the SAME res:// path, which is what keeps the .import files stable.
+machines/models/*.glb

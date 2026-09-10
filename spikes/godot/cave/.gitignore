@@ -1,0 +1,8 @@
+# Godot per-project cache.
+.godot/
+# The machine layer is a JUNCTION to ../machines/machines -- one physical copy,
+# three res:// names. Tracked once, at its real home. See machines/link.sh.
+machines/
+# Godot writes one of these per column when it imports metrics.csv as a
+# translation. They are a by-product of --import, not source.
+*.translation

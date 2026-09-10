@@ -828,3 +828,112 @@ every existing frame in `shots/`.
 And one thing for the cave generator rather than the camera: **leave clear ground
 at 0.4 m.** Only 16 of ~170 stations will take a machine-height dolly, and the
 belief cut has to be cut from that eyeline.
+
+---
+
+## 12. The machine is in it now, and the shots are their real length — 2026-09-09
+
+Two of the three faults `docs/TRAILER.md` §11 records against the rough cut were
+this spike's. Both are fixed here; the third (shot 6's introduction) belonged to
+the surface and has moved with it to the valley rebuild.
+
+### 12.1 There is a machine
+
+Until today the note over trailer shot 17 in `cave_root.gd` read *"There is no
+machine in this spike: this executes as the plate."* That sentence is half of
+§11.1's fault — the trailer's subject was absent from the entire second half of
+the trailer, and then a text card said *you cannot drive **it***.
+
+The machine comes from `res://machines/`, which is a **directory junction** to
+the single copy in `spikes/godot/machines/machines/`. Not a copy and not an
+addon: both of those are three files that drift. `machines/link.sh` makes the
+link and takes the project list as an argument, so the valley and the lidar
+spike adopt the same layer with one word rather than a port.
+
+`fleet.gd` is the cave's side of it — about 150 lines, one machine, no yard.
+What it adds over "put a machine there":
+
+- **The floor is a raycast relative to the machine, not a datum.** A cave floor
+  is a swept, noise-displaced shell with a roof over it, so the probe starts
+  1.5 m above the machine's own level and runs 7.5 m down. Nothing holds a
+  global floor height, because `DESIGN-PRINCIPLES.md` §10 makes vertical a real
+  axis and the generator is about to grow levels. A probe that finds nothing
+  reports a miss and holds the machine's level rather than inventing a floor —
+  at the lip of a drop that is a picture, not an error.
+- **The camera may not enter it.** TRAILER 8 forbids passing through "not rock,
+  not a prop, not a **machine**". The machine carries a hull proxy on layer 2
+  and every clearance query widened from mask 1 to mask 3; `floor_under`,
+  `head_room` and `sees_centreline` stay on mask 1, so a floor ray can never
+  land on the back of the machine and the machine can never block the
+  centreline sightline. A camera that ends up inside it is reported as
+  `camera body enters the MACHINE at t=…`, separately from ordinary geometry,
+  because it is a different mistake.
+- **The machine is posed at every validation sample, not just at capture.**
+  Otherwise a shot is checked against a machine parked somewhere else, which is
+  worse than not checking at all because it reads as a pass.
+- **Both lamps are on.** The spike's key is a lamp on the *camera*, 0.26 m off
+  the sensor — a fiction standing in for the machine that was not there, and
+  the whole photometric contract in §5 is measured against it. Turning it off
+  would re-grade every frame in this spike, so it stays, and the machine's own
+  pool is what trailer 17 actually asks for: *"its own pool of light moving over
+  the floor"*. If the grade is ever re-derived, the camera lamp is the thing to
+  drop.
+
+### 12.2 Continuity is enforced, not conventional
+
+`machines/hero.gd` names the one machine — Surveyor, default loadout, player
+skin, wear 0.35, undamaged — and `CameraRig.validate()` checks every shot's
+`machine` block against it. A mismatch is a FAIL in the same list as a camera
+that would fly through a wall, carrying the value that caused it, and the shot
+is not rendered. `xfail_wrong_machine` is in the list to prove it: its camera is
+shot 17's exactly, and it is rejected on four fields.
+
+Two rules came out of putting a real machine in a real scene:
+
+- **`role: "none"`** says the machine is deliberately absent. Shots 16 and 20
+  carry it. 16 is *"the lamp comes on"* — the lamp is the machine's and the shot
+  is what the lamp finds; put the machine in frame and it becomes shot 17.
+- **The skate check.** The clips are baked in place, so the node has to travel
+  at exactly the clip's speed or the planted feet slide. A shot fixes the
+  distance and the duration, so it has already fixed the speed, and the rig
+  computes it: shot 17 walks 2.00 m in 4.0 s and shot 27 walks 1.50 m in 3.0 s,
+  both 0.50 m/s, both the speed `motion.py` baked.
+
+### 12.3 The shots are three to five seconds
+
+§11.3: *"One second a shot is not a cut, it is a strobe."* Every sequence used
+to render 24 frames regardless of `len_s`. A shot is now its own length at
+**24 fps** — `--seqframes=` still forces a count for a quick look. 24 rather
+than the 60 the capture rule names is deliberate: 60 is the rate the **motion
+blur** is computed against, because that is the shutter the finished shot has;
+24 is the rate the frames are **cut** at.
+
+| shot | beat | length | frames | render | per frame |
+|---|---|---|---|---|---|
+| `t16_lamp_comes_on` | 16 | 5.0 s | 120 | 52.1 s | 0.43 s |
+| `t17_follow_machine` | 17 | 4.0 s | 96 | 54.4 s | 0.57 s |
+| `t20_sensor_shadow` | 20 | 4.0 s | 96 | 43.2 s | 0.45 s |
+| `t27_wrong_direction` | 27 | 3.0 s | 72 | 37.2 s | 0.52 s |
+
+**384 frames, 3 min 15 s for the cave's whole act**, on an otherwise idle
+RTX 3080 Laptop. The frames with the machine in them cost about 0.12 s more each
+— 23 048 triangles in two draw calls, plus four floor probes and four two-bone
+IK solves per frame, against a 175 024-triangle collision shell.
+
+`t18_belief_cut_plate` is still exported in `shots_cinema.json` with shot 17's
+camera **and shot 17's machine block**, and is still skipped for capture because
+it would be byte-identical; the belief side is the lidar spike's. `x18` and the
+two `xfail`s are rejected and are listed with their reasons in
+`shots/cinema/validation.txt`.
+
+### 12.4 What shot 27 still cannot do
+
+*"Wide, small in frame"* at 11 m on a 21 mm lens puts the machine at 50 × 77 px.
+That is above the 34 px rung where NOTES §10's legibility ladder says the
+chassis class stops reading, so it is legible — but only just, and what actually
+carries it is its lamp. It was also moved 0.30 m off the centreline because on
+the centreline a fallen slab cuts it off at the hips. If the designer wants the
+machine readable rather than merely present in that shot, TRAILER 8 already
+allows the answer: **85 mm or longer for the machinery in the dark**, because
+compression makes it feel further away and larger. That is a one-line change and
+a decision, not a problem.

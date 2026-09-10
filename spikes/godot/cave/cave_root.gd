@@ -19,13 +19,15 @@ extends Node3D
 
 const SHOT_DIR := "res://shots/"
 const CSV_PATH := "res://metrics.csv"
+## The rate the trailer is CUT at. See the note in _cin_seq.
+const CUT_FPS := 24.0
 
 var cfg := {
 	"seed": 7, "len": 240, "shadow": true, "fog": true, "props": true,
 	"vis": true, "walkonly": false, "stay": false, "shotsonly": false,
 	"speed": 1.7, "shotdir": "", "shotset": "legacy", "ssao": false,
 	"pom": true, "scales": true, "water": true,
-	"cinema": "", "fx": "all", "shot": "", "seqframes": 24, "capfps": 60.0,
+	"cinema": "", "fx": "all", "shot": "", "seqframes": 0, "capfps": 60.0,
 	"stations": "",
 }
 
@@ -36,6 +38,9 @@ var world_root: Node3D
 var envr: Environment
 var topo: CaveTopology
 var dress: CaveDressing
+## The machine (TRAILER 11.2). Until 2026-09-09 this spike had none, and said
+## so in the note over trailer shot 17. See fleet.gd and res://machines/.
+var fleet: CaveFleet
 
 var phase: int = 0            # 0 warmup, 1 walk, 2 shots, 3 done
 var t: float = 0.0
@@ -724,6 +729,10 @@ func _cinema_setup() -> void:
 	cam.keep_aspect = Camera3D.KEEP_HEIGHT
 	rig = CameraRig.new()
 	rig.build_collision(geo_root, topo, dress, world_root)
+	rig.ready_space(world_root)
+	fleet = CaveFleet.new()
+	fleet.build(world_root, rig)
+	rig.fleet = fleet
 	grade = CinemaGrade.new()
 	grade.setup(envr, cam)
 	fx_mask = CinemaGrade.parse(String(cfg["fx"]))
@@ -784,14 +793,32 @@ func _cin_write_shots() -> void:
 		 "look": {"from": {"st": rail, "r": 0.0, "u": 0.70, "f": 6.0},
 				  "to":   {"st": rail, "r": 0.0, "u": 0.95, "f": 9.0}},
 		 "focus": {"from": {"st": rail, "r": 0.0, "u": 0.05, "f": 2.2},
-				   "to":   {"st": rail, "r": 0.0, "u": 0.60, "f": 7.0}}},
+				   "to":   {"st": rail, "r": 0.0, "u": 0.60, "f": 7.0}}, 
+		 # NOTE-16. The machine is NOT in this frame, and it is worth saying so
+		 # rather than leaving it to be inferred. The lamp that comes on is its
+		 # lamp; the shot is what the lamp finds. Put the machine in frame and
+		 # this becomes shot 17, which is the next shot. Hero.BEATS agrees: 16
+		 # is not on it.
+		 "machine": {"role": "none"}},
 
 		# 17 -- 1:09, 4s. "Following the machine from behind, its own pool of
 		# light moving over the floor." Machine height, a normal lens, a follow
-		# dolly. There is no machine in this spike: this executes as the plate.
+		# dolly. IT NOW HAS A MACHINE IN IT. Until 2026-09-09 this line read
+		# "There is no machine in this spike: this executes as the plate", and
+		# that sentence is half of TRAILER 11.1's fault: the trailer's subject
+		# was absent from the whole second half of the trailer. The hero walks
+		# 2.0 m down the drive in the 4.0 s the shot lasts, which is exactly
+		# the 0.50 m/s the walk clip was baked at, and the camera follows it at
+		# a constant 3.2 m -- so it neither skates nor is overtaken.
 		{"name": "t17_follow_machine", "trailer": "17", "len_s": 4.0,
 		 "lens_mm": 35.0, "tstop": 2.8, "ease": "inout", "handheld_deg": 0.22,
 		 "height": "machine", "seed": 17,
+		 "machine": {"role": "hero", "chassis": "surveyor", "loadout": "default",
+			 "skin": "player", "wear": 0.35, "damage": 0.0, "lamp": true,
+			 "clip": "walk", "yaw": "path",
+			 "at": {"from": {"st": dense, "r": 0.0, "u": 0.0, "f": 3.20},
+					"to":   {"st": dense, "r": 0.0, "u": 0.0, "f": 5.20}},
+			 "head": [[-6.0, -3.0], [7.0, -5.0]]},
 		 "move": {"from": {"st": dense, "r": 0.10, "u": 0.42, "f": 0.0},
 				  "to":   {"st": dense, "r": 0.02, "u": 0.42, "f": 1.60}},
 		 "look": {"from": {"st": dense, "r": 0.0, "u": 0.62, "f": 3.2},
@@ -807,6 +834,12 @@ func _cin_write_shots() -> void:
 		{"name": "t18_belief_cut_plate", "trailer": "18", "len_s": 4.0,
 		 "lens_mm": 35.0, "tstop": 2.8, "ease": "inout", "handheld_deg": 0.22,
 		 "height": "machine", "seed": 17, "_same_camera_as": "t17_follow_machine",
+		 "machine": {"role": "hero", "chassis": "surveyor", "loadout": "default",
+			 "skin": "player", "wear": 0.35, "damage": 0.0, "lamp": true,
+			 "clip": "walk", "yaw": "path",
+			 "at": {"from": {"st": dense, "r": 0.0, "u": 0.0, "f": 3.20},
+					"to":   {"st": dense, "r": 0.0, "u": 0.0, "f": 5.20}},
+			 "head": [[-6.0, -3.0], [7.0, -5.0]]},
 		 "move": {"from": {"st": dense, "r": 0.10, "u": 0.42, "f": 0.0},
 				  "to":   {"st": dense, "r": 0.02, "u": 0.42, "f": 1.60}},
 		 "look": {"from": {"st": dense, "r": 0.0, "u": 0.62, "f": 3.2},
@@ -823,6 +856,12 @@ func _cin_write_shots() -> void:
 		{"name": "x18_continuation_at_116", "trailer": "18", "len_s": 4.0,
 		 "lens_mm": 35.0, "tstop": 2.8, "ease": "out", "handheld_deg": 0.22,
 		 "height": "machine", "seed": 17,
+		 "machine": {"role": "hero", "chassis": "surveyor", "loadout": "default",
+			 "skin": "player", "wear": 0.35, "damage": 0.0, "lamp": true,
+			 "clip": "walk", "yaw": "path",
+			 "at": {"from": {"st": 116, "r": 0.0, "u": 0.0, "f": 4.80},
+					"to":   {"st": 116, "r": 0.0, "u": 0.0, "f": 6.80}},
+			 "head": [0.0, -4.0]},
 		 "move": {"from": {"st": 116, "r": 0.02, "u": 0.42, "f": 1.60},
 				  "to":   {"st": 116, "r": 0.00, "u": 0.42, "f": 2.55}},
 		 "look": {"from": {"st": 116, "r": 0.0, "u": 0.30, "f": 6.2},
@@ -841,19 +880,59 @@ func _cin_write_shots() -> void:
 				  "to":   {"st": spoil, "r": -0.05, "u": 0.40, "f": -0.95}},
 		 "look": {"from": {"st": spoil, "r": 0.40, "u": 0.35, "f": 0.6},
 				  "to":   {"st": spoil, "r": 0.45, "u": 0.35, "f": 0.9}},
-		 "focus": {"from": 1.9, "to": 1.9}},
+		 "focus": {"from": 1.9, "to": 1.9},
+		 # The belief register. This frame is the plate the cloud is cut over,
+		 # and the subject of it is the WEDGE OF MISSING DATA, not the machine
+		 # that failed to see into it.
+		 "machine": {"role": "none"}},
 
 		# 27 -- 1:51, 3s. "The machine walking, confident, in completely the
 		# wrong direction. Wide, small in frame." The longest sightline in the
 		# cave, a wide lens, and a lateral drift so the frame is not a still.
+		# The machine is in it, 11 m away, its own lamp the brightest thing in
+		# the frame. At 21 mm that is about 60 px of machine, which NOTES 10's
+		# legibility ladder puts above the 34 px where the chassis class stops
+		# reading -- small in frame, still the same machine. It walks AWAY down
+		# the drive, which is the confident part; the wrong part is that the
+		# drive it is confident about is the wrong one.
 		{"name": "t27_wrong_direction", "trailer": "27", "len_s": 3.0,
 		 "lens_mm": 21.0, "tstop": 4.0, "ease": "inout", "handheld_deg": 0.0,
 		 "height": "eye", "seed": 27,
+		 "machine": {"role": "hero", "chassis": "surveyor", "loadout": "default",
+			 "skin": "player", "wear": 0.35, "damage": 0.0, "lamp": true,
+			 "clip": "walk", "yaw": "path",
+			 # Off the centreline to the left: on the centreline at 11 m the
+			 # machine stands behind a fallen slab and is cut off at the hips,
+			 # which reads as an accident rather than as a composition. 0.30 m
+			 # to the left is open floor for the whole move.
+			 "at": {"from": {"st": lng, "r": -0.30, "u": 0.0, "f": 10.10},
+					"to":   {"st": lng, "r": -0.30, "u": 0.0, "f": 11.60}},
+			 "head": [12.0, -3.0]},
 		 "move": {"from": {"st": lng, "r": -0.45, "u": 1.55, "f": 0.0},
 				  "to":   {"st": lng, "r": 0.35, "u": 1.55, "f": 0.35}},
 		 "look": {"from": {"st": lng, "r": 0.0, "u": 1.10, "f": 11.0},
 				  "to":   {"st": lng, "r": 0.0, "u": 1.10, "f": 11.5}},
 		 "focus": {"from": 9.0, "to": 9.0}},
+
+		# THE OTHER DELIBERATE FAILURE, and it is the one TRAILER 11.1 asks
+		# for. Every rule the camera has is satisfied -- this is shot 17's move
+		# exactly. What is wrong is the MACHINE: it claims trailer beat 17 and
+		# names a Scout on the rival livery at a different wear. In a cut
+		# assembled out of four Godot projects that is precisely the mistake
+		# nobody catches by looking, because each shot is fine on its own.
+		{"name": "xfail_wrong_machine", "trailer": "17", "len_s": 4.0,
+		 "lens_mm": 35.0, "tstop": 2.8, "ease": "inout", "handheld_deg": 0.22,
+		 "height": "machine", "seed": 95,
+		 "move": {"from": {"st": dense, "r": 0.10, "u": 0.42, "f": 0.0},
+				  "to":   {"st": dense, "r": 0.02, "u": 0.42, "f": 1.60}},
+		 "look": {"from": {"st": dense, "r": 0.0, "u": 0.62, "f": 3.2},
+				  "to":   {"st": dense, "r": 0.0, "u": 0.70, "f": 4.6}},
+		 "focus": {"from": 2.4, "to": 3.2},
+		 "machine": {"role": "hero", "chassis": "scout", "loadout": "default",
+			 "skin": "rival", "wear": 0.10, "damage": 0.0, "lamp": true,
+			 "clip": "walk", "yaw": "path",
+			 "at": {"from": {"st": dense, "r": 0.0, "u": 0.0, "f": 3.20},
+					"to":   {"st": dense, "r": 0.0, "u": 0.0, "f": 5.20}}}},
 
 		# THE DELIBERATE FAILURE. A push that leaves the centreline for the
 		# wall, which is exactly the move a hand-flown camera makes when nobody
@@ -886,6 +965,11 @@ func _cin_load_shots() -> void:
 
 # --- posing ----------------------------------------------------------------
 func _cin_pose(shot: Dictionary, tn: float, fi: int) -> Dictionary:
+	# The machine moves with the camera and on the SHOT'S clock. Offline
+	# capture renders each frame many times over to let the scene settle, so
+	# anything driven by the frame clock walks thirty times too fast.
+	if fleet != null:
+		fleet.hero_pose(shot, tn, tn * float(shot.get("len_s", 4.0)))
 	var ps: Dictionary = rig.pose(shot, tn)
 	cam.global_transform = Transform3D(ps["basis"], ps["pos"])
 	cam.fov = CameraRig.fov_for(float(ps["lens"]))
@@ -924,6 +1008,7 @@ func _cinema_run() -> void:
 		"pairs": await _cin_pairs()
 		"stack": await _cin_stack()
 		"seq": await _cin_seq()
+		"hero": await _cin_hero()
 		"fail": await _cin_fail()
 		"cost": await _cin_cost()
 		"veldbg": await _cin_veldbg()
@@ -946,7 +1031,8 @@ func _cin_validate() -> void:
 	await get_tree().physics_frame
 	await get_tree().physics_frame
 	rig.ready_space(world_root)
-	_cin("=== SHOT VALIDATION -- TRAILER.md 8 ===")
+	_cin("=== SHOT VALIDATION -- TRAILER.md 8 and 11.1 ===")
+	_cin(Hero.banner())
 	_cin("body sphere %.2f m, near clearance %.2f m, query margin %.2f m" % [
 		CameraRig.BODY_R, CameraRig.NEAR_CLEAR, CameraRig.QUERY_MARGIN])
 	_cin("collision: %d shell triangles + %d prop boxes, built in %.0f ms" % [
@@ -968,6 +1054,7 @@ func _cin_validate() -> void:
 		_cin("   depth of field: sharp %.2f m to %s (hyperfocal %.1f m)" % [
 			float(dof[0]), ("infinity" if float(dof[1]) > 900.0 else "%.2f m" % float(dof[1])),
 			float(dof[2])])
+		_cin("   machine: %s" % Hero.describe(Hero.block(s)))
 		for w in r["warn"]:
 			_cin("   warn: " + str(w))
 		for x in r["fail"]:
@@ -977,6 +1064,13 @@ func _cin_validate() -> void:
 		_cin("")
 	_cin("%d of %d shots execute; %d rejected." % [npass, cin_shots.size(),
 		cin_shots.size() - npass])
+	_cin("")
+	_cin("--- continuity: every shot that names the hero machine ---")
+	var au: Array[String] = Hero.audit(cin_shots, "cave")
+	if au.is_empty():
+		_cin("   one machine, in every shot that has one.")
+	for a in au:
+		_cin("   " + a)
 	_cin_flush("validation.txt")
 
 # --- 2. before/after pairs, cumulative, in TRAILER 9's order ---------------
@@ -1028,7 +1122,17 @@ func _cin_stack() -> void:
 func _cin_seq() -> void:
 	await get_tree().physics_frame
 	rig.ready_space(world_root)
-	var n: int = int(cfg["seqframes"])
+	# TRAILER 11.3. Every shot used to render `seqframes` frames regardless of
+	# `len_s`, and the default was 24 -- one second at 24 fps. The designer's
+	# note on the rough cut: "The rough cuts of 1 second footage is very
+	# jarring." It is not a cut artefact, it is the capture: a 4-second push
+	# rendered as 24 frames is a 4x speed-up. A shot is now its own length at
+	# CUT_FPS, which is 72 frames for a 3 s shot and 120 for a 5 s one.
+	#
+	# 24 fps rather than the 60 the capture rule names is a deliberate
+	# separation: 60 is the rate the MOTION BLUR is computed against (capfps,
+	# because that is the shutter the finished shot has); 24 is the rate the
+	# frames are CUT at. --seqframes= still forces a count, for a quick look.
 	for shot in cin_shots:
 		if String(shot["name"]).begins_with("x"):
 			continue
@@ -1042,8 +1146,13 @@ func _cin_seq() -> void:
 			continue
 		var dir: String = CIN_DIR + "seq/" + String(shot["name"]) + "/"
 		DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(dir))
-		_cin("=== %s  %.0f mm  %.1f s  %d frames ===" % [shot["name"],
-			float(shot["lens_mm"]), float(shot["len_s"]), n])
+		var n: int = int(cfg["seqframes"])
+		if n <= 0:
+			n = maxi(24, int(round(float(shot.get("len_s", 1.0)) * CUT_FPS)))
+		var t_shot: int = Time.get_ticks_msec()
+		_cin("=== %s  %.0f mm  %.1f s  %d frames at %.0f fps ===" % [shot["name"],
+			float(shot["lens_mm"]), float(shot["len_s"]), n, CUT_FPS])
+		_cin("    machine: %s" % Hero.describe(Hero.block(shot)))
 		_cin("  frame     t_s      x       y       z    step_mm   focus_m")
 		var prev: Vector3 = Vector3.ZERO
 		for i in range(n):
@@ -1055,8 +1164,73 @@ func _cin_seq() -> void:
 			_cin("  %5d  %6.3f  %6.2f  %6.2f  %6.2f  %8.1f  %7.2f" % [
 				i, tn * float(shot["len_s"]), p.x, p.y, p.z, step, float(ps["focus"])])
 			prev = p
+		var el: float = float(Time.get_ticks_msec() - t_shot) / 1000.0
+		_cin("    %d frames in %.1f s = %.2f s/frame" % [n, el, el / float(n)])
+		if fleet != null and fleet.misses > 0:
+			_cin("    floor probes with no hit in the window: %d" % fleet.misses)
+			fleet.misses = 0
 		_cin("")
 	_cin_flush("sequences.txt")
+
+# --- 4b. where the machine IS on screen ------------------------------------
+## Writes shots/cinema/hero_boxes.json: for every shot that names the hero, the
+## frame to look at and the pixel rectangle the machine occupies in it. The
+## continuity contact sheet is built from this rather than hand-cropped, so a
+## wrong chassis or a wrong livery is visible at a glance across all of it.
+## Renders nothing.
+func _cin_hero() -> void:
+	await get_tree().physics_frame
+	rig.ready_space(world_root)
+	var out: Dictionary = {"project": "cave", "hero": Hero.SPEC,
+		"fps": CUT_FPS, "shots": []}
+	_cin("=== HERO BOXES ===")
+	_cin(Hero.banner())
+	for shot in cin_shots:
+		var nm: String = String(shot["name"])
+		if not Hero.is_hero(shot) or nm.begins_with("x"):
+			continue
+		if shot.has("_same_camera_as"):
+			continue
+		if not rig.validate(shot)["ok"]:
+			continue
+		var nf: int = maxi(24, int(round(float(shot.get("len_s", 1.0)) * CUT_FPS)))
+		var fi: int = int(round(0.72 * float(nf - 1)))
+		var tn: float = float(fi) / float(nf - 1)
+		_cin_pose(shot, tn, fi)
+		var r: Rect2 = _hero_rect()
+		out["shots"].append({"name": nm, "trailer": String(shot.get("trailer", "")),
+			"dir": "shots/cinema/seq/%s" % nm, "frame": fi, "frames": nf,
+			"lens_mm": float(shot["lens_mm"]), "len_s": float(shot["len_s"]),
+			"machine": Hero.describe(Hero.block(shot)),
+			"rect": [r.position.x, r.position.y, r.size.x, r.size.y]})
+		_cin("%-24s frame %3d of %3d   rect %4.0f %4.0f  %4.0f x %4.0f px"
+			% [nm, fi, nf, r.position.x, r.position.y, r.size.x, r.size.y])
+	var f := FileAccess.open(ProjectSettings.globalize_path(
+		CIN_DIR + "hero_boxes.json"), FileAccess.WRITE)
+	if f:
+		f.store_string(JSON.stringify(out, "  "))
+		f.close()
+	_cin_flush("hero.txt")
+
+## The eight corners of the machine's mesh AABB, in the camera's projection.
+func _hero_rect() -> Rect2:
+	var m: Machine = fleet.hero
+	var ab: AABB = m.mi.get_aabb()
+	var xf: Transform3D = m.mi.global_transform
+	var lo := Vector2(1e9, 1e9)
+	var hi := Vector2(-1e9, -1e9)
+	for i in range(8):
+		var c: Vector3 = xf * (ab.position + Vector3(
+			ab.size.x * float(i & 1), ab.size.y * float((i >> 1) & 1),
+			ab.size.z * float((i >> 2) & 1)))
+		if cam.is_position_behind(c):
+			continue
+		var q: Vector2 = cam.unproject_position(c)
+		lo = Vector2(minf(lo.x, q.x), minf(lo.y, q.y))
+		hi = Vector2(maxf(hi.x, q.x), maxf(hi.y, q.y))
+	if hi.x < lo.x:
+		return Rect2(0, 0, 0, 0)
+	return Rect2(lo, hi - lo)
 
 # --- 5. the deliberate failure --------------------------------------------
 func _cin_fail() -> void:

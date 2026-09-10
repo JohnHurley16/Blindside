@@ -1,0 +1,46 @@
+{
+  "fps": 24.0,
+  "hero": {
+    "chassis": "surveyor",
+    "damage": 0.0,
+    "loadout": "default",
+    "model": "surveyor",
+    "skin": "player",
+    "wear": 0.35
+  },
+  "project": "cave",
+  "shots": [
+    {
+      "dir": "shots/cinema/seq/t17_follow_machine",
+      "frame": 68,
+      "frames": 96,
+      "len_s": 4.0,
+      "lens_mm": 35.0,
+      "machine": "hero surveyor/default skin=player wear=0.35 dmg=0.00 clip=walk",
+      "name": "t17_follow_machine",
+      "rect": [
+        554.413269042969,
+        587.932922363281,
+        435.115478515625,
+        466.385192871094
+      ],
+      "trailer": "17"
+    },
+    {
+      "dir": "shots/cinema/seq/t27_wrong_direction",
+      "frame": 51,
+      "frames": 72,
+      "len_s": 3.0,
+      "lens_mm": 21.0,
+      "machine": "hero surveyor/default skin=player wear=0.35 dmg=0.00 clip=walk",
+      "name": "t27_wrong_direction",
+      "rect": [
+        904.51171875,
+        592.486450195313,
+        49.950439453125,
+        76.6465454101563
+      ],
+      "trailer": "27"
+    }
+  ]
+}

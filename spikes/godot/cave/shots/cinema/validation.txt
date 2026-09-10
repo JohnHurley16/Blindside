@@ -1,26 +1,31 @@
-=== SHOT VALIDATION -- TRAILER.md 8 ===
+=== SHOT VALIDATION -- TRAILER.md 8 and 11.1 ===
+HERO MACHINE: surveyor, default loadout, player skin, wear 0.35, damage 0.00  (bay 3 on the charge line)
 body sphere 0.35 m, near clearance 0.40 m, query margin 0.05 m
-collision: 175024 shell triangles + 951 prop boxes, built in 350 ms
+collision: 175024 shell triangles + 951 prop boxes, built in 250 ms
 
 t16_lamp_comes_on          trailer 16   PASS
    21 mm (51.5 deg v)  T2.8  5.0s  ease inout  handheld 0.00 deg
    travel 1.30 m  peak 0.49 m/s  clearance 0.40 m  height 1.58-1.61 m (eye)
    depth of field: sharp 1.75 m to 5.15 m (hyperfocal 5.3 m)
+   machine: NONE -- the hero is deliberately not on the site for this shot
 
 t17_follow_machine         trailer 17   PASS
    35 mm (32.3 deg v)  T2.8  4.0s  ease inout  handheld 0.22 deg
    travel 1.67 m  peak 0.78 m/s  clearance 0.40 m  height 0.42-0.53 m (machine)
    depth of field: sharp 2.07 m to 2.86 m (hyperfocal 14.6 m)
+   machine: hero surveyor/default skin=player wear=0.35 dmg=0.00 clip=walk
 
 t18_belief_cut_plate       trailer 18   PASS
    35 mm (32.3 deg v)  T2.8  4.0s  ease inout  handheld 0.22 deg
    travel 1.67 m  peak 0.78 m/s  clearance 0.40 m  height 0.42-0.53 m (machine)
    depth of field: sharp 2.07 m to 2.86 m (hyperfocal 14.6 m)
+   machine: hero surveyor/default skin=player wear=0.35 dmg=0.00 clip=walk
 
 x18_continuation_at_116    trailer 18   REJECTED
    35 mm (32.3 deg v)  T2.8  4.0s  ease out  handheld 0.22 deg
    travel 0.93 m  peak 0.65 m/s  clearance 0.00 m  height 0.30-0.43 m (machine)
    depth of field: sharp 2.76 m to 4.42 m (hyperfocal 14.6 m)
+   machine: hero surveyor/default skin=player wear=0.35 dmg=0.00 clip=walk
    FAIL: body intersects geometry at t=0.13 (the 0.35 m sphere overlaps)
    FAIL: frustum clearance falls to 0.00 m at t=0.44 (needs 0.40)
 
@@ -28,18 +33,37 @@ t20_sensor_shadow          trailer 20   PASS
    35 mm (32.3 deg v)  T2.0  4.0s  ease inout  handheld 0.30 deg
    travel 0.29 m  peak 0.14 m/s  clearance 0.40 m  height 0.40-0.40 m (machine)
    depth of field: sharp 1.74 m to 2.09 m (hyperfocal 20.5 m)
+   machine: NONE -- the hero is deliberately not on the site for this shot
 
 t27_wrong_direction        trailer 27   PASS
    21 mm (51.5 deg v)  T4.0  3.0s  ease inout  handheld 0.00 deg
    travel 0.88 m  peak 0.55 m/s  clearance 0.40 m  height 1.55-1.63 m (eye)
    depth of field: sharp 2.61 m to infinity (hyperfocal 3.7 m)
+   machine: hero surveyor/default skin=player wear=0.35 dmg=0.00 clip=walk
+
+xfail_wrong_machine        trailer 17   REJECTED
+   35 mm (32.3 deg v)  T2.8  4.0s  ease inout  handheld 0.22 deg
+   travel 1.67 m  peak 0.78 m/s  clearance 0.40 m  height 0.42-0.53 m (machine)
+   depth of field: sharp 2.07 m to 2.86 m (hyperfocal 14.6 m)
+   machine: hero scout/default skin=rival wear=0.10 dmg=0.00 clip=walk
+   FAIL: hero chassis is 'scout', the hero machine's chassis is 'surveyor'
+   FAIL: hero skin is 'rival', the hero machine's skin is 'player'
+   FAIL: hero wear is 0.100, the hero machine's wear is 0.350
+   FAIL: hero model resolves to 'scout', the hero machine is 'surveyor'
 
 xfail_through_the_wall     trailer      REJECTED
    21 mm (51.5 deg v)  T2.8  4.5s  ease inout  handheld 0.00 deg
    travel 2.28 m  peak 0.95 m/s  clearance 0.01 m  height 1.45-1.61 m (eye)
    depth of field: sharp 2.70 m to infinity (hyperfocal 5.3 m)
+   machine: no machine block -- the project's default placement
    FAIL: no line of sight to the drive centreline at t=0.53: the camera is not in the passage
    FAIL: body intersects geometry at t=0.41 (the 0.35 m sphere overlaps)
    FAIL: frustum clearance falls to 0.01 m at t=0.50 (needs 0.40)
 
-5 of 7 shots execute; 2 rejected.
+5 of 8 shots execute; 3 rejected.
+
+--- continuity: every shot that names the hero machine ---
+   cave/xfail_wrong_machine: hero chassis is 'scout', the hero machine's chassis is 'surveyor'
+   cave/xfail_wrong_machine: hero skin is 'rival', the hero machine's skin is 'player'
+   cave/xfail_wrong_machine: hero wear is 0.100, the hero machine's wear is 0.350
+   cave/xfail_wrong_machine: hero model resolves to 'scout', the hero machine is 'surveyor'

@@ -490,3 +490,220 @@ is countable at 22 px, and the chassis class is not distinguishable at any rung 
    trailer and wrong for a machine that has to walk where the terrain says. The IK layer
    here is the beginning of the real thing; the next step is a foothold planner that
    re-plans the *target*, not just corrects the result.
+
+---
+
+## 14. The machine layer became shared, and the trailer got a subject — 2026-09-09
+
+Two faults in the rough cut, both named in `docs/TRAILER.md` 11. This spike is
+where the fix for both of them lives.
+
+### 14.1 One physical copy, three `res://` names
+
+The cave and the pit-head were built before the exporter existed, so the cave
+had **no machine at all** — its own shot list said "There is no machine in this
+spike: this executes as the plate" — and the pit-head built its own out of 34
+batched boxes. Every machine in every rendered frame of the trailer was a
+stand-in.
+
+The fix is not to copy this spike's code into them. Godot has no multi-root
+`res://`, and an `addons/` plugin does not help because an addon is still a
+directory inside each project — still three copies, still free to drift, and
+drift is invisible until it is on screen. The only mechanism that gives **one
+file with three names** is a filesystem link, and on Windows a *directory
+junction* needs no privilege and is transparent to every Win32 call, so Godot's
+importer walks it as an ordinary folder.
+
+```
+spikes/godot/machines/machines/     <- the one copy: book, machine, hero,
+                                       the two shaders, models/*.glb
+spikes/godot/cave/machines          -> junction
+spikes/godot/surface/machines       -> junction
+```
+
+`link.sh` makes them and is idempotent; run it after a clone. The junction is
+`.gitignore`d in the two environment spikes, so the layer is tracked once, at
+its real home.
+
+**The one discipline this costs.** The mount path is `res://machines/` in all
+three, which is why this spike's own copy moved from `res://` into
+`res://machines/` rather than staying put: an identical mount path is what
+keeps `models/*.glb.import` stable. If the paths differed, each project would
+rewrite the other's `.import` files on every open. On top of that, nothing
+inside `machines/` may write a `res://` literal — `machine.gd` resolves every
+path against its own script path (`_home()`), which is one function and makes
+the layer relocatable.
+
+Verified: all three projects import the same 18 `.glb`, and the machines spike
+renders identically after the move (`04_surveyor_3q`, 23 048 tris, 2 surfaces).
+
+### 14.2 `hero.gd` — the trailer follows ONE machine, and it is checkable
+
+TRAILER 11.1 is the structural fault: the card at 0:46 says *you cannot drive
+**it*** and nothing has established what **it** is. The fix is that one machine
+is the subject from its first frame to its last, and 11.1 ends by saying the
+mechanism for that "does not exist today — the loadout and skin have to be part
+of the shot definition and validated, in the same way the camera is."
+
+`machines/hero.gd` is that mechanism, and it is in the shared layer precisely so
+that four Godot projects check against **one declaration** instead of three
+copies of a convention.
+
+**The machine: the Surveyor, default loadout, player skin, wear 0.35,
+undamaged.** The argument is written out at the top of the file. In short: it is
+the season's chassis and `params.py` calls it "the default"; it is the only
+chassis carrying both halves of what the trailer is about (`active_sonar` and
+the magnetometer boom to learn the cave, `cargo_bay` and `beacon_rack` to work
+it); and §8's silhouette test found the Surveyor and the Swimmer separable only
+by **loadout**, so a hero Surveyor *with* its loadout is distinct from every
+other machine on screen and a hero Swimmer would not be.
+
+**Wear 0.35 is a guess and is flagged as one.** 11.1 asks for one wear state and
+nothing says which. It is also ONE number for the whole cut on purpose: a viewer
+does not notice wear rising, and absolutely notices it falling.
+
+**What is enforced, and how a failure reads.** A shot definition may carry a
+`machine` block; `role: "hero"` means it must name the identity in `SPEC`
+exactly. Any shot whose trailer beat is in `Hero.BEATS` must carry one. Both
+checks run inside `CameraRig.validate()`, so a continuity break is reported in
+the same list as a camera that would fly through a wall, with the value that
+caused it, and the shot is **not rendered**:
+
+```
+xfail_wrong_machine         REJECTED   35mm T2.8  overcast
+    machine hero hauler/bare skin=rival wear=0.70 dmg=0.00 clip=walk
+    FAIL: hero chassis is 'hauler', the hero machine's chassis is 'surveyor'
+    FAIL: hero loadout is 'bare', the hero machine's loadout is 'default'
+    FAIL: hero skin is 'rival', the hero machine's skin is 'player'
+    FAIL: hero wear is 0.700, the hero machine's wear is 0.350
+    FAIL: hero model resolves to 'hauler_bare', the hero machine is 'surveyor'
+```
+
+Three more rules came out of putting real machines in real scenes:
+
+- **`role: "none"`.** The default for a shot with no block is that the hero is
+  standing at home on the site, because it *is* on the site. Shot 28 is the
+  empty shaft in the rain and the question is whether it came back, so that shot
+  says `none` out loud. Without it the ending answers its own question.
+- **The skate check.** The clips are baked in place, so the node must travel at
+  exactly the clip's speed or the planted feet slide (§5). A shot fixes the
+  distance and the duration, so it has already fixed the speed — and the rig now
+  computes it and rejects a shot that would make the machine moonwalk.
+- **The camera may not enter the machine.** TRAILER 8 forbids passing through
+  "not rock, not a prop, not a machine". The batched stand-ins were in the
+  collision layer by accident, because they were props; a real chassis is a
+  skinned mesh with no body. Each one now carries a hull proxy on layer 2 and
+  the rigs' clearance queries widened from mask 1 to mask 3 — while the queries
+  that ask *where is the floor* stay on mask 1, so a ground ray can never land
+  on the back of a machine.
+
+`contact_sheet.py` is the picture half of the same check: each project writes
+`hero_boxes.json` (`--cinema=hero`) giving the machine's measured screen
+rectangle in one frame of every shot it appears in, and the script crops each
+frame to that rectangle and scales them all to one machine height. The sheet
+compares machines rather than framings, which is the only form in which anyone
+will actually check it.
+
+---
+
+## 15. Handover: shot 6, the introduction — built once, then handed to the valley
+
+`DESIGN-PRINCIPLES.md` §10 landed while this was being built: the world comes
+out of an ice age, the surface is a snowy valley under mountains with a town in
+them, and the pit-head as built is being replaced. Shot 6 was authored and
+rendered against the pit-head, four times, and the pit-head is going away. **The
+shot does not go with it.** It is the most important shot in the trailer — it is
+what makes the word *it* mean anything at 0:46 — so this is what it needs, in
+enough detail that whoever builds the valley does not have to re-derive it.
+
+Everything below was arrived at by rendering it and looking, in that order.
+The four passes and what each one taught are at the end.
+
+### What the shot is
+
+> **Five seconds. The whole machine, in daylight, on the ground, at its own eye
+> height, close enough to fill two-fifths of the frame — and its head turns to
+> the camera over the last two seconds.**
+
+### The numbers, and why each one
+
+| | value | why |
+|---|---|---|
+| duration | **5.0 s**, 120 frames at 24 fps | the longest the treatment allows. The head turn needs about two seconds to read as a decision rather than a twitch, and it needs a second of stillness either side of it. |
+| lens | **50 mm** | TRAILER 8's normal band. Wider distorts the head at this distance; longer cannot hold the body and the feet. |
+| stop | **T4**, not T2.8 | at 1.9 m a 50 mm wide open is 11 cm deep. The sonar bar would be sharp with the eye already soft. T4 gives about 60 cm, which covers the whole machine and still throws the background. |
+| camera height | **0.45 m — the MACHINE band, not eye** | this is the single most important number in the shot. See below. |
+| distance | **2.5 m at the end, 2.9 m at the start** | the machine is about 0.75 m long including the head and 0.55 m tall; at 2.5 m on a 50 mm it is 42 % of the frame width with the feet in. Closer crops the tail; further makes it a prop in a yard. |
+| move | a **0.40 m push**, ease in and out | 0.15 m/s at its peak — the slowest move in the cut. |
+| handheld | 0.22 deg | a person is standing here watching it. |
+| focus | 2.90 → 2.50 m, pulled with the push | onto the head. |
+
+### The three things that are not numbers
+
+**1. IT IS ON THE GROUND.** The first pass put it on the hoist cradle, 0.72 m
+up, because that is where a machine being serviced belongs and because TRAILER 3
+says *on the bench*. It was in daylight, whole body, head turning — and it read
+as **equipment**. A thing on a table is a thing being worked on. A thing standing
+on the floor at its own height, that you have to crouch down to meet, is an
+animal. That reversal cost two renders to find and it is the whole shot. If the
+valley wants "being prepared" in the frame, put the bench, the cradle and the
+hoist *behind* it, not under it.
+
+**2. THE CAMERA IS AT ITS EYE LEVEL, WHICH MEANS ON THE FLOOR.** The Surveyor's
+head is at about 0.55 m. A camera in the `eye` band (1.38–1.82 m) looks *down* at
+it, and looking down at something is how you look at a tool. The lens goes to
+0.45 m and the shot is eye to eye. This is also why the shot cannot be stolen
+from a standing camera later: at eye height the rig sails clean over a 0.5 m
+machine and never even collides with it.
+
+**3. NOTHING TALL, DARK AND CLOSE BEHIND IT.** Passes two and three were shot in
+the service bay and both came back with the pale shell against a dark corrugated
+wall four metres away. At T4 and 2.5 m everything past 2.8 m is soft — but soft
+black is still black. It needs ten metres of open ground behind it so the machine
+sits against a mid-value field. **In the valley this is free and it is better
+than anything the pit-head could offer: snow.** A pale machine against a white
+valley under a large sky is the version of this shot that the ice age makes
+possible, and the contrast reverses — dark legs and graphite chassis against
+white, rather than a pale shell against grey.
+
+### What the machine is doing
+
+- **Clip `idle`**, which in this layer is a head scan and not a stillness — a
+  machine that stands perfectly still is a prop (§11.4).
+- **Head aim ramps across the shot**, on top of the clip, driven by the shot
+  definition's `head: [[yaw0, pitch0], [yaw1, pitch1]]`:
+  it starts turned about **30° away and 20° down** — looking at its own flank,
+  where the work is — and ends **aimed at the lens**, near level.
+  In the pit-head build that was `[[32, -20], [-40, 3]]`; the end value is
+  whatever aims the head at the camera from wherever the camera stands, and the
+  arithmetic for it is in `fleet.gd`'s comment on `yaw`.
+- **Lamp OFF.** ART 2.5: a work lamp burning in daylight is a lighting mistake.
+  It comes on at the collar, shot 13, and that is the frame where it stops being
+  a thing in a yard.
+- Wear 0.35, damage 0, player skin, default loadout — `Hero.SPEC`, and the
+  validator will reject the shot if the block says anything else.
+
+### What it still does not do, and is the honest gap
+
+It reads as a working animal. It does not yet read as one whose *fate* is at
+stake, because nothing in the shot is at stake — that is carried by the cut,
+between this and the descent, and it cannot be carried by one shot. The head
+turn is what buys the attachment; the shaft is what puts it at risk.
+
+### The four passes, so nobody repeats them
+
+1. **Bench, inside the service bay, 50 mm at 2.4 m, eye height.** The original.
+   Dark, the body half behind a bench leg, and it reads as equipment.
+2. **Hoist cradle outside the door, daylight, whole body, head turning.** Better,
+   still equipment: it is on a table, and the gantry legs stripe the background.
+3. **On the ground under the gantry, camera at 0.45 m.** The eye-level reversal
+   works — and the camera position was rejected by the rig (body inside
+   geometry, height 0.09–0.47 m over a plinth), which is the rig doing its job.
+   Re-sited with `--cinema=scoutf`, which maps the legal offsets around a move.
+4. **On the muster square, open ground, 2.5 m, T4.** The shot. Whole body, feet
+   in, head round to the lens with a glint on the eye lens at the end.
+
+The lesson worth carrying: **the rig makes a shot legal and it cannot make one
+good.** `--cinema=scoutf` found where the camera was *allowed* to stand in about
+four seconds; which of those places made a picture took four renders and looking
+at them.

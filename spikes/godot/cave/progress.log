@@ -1,22 +1,10 @@
-    1.90  ready
-    1.91  topology done
-    2.13  noise volumes
-    2.57  kit built
-    3.00  swept
-    3.01  chambers
-    3.10  props
-    3.15  emitted
-    3.15  dressing done
-    3.18  scene ready
-    5.38  shot 01_wide_passage
-    6.06  shot 02_dense_mid
-    6.71  shot 03_underfoot
-    7.04  shot 04_chamber
-    7.44  shot 05_two_registers
-    8.28  shot 06_falloff_to_black
-    8.63  shot 07_junction
-    9.12  shot 08_waterline
-    9.68  shot 09_machine_ground
-   10.02  shot 10_natural_shallow
-   10.39  shot 11_set_line
-   10.99  shot 12_crown
+    1.69  ready
+    1.70  topology done
+    1.86  noise volumes
+    2.02  kit built
+    2.29  swept
+    2.29  chambers
+    2.36  props
+    2.39  emitted
+    2.40  dressing done
+    2.42  scene ready

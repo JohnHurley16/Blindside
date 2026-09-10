@@ -14,8 +14,19 @@
 class_name Machine
 extends Node3D
 
-const MODELS := "res://models/%s_%s.glb"
+# WHERE THIS DIRECTORY IS MOUNTED IS NOT KNOWN AT WRITE TIME.
+# This file is the one physical copy of the machine layer, linked into three
+# Godot projects at three different res:// paths (`res://shared/` in the
+# machines spike, `res://machines/` in the cave and the pit-head). So every
+# path it loads is resolved against ITS OWN script path rather than written as
+# a literal, and the same file works in all three without a per-project edit.
 const CLIPS := ["walk", "trot", "idle", "crouch"]
+
+func _home() -> String:
+	return get_script().resource_path.get_base_dir()
+
+func _model_path(model: String, cl: String) -> String:
+	return "%s/models/%s_%s.glb" % [_home(), model, cl]
 
 var chassis: String = "surveyor"
 var model_name: String = "surveyor"
@@ -82,7 +93,7 @@ func build(model: String, ch: String, tm: String = "player", wr: float = 0.35,
 	team = tm
 	wear = wr
 	damage = dmg
-	var ps: PackedScene = load(MODELS % [model, "walk"])
+	var ps: PackedScene = load(_model_path(model, "walk"))
 	var root: Node = ps.instantiate()
 	add_child(root)
 	skel = _find(root, "Skeleton3D") as Skeleton3D
@@ -115,7 +126,7 @@ func _gather_clips() -> void:
 	for c in CLIPS:
 		if lib.has_animation(c):
 			continue
-		var p: String = MODELS % [model_name, c]
+		var p: String = _model_path(model_name, c)
 		if not ResourceLoader.exists(p):
 			continue
 		var other: Node = (load(p) as PackedScene).instantiate()
@@ -157,9 +168,9 @@ func _index_bones() -> void:
 # --- ART section 4, rebuilt -------------------------------------------------
 func _make_materials() -> void:
 	mat_body = ShaderMaterial.new()
-	mat_body.shader = load("res://machine.gdshader")
+	mat_body.shader = load(_home() + "/machine.gdshader")
 	mat_retro = ShaderMaterial.new()
-	mat_retro.shader = load("res://retro.gdshader")
+	mat_retro.shader = load(_home() + "/retro.gdshader")
 	for m in [mat_body, mat_retro]:
 		m.set_shader_parameter("dark_col", _lin(Color(0.09, 0.09, 0.10)))
 	mat_body.set_shader_parameter("pale_col", _lin(Book.PALE))
