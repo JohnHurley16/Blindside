@@ -79,17 +79,41 @@ class TreePanel:
         if self.more is not None:
             self.more.at(x, cursor)
             cursor += pitch
+        # The sentence is never the thing that gets dropped. It is the plain-English form of
+        # the rule and it is what PROTOCOL.md puts in front of a tester; the tree above it is
+        # a diagram of the same thing. Before this was reversed (2026-09-10, found while
+        # capturing this window for the trailer) a player at the default window size had
+        # never once seen it, because `move` hid it whenever the space below the tree was
+        # short, and at the default size it always was.
         need = WORDS_GAP + TITLE_H + pitch * len(self.sentence)
-        self._shown_words = cursor + need <= bottom
+        self._shown_words = True
+        over = (cursor + need) - bottom
+        if over > 0.0:
+            # Hide tree lines from the bottom until the sentence fits, and say how many.
+            drop = int(over // pitch) + 1
+            shown = 0
+            for text, slots in zip(self.lines, self.line_slots):
+                shown += len(slots)
+            keep = max(1, shown - drop)
+            seen = 0
+            for text, slots in zip(self.lines, self.line_slots):
+                for slot in slots:
+                    seen += 1
+                    if seen > keep:
+                        slot.set(" ")
+            cursor -= pitch * min(drop, shown - 1)
+            if self.more is not None:
+                self.more.at(x, cursor)
+                cursor += pitch
         cursor += WORDS_GAP
         self.words.at(x, cursor)
         cursor += TITLE_H
         for slot in self.sentence_slots:
             slot.at(x, cursor)
             cursor += pitch
-        self.words.set(WORDS if self._shown_words else " ")
+        self.words.set(WORDS)
         for part, slot in zip(self.sentence, self.sentence_slots):
-            slot.set(part if self._shown_words else " ")
+            slot.set(part)
 
     # ---- one frame -------------------------------------------------------------------------
     def update(self, lit: list[int], recalled: bool) -> None:

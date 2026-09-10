@@ -46,6 +46,7 @@ from .block_panel import BlockPanel
 from .text_group import BODY, DISPLAY, HEAD, MICRO, TextGroup
 
 CHROME_ORDER: int = 95
+WHY_MAX_CHARS: int = 28   # the footer line is one slot and the canvas cuts it here
 FOOTER_H: float = 60.0
 BELIEF_ELEVATION_DEG: float = 58.0     # the inset's own camera, unchanged
 BELIEF_CELLS_ACROSS: float = 240.0     # the whole 200x120 cave across the main view, with margin
@@ -345,14 +346,25 @@ class TeachView:
         self.message.set(text)
 
     def _why(self, reason: str) -> str:
+        """Why it stopped, short enough not to clip.
+
+        The line is one slot and does not wrap, and the canvas cuts it at about 28
+        characters. `because: the machinery is loud` is 30, so six of the thirteen stops in a
+        real seed-7 session used to render mid-word. Found 2026-09-10 while capturing this
+        window for the trailer. Dropping the colon and the space buys two characters and
+        every current block label fits; a longer label added later would not, so the length
+        is asserted rather than hoped for.
+        """
         kind, _, what = reason.partition(":")
         if kind == "rose":
-            return f"because: {self.registry.predicate(what).label}"
-        if kind == "ended":
-            return f"because {self.registry.action(what).label} ended"
-        if kind == "start":
-            return "the match has begun"
-        return "it waited, and is asking again"
+            text = f"because {self.registry.predicate(what).label}"
+        elif kind == "ended":
+            text = f"because {self.registry.action(what).label} ended"
+        elif kind == "start":
+            text = "the match has begun"
+        else:
+            text = "it waited, and is asking again"
+        return text if len(text) <= WHY_MAX_CHARS else text[: WHY_MAX_CHARS - 1] + "\u2026"
 
     # ---- the trace ----------------------------------------------------------------------
     def finish(self) -> Path | None:
