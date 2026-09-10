@@ -1,0 +1,20 @@
+=== the exploration =================================================
+  route            503.3 m over 383.7 s (6.4 min)
+  revolutions      297, one every 1.7 m of route
+  shots fired      9732096
+  returns          8193906 raw
+  points drawn     2395022   (voxel 70 mm)
+  dropout          3.9%
+  depth model      gauge
+  cloud extent     x 155.5  y 77.6  z 27.6 m
+  cave extent      y 72.3 m (truth)
+  believed / true depth  0.0 / 0.0 m
+  drops
+    moulin    drop  14.7 m  bore 2.20 m  believed  14.7 m
+    winze     drop  22.7 m  bore 1.60 m  believed  22.7 m
+    winze     drop  33.6 m  bore 1.84 m  believed  33.6 m
+  the envelope     rings 32 over -30.0 .. +12.0 deg
+    moulin    from the lip the steepest ring strikes the far wall 1.91 m down; the drop is 14.7 m
+    winze     from the lip the steepest ring strikes the far wall 1.39 m down; the drop is 22.7 m
+    winze     from the lip the steepest ring strikes the far wall 1.60 m down; the drop is 33.6 m
+  draw calls       1 for the cloud at 2395022 points

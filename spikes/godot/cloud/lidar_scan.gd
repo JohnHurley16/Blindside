@@ -167,6 +167,22 @@ func sweep(space: PhysicsDirectSpaceState3D, p0: Vector3, yaw0: float,
 			var lam: float = pow(maxf(cos_i, 0.0), 0.75)
 			var wide: float = smoothstep(0.06, 0.30, cos_i)
 			var refl: float = alb * lerp(lam, wide, retro)
+			# ICE. docs/THE-ICE.md 6.2, and it is an ANGULAR response rather
+			# than a reflectance: near-infrared is strongly absorbed, so most
+			# of what enters does not come back, and "wet ice at grazing
+			# incidence returns nothing; at normal incidence it flashes", so
+			# "a machine walking a polished conduit sees a bright patch
+			# straight ahead and almost nothing at the walls -- the returns
+			# collapse into a narrow forward cone."
+			#
+			# cos^3.2 is that cone. The +flash term is the specular return at
+			# near-normal incidence, and it is what stops ice being a hole:
+			# THE-ICE is explicit that it is "not a mirror and not a hole".
+			# Both exponents are GUESSES, chosen by looking at the frames.
+			if cls == LidarGeo.SURF_ICE:
+				var cone: float = pow(maxf(cos_i, 0.0), 2.6)
+				var flash: float = 0.62 * pow(maxf(cos_i, 0.0), 26.0)
+				refl = alb * cone + flash * alb * 7.0
 			# link budget: the fraction of the pulse that comes back falls as
 			# 1/r^2, so a far dark surface simply does not answer.
 			var snr: float = refl * (ref_range * ref_range) / maxf(rng * rng, 0.01)

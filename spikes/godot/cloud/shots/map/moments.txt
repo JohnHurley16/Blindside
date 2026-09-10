@@ -1,0 +1,52 @@
+=== m1_into_the_dark   3.5 s   84 frames   24 mm   route 17.3..23.8 m of 503 ===
+    the ice band, and the map going thin in it. THE-ICE 6.2: near-infrared is absorbed by ice, so a polished meltwater conduit returns almost nothing at the walls and flashes where the beam meets it square -- the returns collapse into a narrow forward cone. In the WORLD register this band is the one place the darkness relents (THE-ICE 6.1). In the machine's own view it is the emptiest place in the cave. That inversion is free and it is the strongest thing the ice does for this register.
+  frame     t_s   cam x/y/z              aim x/y/z
+      0   11.90    18.32 -10.63   23.21     32.74 -10.64   24.27
+     12   12.55    18.74 -10.65   23.28     33.24 -10.76   24.32
+     24   13.19    19.13 -10.71   23.51     33.65 -10.67   24.42
+     36   13.84    19.54 -10.55   23.77     34.03 -10.66   24.73
+     48   14.49    19.98 -10.61   23.81     34.38 -10.71   24.96
+     60   15.14    20.50 -10.60   23.83     34.81 -10.71   25.02
+     72   15.79    20.94 -10.59   23.86     35.31 -10.71   25.08
+     83   16.38    21.38 -10.57   23.89     35.76 -10.74   25.14
+    84 frames in 17.5 s = 0.21 s/frame
+=== m2_passage_resolves   4.0 s   96 frames   21 mm   route 135.2..146.2 m of 503 ===
+    the map being written. Bedrock, so the returns come back: sweeps land during the take and the passage ahead builds out of nothing, ring by ring, while the far end stays black because nothing has been there yet.
+  frame     t_s   cam x/y/z              aim x/y/z
+      0  101.08    89.24 -24.88   22.92     68.10 -25.01   21.38
+     12  102.04    89.09 -24.88   22.91     68.03 -24.94   21.39
+     24  103.00    88.95 -24.91   22.90     67.88 -24.95   21.38
+     36  103.96    88.80 -24.84   22.89     67.74 -24.93   21.37
+     48  104.92    88.66 -24.95   22.89     67.59 -24.95   21.35
+     60  105.87    88.53 -24.83   22.87     67.46 -24.93   21.34
+     72  106.83    88.38 -24.86   22.87     67.32 -24.94   21.31
+     84  107.79    88.32 -24.89   22.87     67.18 -25.06   21.29
+     95  108.67    88.17 -24.83   22.87     67.03 -24.96   21.28
+    96 frames in 32.9 s = 0.34 s/frame
+=== m3_the_pitch   4.5 s   108 frames   21 mm   route 358.6..363.0 m of 503 ===
+    the lip of the winze, and the floor stops. The steepest ring in the device is -30 deg, so from a 1.6 m bore it strikes the FAR WALL 1.4 m down and nothing below that is in the beam pattern at any depth, for ever. The drop is 22.7 m and the map has 1.4 m of it. The beacon on the lip is retroreflective and blazes; below it there is nothing at all, and the nothing is the shot.
+  frame     t_s   cam x/y/z              aim x/y/z
+      0  266.87   126.60 -48.68   20.79    128.92 -50.01   18.05
+     12  267.21   125.47 -48.65   18.33    128.92 -50.01   18.05
+     24  267.55   125.69 -48.51   18.32    128.92 -50.01   18.05
+     36  267.89   125.91 -48.65   18.31    128.92 -50.01   18.05
+     48  268.23   126.20 -48.67   18.31    128.92 -50.01   18.05
+     60  268.66   126.42 -48.60   18.32    128.92 -50.01   18.05
+     72  269.24   126.70 -48.58   18.27    128.92 -50.01   18.05
+     84  269.82   126.90 -48.56   18.18    128.92 -50.01   18.05
+     96  270.40   127.08 -48.66   18.06    128.92 -50.01   18.05
+    107  270.93   127.40 -48.65   18.12    128.92 -50.01   18.05
+    108 frames in 18.5 s = 0.17 s/frame
+=== m4_uncovered   4.0 s   96 frames   24 mm   route 250.6..259.6 m of 503 ===
+    something is uncovered. The workings: rail down the floor as two bright dotted lines, timber sets as a regular row of shadow slots, a beacon. A retroreflector clips the intensity channel and blazes from anywhere in range at any incidence, so the PLACED things are automatically the brightest things in the machine's own view -- no overlay, no art direction, and physically true.
+  frame     t_s   cam x/y/z              aim x/y/z
+      0  192.37    23.49 -48.29   22.82     33.16 -48.35   22.54
+     12  193.15    23.77 -48.19   23.06     33.52 -48.22   22.56
+     24  193.93    24.11 -48.21   23.21     33.87 -48.23   22.58
+     36  194.72    24.46 -48.15   23.24     34.24 -48.23   22.59
+     48  195.50    24.76 -48.19   23.26     34.53 -48.35   22.61
+     60  196.29    25.12 -48.16   23.27     34.90 -48.28   22.64
+     72  197.07    25.48 -48.23   23.28     35.26 -48.29   22.67
+     84  197.85    25.85 -48.27   23.30     35.63 -48.23   22.70
+     95  198.57    26.21 -48.25   23.29     35.99 -48.23   22.73
+    96 frames in 30.2 s = 0.32 s/frame

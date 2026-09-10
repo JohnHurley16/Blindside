@@ -1,0 +1,5 @@
+=== the vertical belief ==============================================
+  model     map depth       cave      error   what it assumes
+  gauge         77.6 m      72.3 m       5.3 m   a depth gauge on every chassis, bias 0.42 m. No document in this project agrees it exists.
+  beams         31.3 m      72.3 m     -41.1 m   the machine estimates a drop from what its own beams reached: r/tan30 down from the lip, r/tan12 up from the foot.
+  blind         24.4 m      72.3 m     -47.9 m   a fall contributes nothing. VERTICAL.md 9.5 item 1, taken literally.

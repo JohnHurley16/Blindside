@@ -48,6 +48,19 @@ uniform vec3 u_after : source_color = vec3(1.000, 0.824, 0.247);
 uniform float u_clip_lo = -1000.0;     // crop box, world Y. Every point-cloud
 uniform float u_clip_hi = 1000.0;      // tool has one, and a tube of returns
                                        // cannot be read from outside without it.
+// THE SECTION, added 2026-09-10 for the map. A crop box in Y takes the ceiling
+// off a flat cave; a cave with four levels in it cannot be cropped in Y at all
+// without deleting the subject. So the box gains its other two axes, and an
+// ORIENTED slab: keep only points within [u_cut_d0, u_cut_d1] of the origin
+// along u_cut_n. One plane normal, animatable, and it is the same operator --
+// it only ever REMOVES points and it never draws anything into a shadow.
+uniform vec3 u_cut_n = vec3(0.0, 0.0, 0.0);
+uniform float u_cut_d0 = -1.0e9;
+uniform float u_cut_d1 = 1.0e9;
+uniform float u_clip_x_lo = -1.0e9;
+uniform float u_clip_x_hi = 1.0e9;
+uniform float u_clip_z_lo = -1.0e9;
+uniform float u_clip_z_hi = 1.0e9;
 uniform float u_square = 0.0;          // 1 = square dots (what most viewers draw)
 uniform float u_footprint = 0.0;       // 1 = size by beam footprint instead of screen px
 uniform float u_beam_mrad = 3.0;
@@ -95,7 +108,13 @@ void vertex() {
 	vec3 p = p0 + dp * w;
 	float rng = length(mix(n0, n1, w));
 
-	bool hidden = tp > u_now || p.y < u_clip_lo || p.y > u_clip_hi;
+	bool hidden = tp > u_now || p.y < u_clip_lo || p.y > u_clip_hi
+		|| p.x < u_clip_x_lo || p.x > u_clip_x_hi
+		|| p.z < u_clip_z_lo || p.z > u_clip_z_hi;
+	if (dot(u_cut_n, u_cut_n) > 1e-6) {
+		float d = dot(p, normalize(u_cut_n));
+		hidden = hidden || d < u_cut_d0 || d > u_cut_d1;
+	}
 
 	// ---- colour --------------------------------------------------------
 	vec3 col;

@@ -31,15 +31,23 @@ const SURF_WET := 1
 const SURF_TIMBER := 2
 const SURF_METAL := 3
 const SURF_RETRO := 4
-const N_SURF := 5
-const SURF_NAME := ["rock", "wet rock", "timber", "steel", "retro"]
+# ICE, added 2026-09-10 with the vertical cave. docs/THE-ICE.md 6.2 is the only
+# material ruling the sensor has been given beyond water, and it is a different
+# KIND of ruling: not a reflectance but an angular response. Near-infrared is
+# strongly absorbed by ice, so a clean ice wall gives sparse, low-intensity,
+# dropout-ridden returns -- not a mirror and not a hole -- and at grazing
+# incidence it returns nothing at all while at normal incidence it flashes.
+# The albedo below is only half the model; the rest is in lidar_scan.gd.
+const SURF_ICE := 5
+const N_SURF := 6
+const SURF_NAME := ["rock", "wet rock", "timber", "steel", "retro", "ice"]
 # GUESS. Ordered from published 905 nm reflectance tables (dry rock 0.2-0.4,
 # wet surfaces near nothing, bare steel 0.4-0.6, engineering-grade retro tape
 # 200-1000% of a Lambertian white). The retro value is deliberately > 1 so it
 # clips the intensity channel, which is what a retroreflector does to a real
 # unit and is the most recognisable single feature of a road scan.
-const SURF_ALBEDO := [0.30, 0.045, 0.38, 0.55, 6.0]
-const SURF_RETRO_F := [0.0, 0.0, 0.0, 0.15, 1.0]
+const SURF_ALBEDO := [0.30, 0.045, 0.38, 0.55, 6.0, 0.075]
+const SURF_RETRO_F := [0.0, 0.0, 0.0, 0.15, 1.0, 0.0]
 
 var topo: CaveTopology
 var noise: FastNoiseLite
@@ -84,10 +92,20 @@ var tri_total := 0
 # spikes/godot/cave/dressing.gd. See CINEMA.md 2.
 var cave_match: bool = false
 
+# VERTICAL, 2026-09-10. `levels > 1` switches topology.gd to its layered path
+# (schema v2) and turns on the pitch geometry below. `levels == 1` is the
+# frozen flat cave and reproduces hash 0xAD83E3ED, which is what every frame in
+# shots/cinema/ was shot against; the default keeps that.
+var levels: int = 1
+var vertical: bool = false
+# pitch records in metres: [axis_x, axis_z, top_y, bot_y, bore_r, kind, pitch_i]
+var pitch_m: Array = []
+
 
 func build(seed_v: int, length_cells: int) -> void:
 	topo = CaveTopology.new()
-	topo.generate(seed_v, length_cells)
+	topo.generate(seed_v, length_cells, levels)
+	vertical = topo.levels > 1
 
 	noise = FastNoiseLite.new()
 	noise.seed = seed_v
@@ -107,10 +125,21 @@ func build(seed_v: int, length_cells: int) -> void:
 		up_ranges.append(PackedInt32Array())
 
 	_collect_chambers()
+	_collect_pitches()
 	_sweep_edges()
 	if not cave_match:
 		_build_chambers()
+	if vertical:
+		# ORDER MATTERS. The punch deletes floor and ceiling triangles that lie
+		# inside a bore; the tube is built afterwards so it is not eaten by its
+		# own hole. Doing it as a post-pass over finished triangles rather than
+		# threading a hole through the sweep, the dome and the floor fan is
+		# three separate special cases avoided for about thirty lines.
+		_punch_pitches()
+		_build_pitch_tubes()
 	_place_props()
+	if vertical:
+		_place_pitch_props()
 	_build_centreline()
 	_commit()
 
@@ -357,6 +386,12 @@ func _in_chamber(p: Vector3, k: float) -> bool:
 		return false
 	for c in chamber_m:
 		var cc: Array = c
+		# LEVEL AWARENESS, and without it the vertical cave is nonsense: a
+		# chamber on level 2 is directly under a drive on level 0, and a plan
+		# test alone cuts a hole in a passage 38 m above the room. The levels
+		# are 13-34 m apart so a 5 m band is unambiguous.
+		if absf(p.y - float(cc[3])) > 5.0:
+			continue
 		var d: float = Vector2(p.x - cc[0], p.z - cc[1]).length()
 		if d < float(cc[2]) * k:
 			return true
@@ -370,7 +405,8 @@ func _in_big_chamber(p: Vector3, k: float) -> bool:
 
 func _collect_chambers() -> void:
 	chamber_m = []
-	var nrow: int = topo.chambers.size() / 5
+	var CR: int = CaveTopology.CH_ROW
+	var nrow: int = topo.chambers.size() / CR
 	# The biggest chamber in the stretch is inflated so that a sensor standing
 	# in it lays more than a dozen complete ground rings; a 5 m room cannot
 	# show the feature this spike exists to test. The others keep the cave
@@ -378,13 +414,13 @@ func _collect_chambers() -> void:
 	# walk twice. GUESS, both multipliers.
 	var big := 0
 	for ci in range(nrow):
-		if topo.chambers[ci * 5 + 2] > topo.chambers[big * 5 + 2]:
+		if topo.chambers[ci * CR + CaveTopology.CH_R] > topo.chambers[big * CR + CaveTopology.CH_R]:
 			big = ci
 	for ci in range(nrow):
-		var sx: int = topo.chambers[ci * 5]
-		var sy: int = topo.chambers[ci * 5 + 1]
-		var rc: int = topo.chambers[ci * 5 + 2]
-		var sid: int = topo.chambers[ci * 5 + 4]
+		var sx: int = topo.chambers[ci * CR + CaveTopology.CH_X]
+		var sy: int = topo.chambers[ci * CR + CaveTopology.CH_Y]
+		var rc: int = topo.chambers[ci * CR + CaveTopology.CH_R]
+		var sid: int = topo.chambers[ci * CR + CaveTopology.CH_SID]
 		var st: PackedInt32Array = _st(sid)
 		# In cave-match mode a chamber is not a room: it is the same swept
 		# drive at HALL width, which is what the other spike renders. The
@@ -392,7 +428,15 @@ func _collect_chambers() -> void:
 		# parts are; nothing is cut out and nothing is inflated.
 		var r_m: float = _hw(st) * 1.5
 		if not cave_match:
-			r_m = maxf(9.5, float(rc) * 1.5) if ci == big else maxf(3.4, float(rc) * 0.70)
+			if vertical:
+				# NOT inflated. The sensor test needed one 9.5 m room so a
+				# standing scanner could lay a dozen complete ground rings; a
+				# MAP needs chambers that are the size the topology says, or
+				# the plan is a lie about the place. GUESS: 0.95 of the
+				# topology's radius in cells, floored at 3.0 m.
+				r_m = maxf(3.0, float(rc) * 0.95)
+			else:
+				r_m = maxf(9.5, float(rc) * 1.5) if ci == big else maxf(3.4, float(rc) * 0.70)
 		big_chamber = big
 		chamber_m.append([float(sx) * CELL, float(sy) * CELL, r_m,
 						  float(st[CaveTopology.S_FLOOR_MM]) * 0.001, sid])
@@ -426,6 +470,7 @@ func _sweep_edge(ids: PackedInt32Array) -> void:
 				right = Vector3(0, 0, 1)
 			var sa: PackedInt32Array = _st(ids[i1])
 			var sb: PackedInt32Array = _st(ids[i2])
+			var med: int = sa[CaveTopology.S_MEDIUM] if vertical else CaveTopology.MED_ROCK
 			var hw: float = lerp(_hw(sa), _hw(sb), t)
 			var ht: float = lerp(_ht(sa), _ht(sb), t)
 			var worked: float = lerp(float(sa[CaveTopology.S_WORKED]), float(sb[CaveTopology.S_WORKED]), t) / 255.0
@@ -455,7 +500,17 @@ func _sweep_edge(ids: PackedInt32Array) -> void:
 					lp.y += noise.get_noise_3d(lp.x * 3.1, 7.0, lp.z * 3.1) * lerp(0.10, 0.022, worked)
 				ring.push_back(lp)
 			if prev_ok:
-				_band(SURF_ROCK, prev_ring, ring)
+				if med == CaveTopology.MED_ICE:
+					_band(SURF_ICE, prev_ring, ring)
+				elif med == CaveTopology.MED_ICE_OVER_ROCK:
+					# THE-ICE 5.2: "the ice is a FILL, not a layer" -- it is
+					# where the drainage put it, which is the low ground. So the
+					# floor of the section is ice and the walls above it are the
+					# rock the ice is lying in.
+					_band_sel(SURF_ICE, prev_ring, ring, _floor_sel(true))
+					_band_sel(SURF_ROCK, prev_ring, ring, _floor_sel(false))
+				else:
+					_band(SURF_ROCK, prev_ring, ring)
 			prev_ring = ring
 			prev_ok = true
 
@@ -473,6 +528,49 @@ func _band(cls: int, r0: PackedVector3Array, r1: PackedVector3Array) -> void:
 		ix.push_back(k); ix.push_back(RING_VERTS + k); ix.push_back(k2)
 		ix.push_back(k2); ix.push_back(RING_VERTS + k); ix.push_back(RING_VERTS + k2)
 	_add(cls, v, ix)
+
+
+# Emit only the quads a selector asks for. The verts are pushed whole so the
+# indices stay simple; a handful of unreferenced vertices costs nothing and a
+# per-quad class does not have to duplicate the ring.
+func _band_sel(cls: int, r0: PackedVector3Array, r1: PackedVector3Array, sel: PackedByteArray) -> void:
+	var any := false
+	for k in range(RING_VERTS):
+		if sel[k] != 0:
+			any = true
+			break
+	if not any:
+		return
+	var v := PackedVector3Array()
+	var ix := PackedInt32Array()
+	for k in range(RING_VERTS):
+		v.push_back(r0[k])
+	for k in range(RING_VERTS):
+		v.push_back(r1[k])
+	for k in range(RING_VERTS):
+		if sel[k] == 0:
+			continue
+		var k2: int = (k + 1) % RING_VERTS
+		ix.push_back(k); ix.push_back(RING_VERTS + k); ix.push_back(k2)
+		ix.push_back(k2); ix.push_back(RING_VERTS + k); ix.push_back(RING_VERTS + k2)
+	_add(cls, v, ix)
+
+
+# The floor half of a section, by arc-length index. k = 0 is the floor centre;
+# the profile reaches |u| = 0.92*hw at s = 0.22, which is k = 3 of 15.
+var _sel_floor: PackedByteArray = PackedByteArray()
+var _sel_wall: PackedByteArray = PackedByteArray()
+
+func _floor_sel(want_floor: bool) -> PackedByteArray:
+	if _sel_floor.is_empty():
+		_sel_floor.resize(RING_VERTS)
+		_sel_wall.resize(RING_VERTS)
+		for k in range(RING_VERTS):
+			var s01: float = float(k) / float(HALF_RING) if k <= HALF_RING 				else float(RING_VERTS - k) / float(HALF_RING)
+			var f: bool = s01 < 0.30
+			_sel_floor[k] = 1 if f else 0
+			_sel_wall[k] = 0 if f else 1
+	return _sel_floor if want_floor else _sel_wall
 
 
 # ---------------------------------------------------------------------------
@@ -716,6 +814,253 @@ func _disc(cls: int, c: Vector3, r: float) -> void:
 	for i in range(nu):
 		ix.push_back(0); ix.push_back(1 + (i + 1) % nu); ix.push_back(1 + i)
 	_add(cls, v, ix)
+
+
+
+# ===========================================================================
+# PITCHES -- the vertical axis, 2026-09-10
+#
+# docs/THE-ICE.md 5.3: "_half_profile() builds a floor, two legs and a crown,
+# which a vertical shaft is not. A moulin needs a SECOND PROFILE FAMILY beside
+# the sweep, not a modification of it." So this is a genuinely different
+# builder: a closed ring in the horizontal plane, swept along an axis that is
+# allowed to corkscrew, with the perimeter coordinate an ANGLE rather than an
+# arc length up from a floor.
+#
+# The sensor consequence is the point of it. From the lip of a bore of radius r
+# the steepest ring the device has (-30 deg) strikes the OPPOSITE WALL at
+# r/tan30 = 1.73r below the head, and nothing below that is in the beam pattern
+# at all. So a 14.7 m moulin returns about 1.9 m of tube and then nothing, at
+# any depth, for ever. That is not a rendering decision; it is the envelope.
+# ===========================================================================
+func _collect_pitches() -> void:
+	pitch_m = []
+	if not vertical:
+		return
+	for i in range(topo.pitches.size()):
+		var pr: PackedInt32Array = topo.pitch(i)
+		pitch_m.append({
+			"i": i,
+			"x0": float(pr[CaveTopology.P_X]) * CELL,
+			"z0": float(pr[CaveTopology.P_Y]) * CELL,
+			"x1": float(pr[CaveTopology.P_TO_X]) * CELL,
+			"z1": float(pr[CaveTopology.P_TO_Y]) * CELL,
+			"top": float(pr[CaveTopology.P_TOP_MM]) * 0.001,
+			"bot": float(pr[CaveTopology.P_BOT_MM]) * 0.001,
+			"r": float(pr[CaveTopology.P_BORE_MM]) * 0.0005,
+			"kind": pr[CaveTopology.P_KIND],
+			"climb": pr[CaveTopology.P_CLIMB],
+			"flags": pr[CaveTopology.P_FLAGS],
+			"med": pr[CaveTopology.P_MEDIUM],
+			"from_st": pr[CaveTopology.P_FROM_ST],
+			"to_st": pr[CaveTopology.P_TO_ST],
+		})
+
+
+# The axis at a normalised depth. Moulins and collars corkscrew, because that
+# is what falling water does to a hole and it is the reason a moulin does not
+# read as a passage stood on end. GUESS: 0.22 rad per metre at 0.30 of a bore.
+func _pitch_axis(pm: Dictionary, t: float) -> Vector3:
+	var y: float = lerp(float(pm["top"]), float(pm["bot"]), t)
+	var x: float = lerp(float(pm["x0"]), float(pm["x1"]), t)
+	var z: float = lerp(float(pm["z0"]), float(pm["z1"]), t)
+	var k: int = int(pm["kind"])
+	var h: float = float(pm["top"]) - float(pm["bot"])
+	if k == CaveTopology.PK_MOULIN or k == CaveTopology.PK_COLLAR:
+		var a: float = t * h * 0.22 + float(int(pm["i"])) * 1.7
+		var amp: float = float(pm["r"]) * 0.30
+		x += cos(a) * amp
+		z += sin(a) * amp
+	elif k == CaveTopology.PK_COLLAPSE:
+		x += t * float(pm["r"]) * 0.55
+	return Vector3(x, y, z)
+
+
+# A different RADIUS FUNCTION per kind, not a different parameter.
+func _pitch_radius(pm: Dictionary, t: float, th: float) -> float:
+	var r: float = float(pm["r"])
+	var k: int = int(pm["kind"])
+	var h: float = float(pm["top"]) - float(pm["bot"])
+	match k:
+		CaveTopology.PK_MOULIN, CaveTopology.PK_COLLAR:
+			return r * (1.0 + 0.13 * sin(3.0 * th + t * h * 0.55))
+		CaveTopology.PK_WINZE, CaveTopology.PK_ORE_PASS:
+			# square-set: a superellipse of order 8, four timbered sides
+			var c: float = absf(cos(th))
+			var sn: float = absf(sin(th))
+			return r / pow(pow(c, 8.0) + pow(sn, 8.0), 0.125)
+		CaveTopology.PK_CREVASSE:
+			# a slot: bore wide one way, 4.2x that the other
+			var c2: float = cos(th)
+			var s2: float = sin(th)
+			return r / sqrt(c2 * c2 + (s2 * s2) / (4.2 * 4.2))
+		CaveTopology.PK_AVEN:
+			return r * (0.72 + 0.55 * (1.0 - t))
+		CaveTopology.PK_COLLAPSE:
+			return r * (0.80 + 0.34 * sin(2.0 * th + 5.0 * t))
+	return r
+
+
+func _pitch_surf(pm: Dictionary, y: float) -> int:
+	var k: int = int(pm["kind"])
+	if y > float(CaveTopology.BAND_ICE_BASE_MM) * 0.001:
+		return SURF_ICE
+	if k == CaveTopology.PK_WINZE or k == CaveTopology.PK_ORE_PASS:
+		return SURF_TIMBER
+	return SURF_ROCK
+
+
+func _build_pitch_tubes() -> void:
+	var seg := 26
+	for pm_ in pitch_m:
+		var pm: Dictionary = pm_
+		var h: float = float(pm["top"]) - float(pm["bot"])
+		if h < 0.6:
+			continue
+		var nv: int = maxi(4, int(round(h / 0.55)))
+		var prev := PackedVector3Array()
+		var prev_ok := false
+		for j in range(nv + 1):
+			var t: float = float(j) / float(nv)
+			var axis: Vector3 = _pitch_axis(pm, t)
+			var ring := PackedVector3Array()
+			for i in range(seg):
+				var th: float = float(i) / float(seg) * TAU
+				var rr: float = _pitch_radius(pm, t, th)
+				var px: float = axis.x + cos(th) * rr
+				var pz: float = axis.z + sin(th) * rr
+				# a bore is not smooth except where the ice polished it
+				var rough: float = 0.045 if int(pm["med"]) == CaveTopology.MED_ICE else 0.16
+				var nrm: float = noise_lo.get_noise_3d(px * 1.3, axis.y * 1.3, pz * 1.3)
+				var fine: float = noise.get_noise_3d(px * 2.6, axis.y * 2.6, pz * 2.6)
+				var outw := Vector3(cos(th), 0.0, sin(th))
+				ring.push_back(Vector3(px, axis.y, pz) + outw * (nrm * rough + fine * rough * 0.4))
+			if prev_ok:
+				_ring_band(_pitch_surf(pm, axis.y), prev, ring, seg)
+			prev = ring
+			prev_ok = true
+		# a cone of rubble at the bottom: everything the hole has ever dropped
+		var bx: float = float(pm["x1"])
+		var bz: float = float(pm["z1"])
+		var by: float = float(pm["bot"])
+		var nst: int = 14 + int(10.0 * float(pm["r"]))
+		for q in range(nst):
+			var hq: int = topo.draw(760, int(pm["i"]), q)
+			var ta: float = float(hq % 1000) / 1000.0 * TAU
+			var tr: float = float((hq >> 10) % 1000) / 1000.0 * (float(pm["r"]) * 1.5 + 0.5)
+			var sr: float = 0.13 + 0.16 * float((hq >> 20) % 100) / 100.0
+			_rock_lump(SURF_ROCK, Vector3(bx + cos(ta) * tr, by + sr * 0.55, bz + sin(ta) * tr),
+				sr, 7700 + int(pm["i"]) * 41 + q, 0.7)
+
+
+# an open band between two closed rings; the sensor is INSIDE the tube, so the
+# winding faces in. `backface_collision` is on for the laser anyway.
+func _ring_band(cls: int, r0: PackedVector3Array, r1: PackedVector3Array, seg: int) -> void:
+	var v := PackedVector3Array()
+	var ix := PackedInt32Array()
+	for k in range(seg):
+		v.push_back(r0[k])
+	for k in range(seg):
+		v.push_back(r1[k])
+	for k in range(seg):
+		var k2: int = (k + 1) % seg
+		ix.push_back(k); ix.push_back(seg + k); ix.push_back(k2)
+		ix.push_back(k2); ix.push_back(seg + k); ix.push_back(seg + k2)
+	_add(cls, v, ix)
+
+
+# Delete every triangle whose centroid lies inside a bore between the pitch
+# floor and a little above its lip. That is the floor of the passage at the
+# head and the ceiling of the passage at the foot, in one pass, without the
+# sweep, the dome or the floor fan knowing anything about pitches.
+func _punch_pitches() -> void:
+	if pitch_m.is_empty():
+		return
+	var removed := 0
+	for cls in range(N_SURF):
+		var v: PackedVector3Array = verts[cls]
+		var ix: PackedInt32Array = idxs[cls]
+		if ix.is_empty():
+			continue
+		var keep := PackedInt32Array()
+		for f in range(ix.size() / 3):
+			var a: Vector3 = v[ix[f * 3]]
+			var b: Vector3 = v[ix[f * 3 + 1]]
+			var c: Vector3 = v[ix[f * 3 + 2]]
+			var cen: Vector3 = (a + b + c) / 3.0
+			var kill := false
+			for pm_ in pitch_m:
+				var pm: Dictionary = pm_
+				if cen.y < float(pm["bot"]) + 0.35 or cen.y > float(pm["top"]) + 0.60:
+					continue
+				var span: float = maxf(float(pm["top"]) - float(pm["bot"]), 0.0001)
+				var t: float = clampf((float(pm["top"]) - cen.y) / span, 0.0, 1.0)
+				var ax: Vector3 = _pitch_axis(pm, t)
+				if Vector2(cen.x - ax.x, cen.z - ax.z).length() < float(pm["r"]) * 1.02:
+					kill = true
+					break
+			if kill:
+				removed += 1
+				continue
+			keep.push_back(ix[f * 3]); keep.push_back(ix[f * 3 + 1]); keep.push_back(ix[f * 3 + 2])
+		idxs[cls] = keep
+	print("pitches: %d bores punched %d triangles out of the floors and crowns" % [pitch_m.size(), removed])
+
+
+# What is inside a pitch, and it is the one thing that makes a shaft legible to
+# a sensor at all. VERTICAL.md 3.4: the ancients' rings where they left steel,
+# and a beacon at the head and the foot of everything a machine can descend
+# plus a chain every 3.2 m down the main ones. A beacon is RETROREFLECTIVE
+# (ART-DIRECTION 8.2), so it clips the intensity channel and blazes from
+# anywhere in range -- which means the descent chain draws itself in the
+# brightest marks in the machine's own map, with no overlay and no art
+# direction. It is the cheapest legibility win available to this shot.
+func _place_pitch_props() -> void:
+	for pm_ in pitch_m:
+		var pm: Dictionary = pm_
+		var h: float = float(pm["top"]) - float(pm["bot"])
+		if h < 0.6:
+			continue
+		var k: int = int(pm["kind"])
+		var fixed: bool = (int(pm["flags"]) & CaveTopology.PF_FIXED) != 0 \
+			or k == CaveTopology.PK_COLLAR or k == CaveTopology.PK_WINZE \
+			or k == CaveTopology.PK_ORE_PASS
+		var descendable: bool = (int(pm["flags"]) & CaveTopology.PF_DOWN) != 0
+		var main: bool = (int(pm["flags"]) & CaveTopology.PF_MAIN) != 0
+		if fixed:
+			var n_r: int = int(h / 1.2)
+			for j in range(1, n_r):
+				var t: float = float(j) * 1.2 / h
+				var ax: Vector3 = _pitch_axis(pm, t)
+				var rr: float = _pitch_radius(pm, t, 0.0) * 0.97
+				_ring_hoop(SURF_METAL, Vector3(ax.x, ax.y, ax.z), rr, 0.09, 16)
+		if descendable:
+			for tb in [0.02, 0.98]:
+				var ax2: Vector3 = _pitch_axis(pm, float(tb))
+				var rr2: float = _pitch_radius(pm, float(tb), 0.0) * 0.90
+				_box(SURF_RETRO, Vector3(0.05, 0.26, 0.26),
+					Transform3D(Basis.IDENTITY, Vector3(ax2.x + rr2, ax2.y, ax2.z)))
+		if main and descendable:
+			var n_b: int = int(h / 3.2)
+			for j in range(1, n_b):
+				var t3: float = float(j) * 3.2 / h
+				var ax3: Vector3 = _pitch_axis(pm, t3)
+				var rr3: float = _pitch_radius(pm, t3, PI * 0.5) * 0.90
+				_box(SURF_RETRO, Vector3(0.22, 0.22, 0.05),
+					Transform3D(Basis.IDENTITY, Vector3(ax3.x, ax3.y, ax3.z + rr3)))
+
+
+# an open hoop: a short cylindrical band, NOT a CylinderMesh -- a capped
+# cylinder of bore radius is a plate across the shaft and the laser would stop
+# at the first one.
+func _ring_hoop(cls: int, c: Vector3, r: float, hh: float, seg: int) -> void:
+	var r0 := PackedVector3Array()
+	var r1 := PackedVector3Array()
+	for i in range(seg):
+		var th: float = float(i) / float(seg) * TAU
+		r0.push_back(c + Vector3(cos(th) * r, -hh * 0.5, sin(th) * r))
+		r1.push_back(c + Vector3(cos(th) * r, hh * 0.5, sin(th) * r))
+	_ring_band(cls, r0, r1, seg)
 
 
 # ---------------------------------------------------------------------------

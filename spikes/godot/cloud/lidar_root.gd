@@ -105,6 +105,13 @@ var h_lo := -1.0
 var h_hi := 4.0
 var clip_lo := -1000.0
 var clip_hi := 1000.0
+var clip_x_lo := -1.0e9
+var clip_x_hi := 1.0e9
+var clip_z_lo := -1.0e9
+var clip_z_hi := 1.0e9
+var cut_n := Vector3.ZERO
+var cut_d0 := -1.0e9
+var cut_d1 := 1.0e9
 
 var orbit_target := Vector3.ZERO
 var orbit_az := 0.6
@@ -122,6 +129,46 @@ var stats_only := false
 # camera rig that executes them. See cinema.gd, cinema_run.gd and CINEMA.md.
 var cinema_mode := ""
 var cinema: CloudCinema = null
+
+# ---------------------------------------------------------------- the map
+var want_levels := 1
+var map_mode := ""
+var map_only := ""
+var map_run = null
+var fast := false
+# The accumulated map is voxel-downsampled AT SOURCE. LIDAR.md 6 already says
+# it has to be: at 10 Hz the device makes ~230,000 returns a second and a whole
+# match is ~110 million, so the live sweep and the accumulated map cannot be the
+# same object. This is that decision, taken here for the first time, and it is
+# also what makes the map READ -- see MAP.md 3. 0 = keep everything.
+var voxel_m := 0.0
+var voxel_want := 0.07
+var n_raw := 0
+var _vox: Dictionary = {}
+# How the believed pose gets its VERTICAL component. See MAP.md 6.
+#   measured  - the pre-2026-09-10 model: y comes from the true pose plus a
+#               gauge error. VERTICAL.md 9.4 calls this an invariant leak and
+#               it is right; it is kept only as a control.
+#   slip      - walked slope is integrated from the machine's own footing and a
+#               DESCENT is odometry down a rope or a wall, which slips.
+#   blind     - a fall contributes nothing at all. VERTICAL.md 9.5 item 1.
+var depth_model := "gauge"
+var bel_y := PackedFloat32Array()
+var drop_true := 0.0
+var drop_bel := 0.0
+var map_rev_m := 1.7
+var map_span := 0.0
+# The window of the route the sensor actually SWEEPS. Belief is always
+# integrated over the whole route -- the drift at a place is the drift the walk
+# earned getting there -- but a shot inside the cave wants the local density a
+# 10 Hz device really produces, and a map of five hundred metres at that rate is
+# thirty-eight million returns. LIDAR.md 6 already says the live sweep and the
+# accumulated map cannot be the same object; these two numbers are that decision
+# arriving in the bake.
+var map_s0 := 0.0
+var map_s1 := 1.0e9
+var fix_every_m := 40.0
+var map_frames := 0
 # The walk planner's overrides, used only by the cinema bakes: a trailer shot
 # is authored at a STATION, so the machine has to walk past that station rather
 # than wherever the longest chamber-free run happens to be.
@@ -143,12 +190,32 @@ func _ready() -> void:
 		elif a.begins_with("--seed="): seed_v = int(a.substr(7))
 		elif a.begins_with("--len="): length_cells = int(a.substr(6))
 		elif a.begins_with("--cinema="): cinema_mode = a.substr(9)
+		elif a == "--vertical": want_levels = 4
+		elif a.begins_with("--levels="): want_levels = clampi(int(a.substr(9)), 1, 4)
+		elif a.begins_with("--map="): map_mode = a.substr(6)
+		elif a.begins_with("--depth="): depth_model = a.substr(8)
+		elif a.begins_with("--voxel="): voxel_m = float(a.substr(8)); voxel_want = voxel_m
+		elif a.begins_with("--mapshot="): map_only = a.substr(10)
+		elif a == "--fast": fast = true
+		elif a.begins_with("--fixevery="): fix_every_m = float(a.substr(11))
+		elif a.begins_with("--mapframes="): map_frames = int(a.substr(12))
 
 	print("adapter: ", RenderingServer.get_video_adapter_name(), " | api ",
 		RenderingServer.get_video_adapter_api_version())
 
 	var t0 := Time.get_ticks_msec()
 	geo = LidarGeo.new()
+	if map_mode != "":
+		# THE MAP. The vertical cave, and the whole of the reveal's material.
+		# `--levels=1` still reproduces topology hash 0xAD83E3ED, which is what
+		# every frame already in shots/cinema/ was shot against, so the flat
+		# path is a regression control rather than a fallback and the run
+		# asserts it below.
+		seed_v = 7
+		length_cells = 240
+		if want_levels <= 1:
+			want_levels = 4
+	geo.levels = want_levels
 	if cinema_mode != "":
 		cinema = CloudCinema.new()
 		cinema.parse_args(self)
@@ -168,6 +235,16 @@ func _ready() -> void:
 	print("cave: seed ", seed_v, "  ", geo.topo.stations.size(), " stations  ",
 		geo.tri_total, " triangles  ", geo.chamber_m.size(), " chambers  hash 0x",
 		String.num_int64(geo.topo.content_hash(), 16))
+	if geo.vertical:
+		var v1 := CaveTopology.new()
+		v1.generate(seed_v, length_cells, 1)
+		var h1: int = v1.content_hash()
+		print("topology     : v%d, %d levels, %d pitches, %.1f m of vertical range" % [
+			2 if geo.topo.levels > 1 else 1, geo.topo.levels, geo.topo.pitches.size(),
+			_vertical_range()])
+		print("v1 regression: %s  (flat path, seed %d len %d -> 0x%s, recorded 0xAD83E3ED)" % [
+			"PASS" if h1 == 0xAD83E3ED else "FAIL", seed_v, length_cells,
+			String.num_int64(h1, 16).to_upper()])
 	print("geometry built in ", Time.get_ticks_msec() - t0, " ms")
 
 	_build_render()
@@ -178,7 +255,9 @@ func _ready() -> void:
 	await get_tree().physics_frame
 	await get_tree().physics_frame
 
-	if cinema_mode != "":
+	if map_mode != "":
+		call_deferred("_run_map")
+	elif cinema_mode != "":
 		call_deferred("_run_cinema")
 	elif stats_only:
 		call_deferred("_run_stats")
@@ -254,7 +333,8 @@ func _build_truth() -> void:
 	truth_root.visible = false
 	add_child(truth_root)
 	var cols := [Color(0.42, 0.40, 0.38), Color(0.20, 0.26, 0.30),
-				 Color(0.44, 0.33, 0.22), Color(0.52, 0.53, 0.55), Color(0.85, 0.85, 0.85)]
+				 Color(0.44, 0.33, 0.22), Color(0.52, 0.53, 0.55), Color(0.85, 0.85, 0.85),
+				 Color(0.62, 0.72, 0.78)]
 	for cls in range(LidarGeo.N_SURF):
 		if geo.meshes[cls] == null:
 			continue
@@ -419,7 +499,248 @@ func _path_at(s: float) -> Array:
 	return [path_pts[path_pts.size() - 1], 0.0]
 
 
+
+# ===========================================================================
+# THE EXPLORATION -- one machine, four levels, three drops.  2026-09-10
+#
+# `_build_path` walks the longest chamber-free run of ONE drive out and back,
+# because the sensor test needed a wall recorded twice. A map needs the
+# opposite: every metre visited once, and the descent chain walked, because the
+# subject is the PLACE and not the disagreement.
+#
+# The route is the one the topology already decided: along each level's main
+# drive to the station the descent leaves from, down the pitch, and on. It is
+# THE-ICE 5.2's "the player goes down the way the water went down, and the
+# water went down the way the ancients went down", walked.
+# ===========================================================================
+var map_walk := false
+var path_yaw := PackedFloat32Array()
+var path_kind := PackedByteArray()   # 0 walking, 1 descending a pitch
+var path_pitch := PackedInt32Array() # which pitch, or -1
+var path_st := PackedInt32Array()    # the station the route point belongs to
+var path_s := PackedFloat32Array()   # arc length at each point
+var descent_log: Array = []
+
+const WALK_MPS := 1.45
+const DESC_MPS := 0.85
+
+
+func _push_path(p: Vector3, yaw: float, kind: int, pi: int, sid: int = -1) -> void:
+	if path_pts.size() > 0:
+		var d: float = path_pts[path_pts.size() - 1].distance_to(p)
+		if d < 0.02:
+			return
+		path_len += d
+	path_pts.push_back(p)
+	path_yaw.push_back(yaw)
+	path_kind.push_back(kind)
+	path_pitch.push_back(pi)
+	path_st.push_back(sid)
+	path_s.push_back(path_len)
+
+
+func _edge_index_of(ids: PackedInt32Array, sid: int) -> int:
+	for i in range(ids.size()):
+		if ids[i] == sid:
+			return i
+	return -1
+
+
+# The route without the sensor. A shot has to be able to ask where the machine
+# was before anything has been swept, and a bake is a minute.
+func ensure_route() -> void:
+	if path_pts.size() > 0:
+		return
+	_build_descent_path()
+	_build_map_clock()
+	_integrate_belief([])
+
+
+func _build_descent_path() -> void:
+	map_walk = true
+	path_pts = PackedVector3Array()
+	path_yaw = PackedFloat32Array()
+	path_kind = PackedByteArray()
+	path_pitch = PackedInt32Array()
+	path_st = PackedInt32Array()
+	path_s = PackedFloat32Array()
+	path_len = 0.0
+	descent_log = []
+	var topo: CaveTopology = geo.topo
+	var yaw := 0.0
+	for L in range(topo.levels):
+		var ids: PackedInt32Array = topo.edges[topo.level_main_edge[L]]
+		var i0: int = maxi(0, _edge_index_of(ids, topo.level_foot_st[L]))
+		var head: int = topo.level_head_st[L]
+		var i1: int = ids.size() - 1 if head < 0 else _edge_index_of(ids, head)
+		if i1 < 0:
+			i1 = ids.size() - 1
+		var step: int = 1 if i1 >= i0 else -1
+		var i: int = i0
+		while true:
+			var sp: Vector3 = geo._st_pos(ids[i])
+			var q := Vector3(sp.x, sp.y + geo._cfloor(sp.x, sp.z) + 0.90, sp.z)
+			if path_pts.size() > 0:
+				var d: Vector3 = q - path_pts[path_pts.size() - 1]
+				if Vector2(d.x, d.z).length() > 0.05:
+					yaw = atan2(d.z, d.x)
+			_push_path(q, yaw, 0, -1, ids[i])
+			if i == i1:
+				break
+			i += step
+		# the way down. The pitch whose TOP is this level's head station.
+		var pi := -1
+		for k in range(geo.pitch_m.size()):
+			var pm: Dictionary = geo.pitch_m[k]
+			if int(pm["from_st"]) == head and head >= 0:
+				pi = k
+				break
+		if pi < 0:
+			continue
+		var pmv: Dictionary = geo.pitch_m[pi]
+		var h: float = float(pmv["top"]) - float(pmv["bot"])
+		var nseg: int = maxi(3, int(h / 0.8))
+		for j in range(nseg + 1):
+			var t: float = float(j) / float(nseg)
+			var ax: Vector3 = geo._pitch_axis(pmv, t)
+			# the head rides 0.90 m off whatever it is standing on; in a bore
+			# it is hanging, so the sensor is on the axis.
+			_push_path(Vector3(ax.x, ax.y - 0.45, ax.z), yaw + t * 2.4, 1, pi, head)
+		descent_log.append({"pitch": pi, "kind": int(pmv["kind"]), "drop": h,
+							"bore": float(pmv["r"]) * 2.0})
+	print("descent: %d points, %.1f m of route, %d drops" % [
+		path_pts.size(), path_len, descent_log.size()])
+
+
+# The believed drop, per model. This is the whole of the depth question.
+#
+#   gauge  - the depth gauge reports the true height plus a fixed bias and
+#            per-reading noise. It is what this spike has had since 2026-09-10
+#            and it makes the map's vertical extent right to about half a
+#            metre over eighty-three. VERTICAL.md 9.3 searched this project for
+#            an altimeter, a barometer or an inclinometer and found NONE, so
+#            the gauge is an instrument no design document has agreed to.
+#   beams  - the machine estimates a drop from what its own beams reached: the
+#            steepest ring is -30 deg, so from a lip of bore radius r it sees
+#            r/tan30 down; from the foot the highest ring is +12 deg, so it
+#            sees r/tan12 up. Anything between those two is never measured, at
+#            any depth, for ever. NOT a guess -- it is the envelope.
+#   blind  - a fall contributes nothing at all. VERTICAL.md 9.5 item 1.
+func _believed_drop(pi: int, true_drop: float) -> float:
+	if pi < 0:
+		return true_drop
+	var pm: Dictionary = geo.pitch_m[pi]
+	var r: float = float(pm["r"])
+	match depth_model:
+		"blind":
+			return 0.0
+		"beams":
+			var reach_top: float = r / tan(deg_to_rad(-LidarScan.new().el_min_deg))
+			var reach_bot: float = r / tan(deg_to_rad(LidarScan.new().el_max_deg))
+			return minf(true_drop, reach_top + reach_bot)
+	return true_drop
+
+
+func _map_pose(t: float) -> Array:
+	var s: float = clampf(_map_arc(t), 0.0, path_len)
+	var lo := 0
+	var hi: int = path_pts.size() - 1
+	while lo < hi:
+		var mid: int = (lo + hi) / 2
+		if path_s[mid] < s:
+			lo = mid + 1
+		else:
+			hi = mid
+	var i: int = maxi(1, lo)
+	var a: float = path_s[i - 1]
+	var b: float = path_s[i]
+	var u: float = clampf((s - a) / maxf(b - a, 1e-5), 0.0, 1.0)
+	var p: Vector3 = path_pts[i - 1].lerp(path_pts[i], u)
+	var y0: float = path_yaw[i - 1]
+	var y1: float = path_yaw[i]
+	return [p, y0 + wrapf(y1 - y0, -PI, PI) * u]
+
+
+# Arc length at a time. Walking and descending are different speeds, so the
+# clock is integrated over the route once and cached.
+var _map_t := PackedFloat32Array()
+
+func _build_map_clock() -> void:
+	_map_t = PackedFloat32Array()
+	_map_t.resize(path_pts.size())
+	_map_t[0] = 0.0
+	for i in range(1, path_pts.size()):
+		var d: float = path_pts[i - 1].distance_to(path_pts[i])
+		var v: float = DESC_MPS if path_kind[i] == 1 else WALK_MPS
+		_map_t[i] = _map_t[i - 1] + d / v
+	t_end = _map_t[_map_t.size() - 1]
+
+
+func _map_arc(t: float) -> float:
+	if _map_t.is_empty():
+		return 0.0
+	if t <= 0.0:
+		return 0.0
+	if t >= _map_t[_map_t.size() - 1]:
+		return path_len
+	var lo := 0
+	var hi: int = _map_t.size() - 1
+	while lo < hi:
+		var mid: int = (lo + hi) / 2
+		if _map_t[mid] < t:
+			lo = mid + 1
+		else:
+			hi = mid
+	var i: int = maxi(1, lo)
+	var u: float = (t - _map_t[i - 1]) / maxf(_map_t[i] - _map_t[i - 1], 1e-5)
+	return lerp(path_s[i - 1], path_s[i], u)
+
+
+func _map_time_at(s_want: float) -> float:
+	if _map_t.is_empty():
+		return 0.0
+	var lo := 0
+	var hi: int = path_s.size() - 1
+	while lo < hi:
+		var mid: int = (lo + hi) / 2
+		if path_s[mid] < s_want:
+			lo = mid + 1
+		else:
+			hi = mid
+	var i: int = maxi(1, lo)
+	var u: float = (s_want - path_s[i - 1]) / maxf(path_s[i] - path_s[i - 1], 1e-5)
+	return lerp(_map_t[i - 1], _map_t[i], clampf(u, 0.0, 1.0))
+
+
+func _map_kind(t: float) -> int:
+	var s: float = _map_arc(t)
+	for i in range(1, path_pts.size()):
+		if path_s[i] >= s:
+			return path_kind[i]
+	return 0
+
+
+func _map_pitch(t: float) -> int:
+	var s: float = _map_arc(t)
+	for i in range(1, path_pts.size()):
+		if path_s[i] >= s:
+			return path_pitch[i]
+	return -1
+
+
+func _vertical_range() -> float:
+	var lo := 1e9
+	var hi := -1e9
+	for i in range(geo.topo.stations.size()):
+		var f: float = float(geo.topo.stations[i][CaveTopology.S_FLOOR_MM]) * 0.001
+		lo = minf(lo, f)
+		hi = maxf(hi, f)
+	return hi - lo
+
+
 func _true_pose(t: float) -> Array:
+	if map_walk:
+		return _map_pose(t)
 	if not run_is_walk:
 		return [stand_pos, 0.0]
 	if walk_oneway:
@@ -469,6 +790,12 @@ func _integrate_belief(fix_spec: Array) -> void:
 	var anchor: Vector3 = bp
 	var fi := 0
 	var step := 0
+	bel_y = PackedFloat32Array()
+	drop_true = 0.0
+	drop_bel = 0.0
+	var in_pitch := -1
+	var pitch_t0 := 0.0
+	var pitch_y0 := 0.0
 	for k in range(n):
 		var t: float = float(k) * dt
 		var tp: Array = _true_pose(t)
@@ -486,7 +813,37 @@ func _integrate_belief(fix_spec: Array) -> void:
 			var fwd: Vector3 = _yawrot(Vector3(ds, 0, 0), byaw)
 			var jitter: float = DR_POS_NOISE_PER_CELL * CELL * sqrt(maxf(cells, 0.0))
 			bp += fwd + Vector3(_gauss(42, step, 0) * jitter, 0, _gauss(42, step, 1) * jitter)
-			bp.y = _gauge_y(tpos.y, seed_v, step)
+			if map_walk and depth_model != "gauge" and depth_model != "measured":
+				# The vertical is DEAD-RECKONED, exactly as x and z are, and a
+				# drop is estimated separately because a drop is not walked.
+				# See _believed_drop and MAP.md 6.
+				var pi_now: int = _map_pitch(t)
+				if pi_now >= 0 and in_pitch < 0:
+					in_pitch = pi_now
+					pitch_t0 = t
+					pitch_y0 = tpos.y
+				elif pi_now < 0 and in_pitch >= 0:
+					var td: float = pitch_y0 - tpos.y
+					var bd: float = _believed_drop(in_pitch, td)
+					drop_true += td
+					drop_bel += bd
+					bp.y = pitch_y0 - (pitch_y0 - bp.y) + 0.0
+					in_pitch = -1
+				if pi_now >= 0:
+					# inside the bore: apply the believed rate, not the true one
+					var pmx: Dictionary = geo.pitch_m[pi_now]
+					var full: float = float(pmx["top"]) - float(pmx["bot"])
+					var k_bel: float = _believed_drop(pi_now, full) / maxf(full, 1e-4)
+					bp.y += (tpos.y - pprev.y) * k_bel
+				else:
+					# walking. The slope under the machine is measured by its
+					# own rings, so integrating it is legal; it accumulates an
+					# error like every other integrated quantity. GUESS: 1.6% of
+					# scale plus 8 mm per metre of noise.
+					var dy: float = tpos.y - pprev.y
+					bp.y += dy * 1.016 + _gauss(44, step, 0) * 0.008 * ds
+			else:
+				bp.y = _gauge_y(tpos.y, seed_v, step)
 			step += 1
 		else:
 			bp.y = _gauge_y(tpos.y, seed_v, step)
@@ -521,6 +878,7 @@ func _integrate_belief(fix_spec: Array) -> void:
 		bel_t.push_back(t)
 		bel_x.push_back(bp.x)
 		bel_z.push_back(bp.z)
+		bel_y.push_back(bp.y)
 		bel_yaw.push_back(byaw)
 		if k % 4 == 0:
 			trail_true.push_back(tpos)
@@ -530,7 +888,7 @@ func _integrate_belief(fix_spec: Array) -> void:
 
 func _bel_pose(t: float) -> Array:
 	var i: int = clampi(int(t / 0.05), 0, bel_t.size() - 1)
-	return [Vector3(bel_x[i], 0.0, bel_z[i]), bel_yaw[i]]
+	return [Vector3(bel_x[i], bel_y[i] if i < bel_y.size() else 0.0, bel_z[i]), bel_yaw[i]]
 
 
 # ===========================================================================
@@ -589,6 +947,7 @@ func _bake(name: String) -> void:
 	var fix_spec: Array = []
 	var rev_dt := 0.0
 
+	map_walk = false
 	if not is_cine:
 		walk_speed = 1.50
 		walk_oneway = false
@@ -635,6 +994,45 @@ func _bake(name: String) -> void:
 			elif kind == "lie":
 				fix_spec = [[t_end * 0.49, "honest", 0.0, 0.0, 0.0],
 							[t_end - 1.2, "lie", 11.0, 1.15, deg_to_rad(26.0)]]
+	elif name.begins_with("map"):
+		# THE EXPLORATION. One machine, four levels, three drops, one pass.
+		run_is_walk = true
+		_build_descent_path()
+		_build_map_clock()
+		scans = [_make_scan("real")]
+		# One revolution every `map_rev_m` metres of route. The device spins at
+		# 10 Hz and would lay ten a second; LIDAR.md 6 already records that a
+		# whole match at full rate is ~110 million returns and that the
+		# accumulated map has to be sampled at source. This is that sampling,
+		# expressed in metres rather than in seconds so the density is uniform
+		# along the route instead of piling up wherever the machine went slowly.
+		rev_dt = 0.0
+		if map_rev_m <= 0.0:
+			map_rev_m = 3.4 if fast else 1.7
+		if map_span > 0.0:
+			t_end = minf(t_end, map_span)
+		# FIXES. Without them the map is not a map: phase1's heading bias is
+		# 0.11 deg a cell and the route is 838 cells, so the last passage would
+		# be ninety degrees off the first and the picture would be a spiral.
+		# The fiction already has the mechanism -- "dead reckoning plus fixes on
+		# beacons the machine dropped itself" -- and the beacons are already in
+		# the geometry: one at the head and the foot of every pitch it can
+		# descend, and a chain down the main ones. So a correction lands at
+		# every pitch mouth, and otherwise every `fix_every_m` of route.
+		#
+		# What is left over is the point. Between two fixes the machine still
+		# drifts, and the map is bent by that much at every seam. GUESS: 40 m.
+		fix_spec = []
+		var s_next: float = fix_every_m
+		var was_kind := 0
+		for i in range(1, path_pts.size()):
+			var k: int = path_kind[i]
+			var at_mouth: bool = k != was_kind
+			was_kind = k
+			if at_mouth or path_s[i] >= s_next:
+				fix_spec.append([_map_time_at(path_s[i]), "honest", 0.0, 0.0, 0.0])
+				s_next = path_s[i] + fix_every_m
+		print("fixes: %d honest corrections over %.0f m of route" % [fix_spec.size(), path_len])
 	elif name == "chamber1":
 		t_end = 0.10
 		scans = [_make_scan("real")]
@@ -689,12 +1087,27 @@ func _bake(name: String) -> void:
 		var limit: float = t_end
 		if name == "real_short":
 			limit = 0.40         # four revolutions, against the toy's whole walk
-		while t < limit:
-			var a: Array = _true_pose(t)
-			var b: Array = _true_pose(minf(t + period, t_end))
-			s.sweep(space, a[0], float(a[1]), b[0], float(b[1]), t, rv)
-			rv += 1
-			t += step
+		if map_walk:
+			var s_at: float = maxf(0.0, map_s0)
+			while s_at < minf(path_len, map_s1):
+				var tm: float = _map_time_at(s_at)
+				if tm > t_end:
+					break
+				var a2: Array = _true_pose(tm)
+				var b2: Array = _true_pose(minf(tm + period, t_end))
+				s.sweep(space, a2[0], float(a2[1]), b2[0], float(b2[1]), tm, rv)
+				rv += 1
+				s_at += map_rev_m
+				if rv % 40 == 0:
+					print("    ... %d revs, %.0f of %.0f m, %d returns" % [
+						rv, s_at, minf(path_len, map_s1), s.out_local.size()])
+		else:
+			while t < limit:
+				var a: Array = _true_pose(t)
+				var b: Array = _true_pose(minf(t + period, t_end))
+				s.sweep(space, a[0], float(a[1]), b[0], float(b[1]), t, rv)
+				rv += 1
+				t += step
 		revs += rv
 		n_shots += s.n_shots
 		n_drop += s.n_dropped
@@ -703,8 +1116,8 @@ func _bake(name: String) -> void:
 	_place(scans)
 	scan_desc = (scans[0] as LidarScan).describe()
 	bake_ms = float(Time.get_ticks_msec() - t0)
-	print("[%s] %d returns from %d shots in %d revs  (%.0f%% hit, %.0f%% dropout)  scan %.0f ms  bake %.0f ms"
-		% [name, n_pts, n_shots, revs, 100.0 * float(n_pts) / maxf(float(n_shots), 1.0),
+	print("[%s] %d points from %d shots in %d revs  (%.0f%% hit, %.0f%% dropout)  scan %.0f ms  bake %.0f ms"
+		% [name, n_pts, n_shots, revs, 100.0 * float(n_raw) / maxf(float(n_shots), 1.0),
 		   100.0 * float(n_drop) / maxf(float(n_shots), 1.0), scan_ms, bake_ms])
 	now = t_end
 	h_lo = cloud_min.y
@@ -724,6 +1137,7 @@ func _place(scans: Array) -> void:
 	var total := 0
 	for sc in scans:
 		total += (sc as LidarScan).out_local.size()
+	n_raw = total
 	var buf := PackedFloat32Array()
 	buf.resize(total * 16)
 	cloud_min = Vector3(1e9, 1e9, 1e9)
@@ -754,7 +1168,11 @@ func _place(scans: Array) -> void:
 			var n0: Vector3 = _yawrot(m, byaw)
 			# the believed sensor origin at that instant; the y datum is
 			# measured, not dead-reckoned, so drift is planar (as in phase1)
-			var org := Vector3(bpos.x, _gauge_y(s.out_org[i].y, seed_v, i), bpos.z)
+			var org: Vector3
+			if map_walk and depth_model != "gauge" and depth_model != "measured":
+				org = Vector3(bpos.x, bpos.y, bpos.z)
+			else:
+				org = Vector3(bpos.x, _gauge_y(s.out_org[i].y, seed_v, i), bpos.z)
 			var p0: Vector3 = org + n0
 			var p1: Vector3 = p0
 			var n1: Vector3 = n0
@@ -765,6 +1183,18 @@ func _place(scans: Array) -> void:
 					n1 = _yawrot(n0, f_th[fk])
 					tf = f_t[fk]
 					break
+			# VOXEL DOWNSAMPLE, at source. LIDAR.md 6: the live sweep and the
+			# accumulated map cannot be the same object, and the map has to be
+			# reduced where it is made rather than where it is drawn. First
+			# return in a voxel wins, which is deterministic in array order.
+			if voxel_m > 0.0:
+				var kx: int = int(floor(p0.x / voxel_m)) + 8192
+				var ky: int = int(floor(p0.y / voxel_m)) + 8192
+				var kz: int = int(floor(p0.z / voxel_m)) + 8192
+				var key: int = (kx * 16384 + ky) * 16384 + kz
+				if _vox.has(key):
+					continue
+				_vox[key] = 1
 			var dp: Vector3 = p1 - p0
 			var o := w * 16
 			buf[o + 0] = dp.x;  buf[o + 1] = n0.x; buf[o + 2] = n1.x;  buf[o + 3] = p0.x
@@ -777,10 +1207,15 @@ func _place(scans: Array) -> void:
 			cloud_min = cloud_min.min(p0.min(p1))
 			cloud_max = cloud_max.max(p0.max(p1))
 			w += 1
-	n_pts = total
+	n_pts = w
+	if voxel_m > 0.0:
+		buf.resize(w * 16)
+		_vox.clear()
+		print("    voxel %.0f mm: %d returns -> %d points (%.1f%% kept)" % [
+			voxel_m * 1000.0, total, w, 100.0 * float(w) / maxf(float(total), 1.0)])
 	mm.instance_count = 0
-	mm.instance_count = total
-	if total > 0:
+	mm.instance_count = n_pts
+	if n_pts > 0:
 		mm.buffer = buf
 
 
@@ -819,6 +1254,13 @@ func _apply_uniforms() -> void:
 	mat.set_shader_parameter("u_after", col_after)
 	mat.set_shader_parameter("u_clip_lo", clip_lo)
 	mat.set_shader_parameter("u_clip_hi", clip_hi)
+	mat.set_shader_parameter("u_clip_x_lo", clip_x_lo)
+	mat.set_shader_parameter("u_clip_x_hi", clip_x_hi)
+	mat.set_shader_parameter("u_clip_z_lo", clip_z_lo)
+	mat.set_shader_parameter("u_clip_z_hi", clip_z_hi)
+	mat.set_shader_parameter("u_cut_n", cut_n)
+	mat.set_shader_parameter("u_cut_d0", cut_d0)
+	mat.set_shader_parameter("u_cut_d1", cut_d1)
 	mat.set_shader_parameter("u_square", square)
 	mat.set_shader_parameter("u_footprint", footprint)
 	mat.set_shader_parameter("u_beam_mrad", 3.0)
@@ -849,6 +1291,9 @@ func _rebuild_lines() -> void:
 	line_mesh.clear_surfaces()
 	if not show_lines:
 		return
+	if trail_ribbon:
+		_rebuild_trail_ribbon()
+		return
 	line_mesh.surface_begin(Mesh.PRIMITIVE_LINES)
 	# the believed trail, corrected by whichever fix has landed
 	for i in range(1, trail_bel.size()):
@@ -868,6 +1313,61 @@ func _rebuild_lines() -> void:
 	line_mesh.surface_end()
 
 
+# THE MACHINE'S OWN BELIEVED POSE, DRAWN.
+#
+# spikes/godot/cloud/CINEMA.md 12.4 ends by putting exactly this in front of the
+# designer: "the belief view should contain the machine's own BELIEVED POSE as a
+# mark: a scanner's map does hold `and I think I am here`, and that mark
+# drifting off the truth is the game's whole subject. That is an art proposal
+# and it is not built." The map is the shot it is needed for -- a cave with no
+# route through it is a scatter of rooms -- so it is built here, and it obeys
+# the same rules as everything else in the register: it is BELIEF (the estimated
+# pose, moved by whichever correction has landed, never re-registered), it is a
+# single flat colour so it carries no channel of its own, and it is drawn as a
+# ribbon rather than a line only because a one-pixel GL line disappears at a
+# hundred and eighty metres.
+var trail_ribbon := false
+var trail_w_px := 1.7
+
+func _rebuild_trail_ribbon() -> void:
+	if trail_bel.size() < 2:
+		return
+	var cp: Vector3 = cam.global_position
+	var vp: Vector2 = Vector2(get_viewport().get_visible_rect().size)
+	var col := Color(GHOST.r, GHOST.g, GHOST.b, 0.92)
+	line_mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
+	for i in range(1, trail_bel.size()):
+		if trail_t[i] > now:
+			break
+		var a: Vector3 = _trail_at(i - 1) + Vector3(0, -0.85, 0)
+		var b: Vector3 = _trail_at(i) + Vector3(0, -0.85, 0)
+		var mid: Vector3 = (a + b) * 0.5
+		var d: float = maxf(cp.distance_to(mid), 0.5)
+		# a constant apparent width, like the point mark: metres per pixel at
+		# this range times the width in pixels
+		var ppm: float = 0.5 * vp.y / (d * tan(deg_to_rad(cam.fov * 0.5)))
+		var w: float = trail_w_px / maxf(ppm, 1e-4) * 0.5
+		var seg: Vector3 = b - a
+		if seg.length() < 1e-4:
+			continue
+		var side: Vector3 = seg.cross(mid - cp).normalized() * w
+		if not is_finite(side.x):
+			continue
+		line_mesh.surface_set_color(col)
+		line_mesh.surface_add_vertex(a - side)
+		line_mesh.surface_set_color(col)
+		line_mesh.surface_add_vertex(b - side)
+		line_mesh.surface_set_color(col)
+		line_mesh.surface_add_vertex(b + side)
+		line_mesh.surface_set_color(col)
+		line_mesh.surface_add_vertex(a - side)
+		line_mesh.surface_set_color(col)
+		line_mesh.surface_add_vertex(b + side)
+		line_mesh.surface_set_color(col)
+		line_mesh.surface_add_vertex(a + side)
+	line_mesh.surface_end()
+
+
 func _trail_at(i: int) -> Vector3:
 	var p: Vector3 = trail_bel[i]
 	var t: float = trail_t[i]
@@ -883,14 +1383,35 @@ func _trail_at(i: int) -> Vector3:
 func _sensor_at(t: float) -> Vector3:
 	var r: Array = _bel_pose(minf(t, t_end))
 	var p: Vector3 = r[0]
-	var tp: Array = _true_pose(minf(t, t_end))
-	var y: float = (tp[0] as Vector3).y
+	var y: float = p.y
+	if not map_walk:
+		# the pre-vertical scenes carry no believed y of their own
+		var tp: Array = _true_pose(minf(t, t_end))
+		y = _gauge_y((tp[0] as Vector3).y, seed_v, 0)
 	var out := Vector3(p.x, y, p.z)
 	for f in fix_log:
 		var fd: Dictionary = f
 		if float(fd["t"]) > t and now >= float(fd["t"]):
 			return _apply_fix(out, fd["anchor"], float(fd["dth"]), fd["dtv"])
 	return out
+
+
+# Where the machine BELIEVES its sensor was at time t, with whichever
+# correction is pending applied -- i.e. where the camera has to stand for the
+# frame to be inside the machine's own map rather than beside it. After five
+# hundred metres of route the two are metres apart, so a camera placed at the
+# true pose photographs the cloud from outside its own passage.
+func belief_view(t: float) -> Array:
+	var bp: Array = _bel_pose(minf(t, t_end))
+	var p: Vector3 = _sensor_at(t)
+	var yaw: float = float(bp[1])
+	for f in fix_log:
+		var fd: Dictionary = f
+		if float(fd["t"]) > t:
+			if now >= float(fd["t"]):
+				yaw += float(fd["dth"])
+			break
+	return [p, yaw]
 
 
 # ===========================================================================
@@ -1037,6 +1558,13 @@ func _run_shots() -> void:
 		await _settle(10)
 		await _snap(String(d["name"]))
 	_run_stats()
+
+
+func _run_map() -> void:
+	map_run = load("res://map_run.gd").new()
+	map_run.only = map_only
+	await map_run.run(self)
+	get_tree().quit()
 
 
 func _run_cinema() -> void:
