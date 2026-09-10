@@ -55,3 +55,5 @@ spikes/godot/surface/shots/cinema/*/
 !spikes/godot/surface/shots/cinema/key/
 # Scratch workdir from corridor/cave teaching test runs.
 phase2-session/
+# Rendered score stems: regenerate with python -m phase1.audio.score_render
+spikes/score/*.wav
