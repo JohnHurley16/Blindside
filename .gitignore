@@ -53,3 +53,5 @@ spikes/godot/cloud/shots/cinema/fail/
 # few key frames under shots/cinema/key/ are tracked; regenerate the rest with --mode=cinema.
 spikes/godot/surface/shots/cinema/*/
 !spikes/godot/surface/shots/cinema/key/
+# Scratch workdir from corridor/cave teaching test runs.
+phase2-session/
