@@ -379,3 +379,77 @@ goes to one and puts its head to the floor can download something from it.
 **The revised card set stays at five.** The temptation is to add a sixth explaining the machinery.
 Resist it: the ratchet, the mark and the download do that work, and a trailer that explains its
 mystery has spent it.
+
+---
+
+## 11. What the rough cut got wrong — 2026-09-09
+
+A 34-second assembly of what existed was cut and shown. The designer's verdict, verbatim:
+
+> "yeah thats a good rough pass, but again it needs a lot of work. The rough cuts of 1 second
+> footage is very jarring. 'You dont drive it. You can only teach it.' The fuck is 'It', the dog
+> isnt even the right model. This still needs a lot of work."
+
+Three faults. Two are production and one is structural, and the structural one is the important
+one because no amount of re-rendering fixes it.
+
+### 11.1 The pronoun has no referent — and this is a fault in the treatment, not the cut
+
+The card at 0:46 says *you cannot drive **it***. Nothing before it has established what **it** is.
+The first act as written is a tour of a place: a headframe, a yard, rain, a charge line, a bench.
+Machines appear in several of those frames and none of them is *the* machine. So by the time the
+card lands, the viewer has been shown a location and is being asked to care about a pronoun.
+
+**The fix is not another shot. It is that the trailer follows ONE machine, from the first frame it
+appears in to the last.** Not a class of machine, not machines in general. One, established as a
+subject, in close-up, before any card refers to it. Then:
+
+- *you cannot drive it* has a referent the viewer has been looking at for twenty seconds;
+- the descent is that machine leaving, not a machine leaving;
+- the belief cut is **its** map, which is why the doubled corridor matters;
+- the lie is told to **it**;
+- and the last shot, an empty shaft in the rain, is about whether **it** came back.
+
+Every one of those beats currently works in the abstract and none of them works on a stranger.
+This is the single largest change to the treatment since it was written, and section 1's claim —
+that the trailer sells the loss of control — was always going to be hollow without it, because
+you cannot feel a loss of control over something you were never attached to.
+
+**What changes in the shot list.** Shot 6 stops being *a machine on the bench* and becomes **the**
+machine, held longer, close, with a proper introduction: the whole body, its head moving, in
+daylight, at a scale where it reads as an animal rather than as equipment. Every later shot that
+contains a machine contains that one. Continuity of the actual model, loadout, wear and team
+becomes a hard requirement across four separate Godot projects, and there is no mechanism for that
+today — the loadout and skin have to be part of the shot definition and validated, in the same way
+the camera is.
+
+**One line changes with it.** *You cannot drive it. You can only teach it.* becomes a statement
+about a thing on screen rather than an abstraction, and it should land while the machine is in
+frame, not over black.
+
+### 11.2 The machines in the rough cut are the wrong models, and that is a sequencing artefact
+
+The frames in that assembly were rendered before the Blender rig was exported. Every machine in
+them is the placeholder the environment spikes used. The real chassis exist now
+(`spikes/godot/machines/`, exported from `agent_model` via `export_gltf.py`), and no shot
+containing a machine should be captured again until they are placed in the scene that is being
+shot. **This is the reason the whole capture stage moves to last.**
+
+### 11.3 One second a shot is not a cut, it is a strobe
+
+The spikes render 24 frames per shot, which is one second at 24 fps. The treatment's shots are
+three to five seconds. Nothing is wrong with the footage — every frame is rendered from the
+running game with the camera moving — but a cut at that rate reads as a strobe and gives the eye
+no time to arrive anywhere. Re-render at the durations in section 3: 72 to 120 frames a shot.
+
+**And the rate is itself a design decision, not a consequence.** This world is patient. The cut
+should be slower than the trailers it plays beside, for the same reason the sound is quieter than
+theirs, and the two decisions support each other.
+
+### 11.4 What this changes about the order of work
+
+1. Place the real machines in the cave and the pit-head, and pick **the** machine: one chassis, one
+   loadout, one wear state, one team, named in the shot definitions.
+2. Give shot 6 a proper introduction, and re-time the surrounding shots around it.
+3. Re-render every shot at its real duration.
+4. Only then capture, assemble, and score.
