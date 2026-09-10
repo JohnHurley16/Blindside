@@ -3,7 +3,7 @@
     "name": "t18_belief_cut",
     "trailer": "18",
     "_same_camera_as": "cave:t17_follow_machine",
-    "_note": "VERBATIM camera from spikes/godot/cave/shots_cinema.json. Every field above the divider is a byte-for-byte copy; nothing below it exists in the cave file. ground_from/ground_to are the cave rig's own resolved floor at the two move anchors, read out of cave/shots/cinema/sequences.txt.",
+    "_note": "VERBATIM camera AND machine from spikes/godot/cave/shots_cinema.json t17_follow_machine. Every field above the divider is a byte-for-byte copy, the machine block included, because the machine is the same machine on the same beat and Hero.BEATS says beat 18 must contain it; nothing below the divider exists in the cave file. ground_from/ground_to are the cave rig's own resolved floor at the two move anchors, read out of cave/shots/cinema/sequences.txt. Nothing DRAWS the machine here -- a scanner cannot see the thing it is bolted to -- and --cinema=hero proves the declaration instead.",
     "len_s": 4.0,
     "lens_mm": 35.0,
     "tstop": 2.8,
@@ -42,6 +42,41 @@
     "focus": {
       "from": 2.4,
       "to": 3.2
+    },
+    "machine": {
+      "at": {
+        "from": {
+          "f": 3.2,
+          "r": 0.0,
+          "st": 68,
+          "u": 0.0
+        },
+        "to": {
+          "f": 5.2,
+          "r": 0.0,
+          "st": 68,
+          "u": 0.0
+        }
+      },
+      "chassis": "surveyor",
+      "clip": "walk",
+      "damage": 0.0,
+      "head": [
+        [
+          -6.0,
+          -3.0
+        ],
+        [
+          7.0,
+          -5.0
+        ]
+      ],
+      "lamp": true,
+      "loadout": "default",
+      "role": "hero",
+      "skin": "player",
+      "wear": 0.35,
+      "yaw": "path"
     },
     "ground_from": 0.14,
     "ground_to": -0.14,

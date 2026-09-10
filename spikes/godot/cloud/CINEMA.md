@@ -33,6 +33,8 @@ Nothing outside `spikes/godot/cloud/` was modified. Nothing was committed.
 | **Which post effects survive on emissive data?** | **One of nine: the vignette.** It is the only one of the nine that is multiplicative and ≤ 1 — the only one that can only ever take light *away*. Everything else adds light, and on a belief frame nine tenths of the frame is a place the sensor returned nothing from. §5. |
 | **Biggest thing found in the post** | Every geometric lens effect **resamples the frame**, and resampling a hard 2-pixel mark spreads it into the void beside it. Sub-percent barrel writes into **16.0% of the sensor shadow at +97.7/255**; half a pixel of chromatic aberration into 20.4%. On a lit image both are invisible; on data both are `ART-DIRECTION` §8.2 broken. §5.5. |
 | **Do the shots execute?** | **18, 19, 20, 21 and 26**, plus the fix as a sixth shot that is not in the trailer's list. Three entries are rejected and all three are deliberate. §6. |
+| **Are they their real length?** | **Yes, since 2026-09-10.** All six were 24 frames — one second — which is `TRAILER` §11.3's strobe. They are now `len_s × 24`: 96 frames for a 4 s shot, 120 for a 5 s one, 600 frames in 87 s of rendering. The fix reads in motion, and what carries it is the 2.25 s of doubling in front of the correction rather than the 0.96 s of correction. **§12.** |
+| **Is the machine in it?** | **Declared, and deliberately not drawn.** The shared machine layer is mounted and `Hero.validate` runs as rule 0; shot 18 carries the cave's hero block verbatim. Nothing renders it, because at a 0.90 m head on a 0.32 m chassis **no ring in the device can strike its own carrier** — the machine casts neither a return nor a shadow. Its measured position, though, is up to **1.20 m** from where the cave puts it. §12.4. |
 | **Point count / draw calls** | 224 k to 1.52 M returns depending on the shot; **one draw call** for the belief layer at any of them; six when shot 21 turns truth on. §8. |
 | **Frame times** | Deltas only, on a GPU throttled to **780 MHz of 2100**. The whole stack is 6.4 ms of an 11.4 ms frame and depth of field is 3.5 ms of that; the vignette that ships is **0.17 ms**. Two earlier runs produced negative deltas and are recorded as failures. §8. |
 
@@ -506,7 +508,7 @@ wired to nothing so it cannot ship by accident.
 ## 6. Which trailer shots execute
 
 `shots/cinema/validation.txt` is the machine-readable version; `shots/cinema/seq/<name>/`
-holds each as 24 frames at 1920×1080, and `_strip_<name>.png` next to it is six of them
+holds each as its own length at 24 fps (§12), and `_strip_<name>.png` next to it is six of them
 on one sheet.
 
 | # | shot | lens | frame | returns | executes | note |
@@ -566,7 +568,7 @@ Same shot, same verdict, different first failure.)
 
 | where | what |
 |---|---|
-| `seq/<shot>/000..023.png` | the executing shots as 24-frame image sequences, 1920×1080, with the shipping stack |
+| `seq/<shot>/000..NNN.png` | the executing shots as image sequences at their real length, 1920×1080, with the shipping stack. 96 frames for a 4 s shot, 120 for a 5 s one. §12.1 |
 | `seq/_strip_<shot>.png` | six frames of each on one sheet, for reading a shot at a glance |
 | `match/<shot>/` | the belief frame at the matched pose, with the exported ground |
 | `match/sbs_17_18_*.png`, `sbs_20_*.png` | **the matched-camera test**: the cave frame and the belief frame side by side, same position, same focal length |
@@ -579,15 +581,18 @@ Same shot, same verdict, different first failure.)
 | `bloom/thresh_*.png` | the threshold sweep behind §5.2 |
 | `tune/` | the recency-window sweep behind §7, eight variants of one frame |
 | `fail/` | the three rejected shots, each photographed at its start and at the end it would have shipped |
+| `hero.txt` | where the machine is, across the cut. `--cinema=hero`. §12.4 |
 | `validation.txt`, `sequences.txt`, `pairs.txt`, `bloom.txt`, `failure.txt`, `cost.txt` | the machine-readable versions of §6, §4, §5 and §8 |
 
-**The directory is 253 MB** — `seq` 105, `pairs` 48, `match` + `match_local` 64, `tune` 25,
-the rest under 12. `LIDAR.md` §9.8 made a deliberate non-decision to keep `shots/lidar/`'s
-10 MB in the tree because the frames are the evidence; this is twenty-five times that and
-I am not going to make the same call by default. Whoever commits this should decide. If
-the answer is no, the smallest honest cut is `seq/*/`, `pairs/` and `tune/` in
-`.gitignore`: the `_strip_*.png` sheets, `match/` and `fail/` carry every claim in this
-document between them, at about 35 MB.
+**The directory is 554 MB** — `seq` **410**, `pairs` 48, `match` + `match_local` 62, `tune` 25,
+the rest under 14. It was 253 MB when the sequences were 24 frames each; §12.1 quadrupled
+`seq` and the decision below got four times more urgent rather than different.
+`LIDAR.md` §9.8 made a deliberate non-decision to keep `shots/lidar/`'s 10 MB in the tree
+because the frames are the evidence; this is fifty-five times that and I am not going to
+make the same call by default. Whoever commits this should decide. If the answer is no,
+the smallest honest cut is `seq/*/`, `pairs/` and `tune/` in `.gitignore`: the
+`_strip_*.png` sheets, `match/` and `fail/` carry every claim in this document between
+them, at about 35 MB.
 
 ---
 
@@ -849,3 +854,272 @@ it is outside this directory.
    add up to the whole to within 19%, but every millisecond in it is on a GPU at 780 MHz
    of 2100. Nothing in §5's verdicts depends on it — they are pixel counts — but a frame
    budget would.
+
+---
+
+## 12. The shots are their real length, and the machine is declared — 2026-09-10
+
+`docs/TRAILER.md` §11.3: *"One second a shot is not a cut, it is a strobe."* Every belief
+sequence in §6 was **24 frames** — one second at 24 fps — against a treatment that asks for
+three to five seconds. The three cuts to the point cloud are the trailer's signature and
+they flashed past. All six are re-rendered at their own length; the matched camera is
+re-checked against a cave track that has itself been re-rendered since the port; and the
+hero machine layer is mounted, declared and measured.
+
+```
+<godot> --path spikes/godot/cloud --resolution 1920x1080 -- --cinema=seq
+                                                            --cinema=hero   (new)
+                                     --seqframes=N   force a count, for a quick look
+```
+
+### 12.1 The lengths, and where the frame count now comes from
+
+A shot is now `len_s × 24` frames, floored at 24, and `--seqframes=` still forces a count.
+**24 rather than the 60 `TRAILER` §6 names is a deliberate separation and it is the cave
+rig's**: 60 is the rate the motion blur is computed against, because that is the shutter
+the finished shot has (`capfps`, still 60 in `_pose`); 24 is the rate the frames are cut
+at. Both numbers were already in this file and only one of them was being used.
+
+| shot | beat | length | frames | bake | render | per frame |
+|---|---|---|---|---|---|---|
+| `t18_belief_cut` | 18 | 4.0 s | **96** | 4.8 s | 14.4 s | 0.15 s |
+| `t19_cloud_building` | 19 | 5.0 s | **120** | 14.9 s | 15.8 s | 0.13 s |
+| `t20_sensor_shadow` | 20 | 4.0 s | **96** | 2.5 s | 13.5 s | 0.14 s |
+| `t21_two_registers` | 21 | 4.0 s | **96** | 11.7 s | 17.5 s | 0.18 s |
+| `t26_the_fold` | 26 | 4.0 s | **96** | 16.6 s | 11.4 s | 0.12 s |
+| `x19_fix_closes` | — | 4.0 s | **96** | 17.5 s | 14.0 s | 0.15 s |
+
+**600 frames in 87 s of rendering and 68 s of baking** — 2 min 36 s for the whole belief act
+including the geometry build. `tasklist` found **no other Godot process** before, during or
+after the run, and `nvidia-smi` reported the adapter at 210 MHz / 68 °C / 0% before it and
+330 MHz / 69 °C / 0% after, so these are absolute numbers rather than deltas — unlike §8's,
+which are not. They are also four times cheaper per frame than the cave's 0.43–0.57 s
+(`cave/CINEMA.md` §12.3), which is the one-draw-call belief layer against a lit cave with
+shadow maps, and it is why this re-render cost minutes rather than the hour budgeted.
+
+**The point counts are unchanged, to the return**: 482,482 / 1,476,344 / 224,036 /
+1,116,236 / 1,442,474 / 1,517,578, exactly §6's table. The bake is deterministic and nothing
+in it or in the draw path was touched, so §8's *one draw call for the belief layer at any
+point count* stands as measured.
+
+**What it does to the cut.** The five numbered belief shots went from 120 frames to 504.
+Counting every sequence `spikes/godot/_assemble_cut.py` reads, the cut is now
+**2,704 frames = 1:52.7**, against 1:37 before. Every act is at its treatment length except
+the Assayer's four shots (24–38 frames each), which are not in this directory.
+
+### 12.2 Does the fix read in motion? Yes — and what carries it is not the move
+
+`LIDAR.md` §4 found honestly that the fix reads as a pair of frames and not as a single
+still, and that **density rather than ring structure** is what carries it. Four seconds is
+where that gets tested, and the test is not a matter of taste: the frames were counted.
+
+In `seq/x19_fix_closes/`, at a fixed 110-pixel-wide column across the doubled reach:
+
+| frames | screen time | what the column contains |
+|---|---|---|
+| 0–54 | **2.25 s** | **two lobes**, rows 486–624 and 635–780, separated by an 11 px band of no data |
+| 55–58 | 0.17 s | the void between them closes |
+| 58–76 | 0.79 s | one lobe, narrowing from 262 px to 218 px |
+| 76–95 | 0.79 s | one corridor, still |
+
+Over the same window the lower limb loses **20,200 lit pixels (−39%)** while the main band
+gains **22,200 (+29%)**, monotonically, frame by frame, with no step in it.
+
+So the answer is **yes, it reads** — and the finding is sharper than that:
+
+> **The 0.70 s eased correction occupies 0.96 s of screen time, but the moment two things
+> become one thing is four frames long. What four seconds actually buys is the 2.25 seconds
+> of established doubling in front of it.** At 24 frames the shot gave the eye thirteen
+> frames of "two" before the answer arrived, which is not enough time to have asked the
+> question. That is why it read as a pair of frames: it *was* a pair of frames.
+
+Two things I will not claim. The first is that the 2.25 s of setup is interesting to watch.
+The camera travels 1.20 m at 44 m altitude, the map stops growing after frame 12 because the
+scrub window sits at the end of the walk, and what is on screen for those two seconds is
+very close to a still. It is the weakest two seconds in the belief act, and it is weak for a
+fixable reason: the shot should be scrubbed to a window in which the machine is still laying
+returns, so the doubling is being *written* while the viewer reads it. The second is that I
+am a cold viewer. `LIDAR.md` §4's caveat is unchanged and it is the same caveat — the
+sequence should be put in front of someone who has not read this file.
+
+### 12.3 The drift accumulates and the fold is violent, and both are measurable
+
+**The drift (shot 21) accumulates.** Counting only the belief marks — pixels where blue
+leads red, so the truth layer is excluded — the cloud goes **243,048 → 335,284 (+38%)**
+across the 96 frames while the truth cave behind it does not move at all. At frame 0 the
+cyan post-shadows sit close to the brown timbers; by frame 95 the map has filled in and the
+offset between the two registers is legible without being pointed at. It is not a static
+smear: the smear is *being laid down* during the shot.
+
+Shot 19 is the stronger version of the same reading and always was — **133k → 321k lit
+pixels over five seconds (+141%)**, the far end still black at the end of it.
+
+**The fold (shot 26) reads as violence.** Frames 0–57 are still to within 500 changed pixels
+a frame. Then, over frames 58–79, **up to 59,377 pixels change between adjacent frames
+against about 200,000 lit** — nearly a third of everything drawn moves, every frame, for
+nearly a second — and the lit area grows 28% as one corridor becomes two limbs crossing at
+26°. It eases out by frame 79 and the last 0.67 s holds on the wreckage. Nothing about that
+needs a caption, which was §4's claim and is now a measurement rather than a claim.
+
+**Shot 20 is the one with nothing happening in it, deliberately.** Its belief time does not
+advance at all — one 0.62 s bake, seven revolutions, held — and the only motion in four
+seconds is a 0.29 m dolly, which moves 4.6% of the lit pixels by parallax. `TRAILER` §3 asks
+for *"Hold on the emptiness"*, so this is the shot doing what it was told; but it is now a
+four-second hold rather than a one-second one, and it is the other place a designer should
+look before this ships.
+
+### 12.4 The machine, in a register that cannot draw it
+
+`spikes/godot/machines/` is now mounted here — `./link.sh cloud`, a directory junction to
+the one physical copy, mounted at `res://machines/` like every other project — and
+`Hero.validate()` runs as **rule 0** inside `CloudRig.validate`, before any camera rule,
+exactly where the cave rig puts it. `validation.txt` opens with `Hero.banner()`, every shot
+prints its `Hero.describe`, and `Hero.audit` closes the file. Nothing is repaired.
+
+**Shot 18 declares the hero machine**, and the block is a **verbatim copy of the cave's
+`t17_follow_machine.machine`**, for the same reason the camera fields are: it is the same
+machine, on the same beat, at the same instant, and `Hero.BEATS` lists beat 18 with the note
+*"the belief cut: the SAME camera as 17, so the same machine"*. It passes.
+
+**And nothing draws it. That is not an omission, and the arithmetic says so:**
+
+> The sensor is bolted to the machine. Its head is at **0.90 m** (`LIDAR.md` §2, a guess);
+> the Surveyor's hull is 0.58 × 0.21 × 0.12 m riding at **0.32 m** (`Book.CHASSIS`), so the
+> top of the hull is 0.42 m and its farthest point from the sensor axis is 0.29 m. The
+> depression angle from the head to that corner is **58.9°**. The emitter array spans
+> **−30.0° … +12.0°**, and the steepest ring meets the floor 1.56 m out. **No ring in the
+> device can strike its own carrier**, and the 0.55 m minimum range is outside the hull
+> anyway. So the machine casts no return, and it casts no shadow either. A belief frame
+> containing it would be drawing something the sensor did not measure.
+
+What the machine *is* in this register is the origin of every ray in the frame. The other
+option — and it is a real one, not a consolation — is that the belief view should contain
+the machine's own **believed pose** as a mark: a scanner's map does hold "and I think I am
+here", and that mark drifting off the truth is the game's whole subject. That is an art
+proposal and it is not built. **It is the one thing I would put in front of the designer out
+of this pass**, because `TRAILER` §11.1 asks the trailer to follow one machine from its
+first frame to its last, and shot 18 is the frame where it disappears. The cave's shot 17
+now has the machine walking away in its own lamp pool; the belief cut has nothing where it
+was standing, and `align_17_18_095.png` is that stated as a picture.
+
+**The declaration is then proved, and it does not hold.** `--cinema=hero` resolves the
+cave's own machine anchors in this project and prints where this project's sensor actually
+is at the two ends of the scrub:
+
+```
+  the cave's anchors     from   47.95  -0.14   24.00   to   49.73  -0.14   23.47
+  this sensor, TRUE      from   47.16   0.73   23.76   to   48.65   0.74   24.00
+  residual in plan       head 826 mm    tail 1203 mm
+```
+
+Decomposed along the drive: **0.69 m behind and 0.46 m off the centreline at the head,
+1.19 m behind and 0.20 m off at the tail.** So the camera crosses the project boundary to
+five millimetres (§2.3) and **the machine it is following does not cross at all**. Three
+separate causes, worth keeping apart:
+
+1. **The walk speed.** `Book.CHASSIS` bakes the Surveyor's walk clip at **0.50 m/s**, and
+   the cave's shot walks 1.86 m in 4.0 s. This spike's bake walks at **0.40 m/s** and covers
+   1.51 m. `LIDAR.md` §10 guess 8 said *"nothing says a machine walks at 0.4 m/s"* — now
+   something does, and the guess is settled from outside this directory. Closing it is a
+   rebake at 0.50 m/s plus a re-tuned scrub window and recency knee, which changes a shot
+   the designer has already looked at, so I have not done it on my own authority.
+2. **The arc length.** This project resolves the cave's own two anchors **1.857 m apart**
+   where the cave resolves them 2.00 m apart — 7%, on identical topology, from two
+   implementations of `drive_at`.
+3. **The path.** The bake walks a polyline through station centres (`_build_path`); the
+   anchors resolve through `drive_at`. That is where the 0.46 m of cross-track comes from,
+   and no amount of re-timing removes it.
+
+All three are the same finding as §2.5, and they make its recommendation stronger rather
+than new: **the project that owns the truth register should export the pose, and now it
+should export two of them — the camera's and the machine's.** The cave already computes the
+hero's world transform every frame (`fleet.hero_pose`) and already writes `hero_boxes.json`.
+Twenty more lines there would make this residual zero by construction instead of measurable
+by me.
+
+`t19`, `t20`, `t21` and `t26` carry no machine block, and `Hero.BEATS` agrees — *"the belief
+register. The map, not the machine."* I did not give them `role: "none"` the way the cave
+gives its shots 16 and 20, and the reason is worth stating: in this register **there is
+always a machine**, because there is always something the sensor is bolted to. `role:
+"none"` here would be false. What is true is that only shot 18 cuts against a frame in which
+that machine is visible, so only shot 18 has continuity to enforce.
+
+### 12.5 The matched camera survived, and the log nearly broke it
+
+The cave has re-rendered shot 17 since the port — 24 frames became **96** — so the match was
+re-measured rather than assumed, over four times as many samples:
+
+| | recorded frames | RMS | worst |
+|---|---:|---:|---:|
+| shot 18 vs cave `t17_follow_machine` | 96 | **5 mm** | 9 mm |
+| shot 20 vs cave `t20_sensor_shadow` | 96 | **4 mm** | 7 mm |
+| shot 18, ground resolved locally | 96 | 166 mm | 268 mm |
+
+Identical to §2.3 to the millimetre. The camera fields in `shots_cinema.json` are still a
+byte-for-byte copy of the cave's, and the exported ground is still right: the cave's new
+track puts the camera at y 0.56 at the head and 0.28 at the tail against a declared `u` of
+0.42, which is the `ground_from: 0.14` / `ground_to: -0.14` already in the file.
+`match/align_17_18_{000,048,095}.png` and the `sbs_*` sheets are regenerated at the new
+frame indices; the old `_012` and `_023` overlays are deleted rather than left to be read as
+current.
+
+**But the first run of this returned RMS 7,764 mm, and that is the finding.** The cave's log
+now ends each shot with `    96 frames in 56.2 s = 0.59 s/frame`, a line it did not have
+before. `_cave_track` accepted any line starting with an integer and carrying seven fields,
+so it parsed that sentence as a 97th camera position at (0, 56.2, 0). **Nothing failed. The
+number was simply wrong, by three orders of magnitude**, and it would have been wrong in the
+same direction on any change to that file's formatting. It now requires every column of a
+frame line to be a number.
+
+That is **§9.3's staleness problem arriving through the log instead of through the shot
+file**, and it widens §9.3 rather than repeating it: the copied shot definition is one
+cross-project coupling, and the *recorded track's text format* is a second, undeclared one.
+Both disappear the moment the pose is exported as data rather than scraped out of a report.
+
+**And there is now a third coupling, which is worse than either.** `topology.gd` here is a
+verbatim copy of the cave's, and §2.1's whole argument rests on it: two integers make it the
+same cave *because the deterministic layer is the same file*. As of today it is not.
+`spikes/godot/cave/topology.gd` has **985 lines added and 78 removed** in the working tree —
+`docs/THE-ICE.md`'s levels and pitches, somebody else's live work — while this project holds
+the committed version, which is byte-identical to what the cave's own recorded track was
+made with (verified: both hash to `30e2e006…` once line endings are normalised, and the
+cave's working copy now hashes to `a07ce1c3…`). **Every measurement in this file is
+internally consistent and every one of them is against a cave that no longer exists in the
+tree.** Whether seed 7 over 240 cells still produces topology hash `0xad83e3ed` after that
+change has to be *checked* before the two projects are cut together again — the cave prints
+the hash on every run and so does this one, and if they disagree the belief cut is a
+different passage rendered from the same coordinates. §9.2 said the generator's *length* is
+part of a shot list's identity. It is the generator's *code*, and neither project asserts
+the other's.
+
+### 12.6 What I guessed in this pass
+
+1. **That 24 fps is the cut rate**, from `TRAILER` §11.3's own "72 to 120 frames a shot" and
+   the cave rig's `CUT_FPS`. §6's capture rule says 60. The two are reconciled in §12.1 and
+   the reconciliation is the cave's, not mine.
+2. **That the hero block belongs on shot 18 and on no other belief shot.** `Hero.BEATS` says
+   18 and says not 19/20/21/26; the judgement that a survey plan view of thirty metres of
+   corridor has no useful `at` for a 0.58 m machine is mine.
+3. **That copying the cave's `machine` block verbatim — `head`, `lamp` and all — is right**
+   even though this register has neither a head pose nor a lamp. The alternative is a
+   trimmed copy, and a trimmed copy is a copy that has already started to drift.
+4. **That the residual in §12.4 should be reported rather than tuned out.** Re-timing the
+   scrub window would close the along-track half and would also change a shot that has been
+   looked at; the cross-track half cannot be closed that way at all.
+5. **That the machine's absence from the belief frame is correct rather than a fault.** The
+   arithmetic in §12.4 is not a guess; the reading that this is what the shot should be,
+   against `TRAILER` §11.1's "follows ONE machine", is.
+
+### 12.7 What I would do next, and the first two are not new
+
+1. **Export the pose — both poses.** §2.5, now with the machine's transform beside the
+   camera's. It removes the exported ground, the copied shot definition, the log-scraping in
+   §12.5 and the whole of §12.4's residual in one change of about twenty lines in a file I
+   do not own.
+2. **Rebake shot 18 at 0.50 m/s** when somebody is re-tuning that shot anyway, and re-tune
+   `t_from`/`t_to` and `age_knee` with it. Not before: the three numbers move together.
+3. **Re-scrub `x19_fix_closes` to a window where the map is still being written**, so the
+   2.25 s in front of the correction is a shot rather than a hold. §12.2.
+4. **Get a ruling on the machine's own believed pose as a mark in the belief view.** §12.4.
+   It is the only mechanism found in this pass that would let the trailer keep following one
+   machine through the two shots where the machine is the camera.

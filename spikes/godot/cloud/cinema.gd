@@ -449,6 +449,17 @@ func validate(shot: Dictionary) -> Dictionary:
 	var fail: Array = []
 	var warn: Array = []
 	var nm: String = String(shot.get("name", "?"))
+
+	# 0 -- CONTINUITY, and it runs before any camera rule for the same reason
+	# the cave rig puts it first: TRAILER 11.1 says the loadout and the skin are
+	# part of the shot definition and are validated "in the same way the camera
+	# is". Hero lives in res://machines/, which is a junction to the shared
+	# machine layer, so this project and the cave are checking against ONE
+	# declaration rather than against two copies of a convention. Nothing here
+	# is ever repaired -- a validator that repairs its input teaches nobody
+	# anything, and that rule is the cave's and is inherited on purpose.
+	for h in Hero.validate(shot):
+		fail.append(h)
 	var ease: String = String(shot.get("ease", "inout"))
 	var lens: float = float(shot["lens_mm"])
 	var dur: float = float(shot["len_s"])

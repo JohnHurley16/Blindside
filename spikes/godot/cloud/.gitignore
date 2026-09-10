@@ -1,3 +1,6 @@
 data/*.mmbuf
 data/*.bin
 shots/_probe/
+# The machine layer is a JUNCTION to ../machines/machines -- one physical copy,
+# three res:// names. Tracked once, at its real home. See machines/link.sh.
+machines/

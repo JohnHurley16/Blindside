@@ -17,6 +17,16 @@ class_name CloudCinema
 const DIR := "res://shots/cinema/"
 const SETTLE: int = 6
 
+# TRAILER.md 11.3. A shot is its own length, and the length is in the shot.
+# Every sequence in this directory used to be 24 frames whatever `len_s` said,
+# which is one second at 24 fps -- so a 4 s push was rendered as a 4x speed-up
+# and the belief cut, which is the trailer's signature, flashed past. The rate
+# is the rate the frames are CUT at; `capfps` below is a different number and
+# stays 60, because that is the shutter the finished shot has and it is what
+# the motion-blur reprojection is computed against. Ported from the cave rig,
+# which fixed the same fault in the same words (cave_root.gd `_cin_seq`).
+const CUT_FPS: float = 24.0
+
 # The cave spike's generator parameters. These two integers ARE the camera
 # match: see cinema.gd and CINEMA.md 2.
 var cave_seed: int = 7
@@ -25,7 +35,7 @@ var cave_len: int = 240
 var mode: String = ""
 var fx: String = "keep"
 var only: String = ""
-var seqframes: int = 24
+var seqframes: int = 0        # 0 = derive from len_s at CUT_FPS; --seqframes= forces a count
 var capfps: float = 60.0
 
 var rig: CloudRig
@@ -107,6 +117,7 @@ func run(root) -> void:
 		"cost": await _cost()
 		"tune": await _tune()
 		"bloom": await _bloom()
+		"hero": await _hero()
 		_: print("cinema: unknown mode ", mode)
 
 
@@ -232,6 +243,7 @@ func _validate() -> void:
 	await r.get_tree().physics_frame
 	rig.ready_space(r)
 	say("=== BELIEF SHOT VALIDATION -- TRAILER.md 8, cinema.gd ===")
+	say(Hero.banner())
 	say("cave datum: seed %d, %d cells, %d stations, topology hash 0x%s" % [
 		cave_seed, cave_len, r.geo.topo.stations.size(),
 		String.num_int64(r.geo.topo.content_hash(), 16)])
@@ -270,6 +282,7 @@ func _validate() -> void:
 				st["travel"], st["vmax"], -float(st["in_cloud"])])
 		var far_s: String = "infinity" if float(dof[1]) > 1e6 else ("%.2f m" % float(dof[1]))
 		say("   depth of field: sharp %.2f m to %s (hyperfocal %.1f m)" % [dof[0], far_s, dof[2]])
+		say("   machine: %s" % Hero.describe(Hero.block(s)))
 		if s.has("_same_camera_as"):
 			say("   MATCHED to %s -- camera fields are a verbatim copy." % str(s["_same_camera_as"]))
 			say("   The cave rig's verdict governs a matched shot; this one agrees with it.")
@@ -292,6 +305,17 @@ func _validate() -> void:
 		if res["ok"]:
 			npass += 1
 	say("%d of %d shots execute; %d rejected." % [npass, shots.size(), shots.size() - npass])
+	say("")
+	# The check a single shot cannot make: every hero block in the file against
+	# the one declaration and against each other. In the assembly this is run
+	# over all three projects' shot files at once, which is the check TRAILER
+	# 11.1 actually asks for, since the drift it names is BETWEEN projects.
+	var au: Array[String] = Hero.audit(shots, "cloud")
+	if au.is_empty():
+		say("HERO AUDIT: every machine block in this file is the one machine.")
+	else:
+		for l in au:
+			say("HERO AUDIT: " + l)
 	flush("validation.txt")
 
 
@@ -313,12 +337,17 @@ func _seq() -> void:
 		_view(shot)
 		var dir: String = DIR + "seq/" + String(shot["name"]) + "/"
 		DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(dir))
-		say("=== %s  %.0f mm  %.1f s  %d frames  %d returns ===" % [shot["name"],
-			float(shot["lens_mm"]), float(shot["len_s"]), seqframes, r.n_pts])
+		var n: int = seqframes
+		if n <= 0:
+			n = maxi(24, int(round(float(shot.get("len_s", 1.0)) * CUT_FPS)))
+		var t_shot: int = Time.get_ticks_msec()
+		say("=== %s  %.0f mm  %.1f s  %d frames at %.0f fps  %d returns ===" % [shot["name"],
+			float(shot["lens_mm"]), float(shot["len_s"]), n, CUT_FPS, r.n_pts])
+		say("    machine: %s" % Hero.describe(Hero.block(shot)))
 		say("  frame     t_s      x       y       z    step_mm   focus_m   belief_t")
 		var prev: Vector3 = Vector3.ZERO
-		for i in range(seqframes):
-			var tn: float = float(i) / float(seqframes - 1)
+		for i in range(n):
+			var tn: float = float(i) / float(n - 1)
 			var ps: Dictionary = _pose(shot, tn, i)
 			await _grab(dir + "%03d.png" % i)
 			var p: Vector3 = ps["pos"]
@@ -327,6 +356,8 @@ func _seq() -> void:
 				i, tn * float(shot["len_s"]), p.x, p.y, p.z, step,
 				float(ps["focus"]), r.now])
 			prev = p
+		var el: float = float(Time.get_ticks_msec() - t_shot) / 1000.0
+		say("    %d frames in %.1f s = %.2f s/frame" % [n, el, el / float(n)])
 		say("")
 	flush("sequences.txt")
 
@@ -358,6 +389,20 @@ func _cave_track(shot_name: String) -> Array:
 			continue
 		var parts: PackedStringArray = l.split(" ", false)
 		if parts.size() < 7 or not parts[0].is_valid_int():
+			continue
+		# Every column of a frame line is a number. The cave's log now ends each
+		# shot with "    96 frames in 56.2 s = 0.59 s/frame", which also starts
+		# with an integer and also has more than seven fields -- it parsed as a
+		# 97th frame at (0, 56.2, 0) and took the residual from 5 mm to 7.8 m.
+		# That is TRAILER-side 9.3's staleness problem arriving through the LOG
+		# rather than through the shot file: the cave changed its own format for
+		# a good reason and nothing here failed, it just answered wrongly.
+		var ok: bool = true
+		for c in range(1, 7):
+			if not parts[c].is_valid_float():
+				ok = false
+				break
+		if not ok:
 			continue
 		out.append(Vector3(float(parts[2]), float(parts[3]), float(parts[4])))
 	return out
@@ -617,3 +662,78 @@ func _cost() -> void:
 	say("  everything   %6.2f ms" % all_ms)
 	fx_mask = BeliefGrade.parse(fx)
 	flush("cost.txt")
+
+
+# ---------------------------------------------------------------------------
+# 8. WHERE THE MACHINE IS, in a register that cannot draw it
+#
+# The belief cut is the same camera as the cave's shot 17, and shot 17 follows
+# THE machine from behind. Hero.BEATS says beat 18 must contain it. But the
+# belief register draws only what the sensor returned, and the sensor is bolted
+# to that machine: a scanner cannot see its own carrier, so there is no mark in
+# the frame that IS the machine. What the frame has instead is the machine's
+# consequence -- every ray in it starts there, the minimum-range hole is around
+# it, and the whole map is drawn from poses it believed it had.
+#
+# So the block is declared and nothing is drawn, and the declaration is then
+# PROVED the way the camera is: the cave says the machine walks from f 3.2 to
+# f 5.2 at station 68 over the take, and this rig can say where its sensor
+# actually was at the two ends of the scrub. If those two disagree, the cut has
+# the machine in two places and no picture will say so.
+# ---------------------------------------------------------------------------
+func _hero() -> void:
+	await r.get_tree().physics_frame
+	rig.ready_space(r)
+	say("=== THE MACHINE, ACROSS THE CUT ===")
+	say(Hero.banner())
+	say("")
+	say("The belief register draws no machine: a scanner cannot see the thing it")
+	say("is bolted to. What is checked here is that the sensor -- which IS the")
+	say("machine -- is where the cave's shot says the machine is at that moment.")
+	say("")
+	for shot in shots:
+		var m: Dictionary = Hero.block(shot)
+		if m.is_empty() or String(m.get("role", "")) != "hero":
+			continue
+		_ensure_scene(shot)
+		var at = m.get("at", null)
+		if not (at is Dictionary) or not (at as Dictionary).has("from"):
+			say("%s: hero `at` is a hold; nothing to travel" % String(shot["name"]))
+			continue
+		var a0: Vector3 = rig.resolve((at as Dictionary)["from"])
+		var a1: Vector3 = rig.resolve((at as Dictionary)["to"])
+		var ta: float = rig.scrub(shot, 0.0, r.t_end)
+		var tb: float = rig.scrub(shot, 1.0, r.t_end)
+		var pa: Array = r._true_pose(ta)
+		var pb: Array = r._true_pose(tb)
+		var ba: Array = r._bel_pose(ta)
+		var bb: Array = r._bel_pose(tb)
+		var sa: Vector3 = pa[0]
+		var sb: Vector3 = pb[0]
+		var dur2: float = float(shot.get("len_s", 4.0))
+		var clip: String = String(m.get("clip", "idle"))
+		var v_book: float = Book.speed(String(m.get("chassis", "surveyor")), clip)
+		say("--- %s   trailer %s   %s" % [String(shot["name"]),
+			str(shot.get("trailer", "-")), Hero.describe(m)])
+		say("  the cave's anchors     from %7.2f %6.2f %7.2f   to %7.2f %6.2f %7.2f" % [
+			a0.x, a0.y, a0.z, a1.x, a1.y, a1.z])
+		say("  this sensor, TRUE      from %7.2f %6.2f %7.2f   to %7.2f %6.2f %7.2f" % [
+			sa.x, sa.y, sa.z, sb.x, sb.y, sb.z])
+		say("  this sensor, BELIEVED  from %7.2f  ---  %7.2f   to %7.2f  ---  %7.2f" % [
+			float(ba[0].x), float(ba[0].z), float(bb[0].x), float(bb[0].z)])
+		var d0: Vector3 = Vector3(sa.x - a0.x, 0.0, sa.z - a0.z)
+		var d1: Vector3 = Vector3(sb.x - a1.x, 0.0, sb.z - a1.z)
+		say("  residual in plan       head %.0f mm    tail %.0f mm" % [
+			d0.length() * 1000.0, d1.length() * 1000.0])
+		say("  head height            sensor %.2f m above the floor (LIDAR 2's guess)" % 0.90)
+		var d_cave: float = a0.distance_to(a1)
+		var d_here: float = Vector3(sa.x, 0.0, sa.z).distance_to(Vector3(sb.x, 0.0, sb.z))
+		say("  travel over the take   cave %.2f m = %.2f m/s   here %.2f m = %.2f m/s" % [
+			d_cave, d_cave / maxf(dur2, 0.01), d_here, d_here / maxf(dur2, 0.01)])
+		say("  the '%s' clip is baked at %.2f m/s (Book.CHASSIS), and the bake walks at %.2f m/s" % [
+			clip, v_book, float((shot.get("cine", {}) as Dictionary).get("speed", 0.0))])
+		say("  drift at the cut       %.2f m" % Vector3(
+			float(bb[0].x) - sb.x, 0.0, float(bb[0].z) - sb.z).length())
+		say("  scrub window           %.2f s to %.2f s of a %.2f s run" % [ta, tb, r.t_end])
+		say("")
+	flush("hero.txt")

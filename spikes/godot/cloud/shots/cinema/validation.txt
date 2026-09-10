@@ -1,4 +1,5 @@
 === BELIEF SHOT VALIDATION -- TRAILER.md 8, cinema.gd ===
+HERO MACHINE: surveyor, default loadout, player skin, wear 0.35, damage 0.00  (bay 3 on the charge line)
 cave datum: seed 7, 240 cells, 351 stations, topology hash 0xad83e3ed
 body sphere 0.35 m, near clearance 0.40 m, query margin 0.05 m
 collision: the TRUTH geometry, and it is the same mesh the sensor raycasts.
@@ -11,6 +12,7 @@ t18_belief_cut             trailer 18   PASS   [world]
    35 mm (32.3 deg v)  T2.8  4.0s  ease inout  handheld 0.22 deg
    travel 1.67 m  peak 0.78 m/s  clearance 0.40 m  height 0.42-0.69 m (machine)
    depth of field: sharp 2.07 m to 2.86 m (hyperfocal 14.6 m)
+   machine: hero surveyor/default skin=player wear=0.35 dmg=0.00 clip=walk
    MATCHED to cave:t17_follow_machine -- camera fields are a verbatim copy.
    The cave rig's verdict governs a matched shot; this one agrees with it.
    WARN: height is the exported one: 0.42 m above the floor the CAVE rig found. Against this project's own floor the same camera runs 0.42-0.69 m, a disagreement of 0.27 m -- see CINEMA.md 2.
@@ -19,11 +21,13 @@ t19_cloud_building         trailer 19   PASS   [world]
    21 mm (51.5 deg v)  T2.8  5.0s  ease inout  handheld 0.20 deg
    travel 1.35 m  peak 0.51 m/s  clearance 0.40 m  height 1.49-1.52 m (eye)
    depth of field: sharp 3.17 m to 1000000.00 m (hyperfocal 5.3 m)
+   machine: no machine block -- the project's default placement
 
 t20_sensor_shadow          trailer 20   PASS   [world]
    35 mm (32.3 deg v)  T2.0  4.0s  ease inout  handheld 0.30 deg
    travel 0.29 m  peak 0.14 m/s  clearance 0.40 m  height 0.39-0.40 m (machine)
    depth of field: sharp 1.74 m to 2.09 m (hyperfocal 20.5 m)
+   machine: no machine block -- the project's default placement
    MATCHED to cave:t20_sensor_shadow -- camera fields are a verbatim copy.
    The cave rig's verdict governs a matched shot; this one agrees with it.
    WARN: height is the exported one: 0.40 m above the floor the CAVE rig found. Against this project's own floor the same camera runs 0.39-0.40 m, a disagreement of 0.00 m -- see CINEMA.md 2.
@@ -32,21 +36,25 @@ t21_two_registers          trailer 21   PASS   [world]
    21 mm (51.5 deg v)  T4.0  4.0s  ease inout  handheld 0.00 deg
    travel 0.76 m  peak 0.36 m/s  clearance 0.40 m  height 1.48-1.56 m (eye)
    depth of field: sharp 2.52 m to 1000000.00 m (hyperfocal 3.7 m)
+   machine: no machine block -- the project's default placement
 
 t26_the_fold               trailer 26   PASS   [survey]
    21 mm (51.5 deg v)  T4.0  4.0s  ease inout  handheld 0.00 deg
    travel 1.60 m  peak 0.75 m/s  no body; 31.87 m clear of the cloud's extent
    depth of field: sharp 3.34 m to 1000000.00 m (hyperfocal 3.7 m)
+   machine: no machine block -- the project's default placement
 
 x19_fix_closes             trailer      PASS   [survey]
    35 mm (32.3 deg v)  T4.0  4.0s  ease inout  handheld 0.00 deg
    travel 1.20 m  peak 0.56 m/s  no body; 39.86 m clear of the cloud's extent
    depth of field: sharp 8.29 m to 1000000.00 m (hyperfocal 10.2 m)
+   machine: no machine block -- the project's default placement
 
 xfail_through_the_wall     trailer      REJECTED   [world]
    21 mm (51.5 deg v)  T2.8  4.5s  ease inout  handheld 0.00 deg
    travel 2.28 m  peak 0.95 m/s  clearance 0.14 m  height 0.74-1.62 m (eye)
    depth of field: sharp 2.70 m to 1000000.00 m (hyperfocal 5.3 m)
+   machine: no machine block -- the project's default placement
    FAIL: body intersects geometry at t=0.34 (the 0.35 m sphere overlaps)
    FAIL: frustum clearance falls to 0.14 m at t=0.53 (needs 0.40)
    FAIL: height 'eye' wants 1.38-1.82 m; the move runs 0.74-1.62 m above the floor
@@ -58,12 +66,16 @@ xfail_survey_draws_truth   trailer      REJECTED   [survey]
    35 mm (32.3 deg v)  T4.0  4.0s  ease inout  handheld 0.00 deg
    travel 1.60 m  peak 0.75 m/s  no body; 31.87 m clear of the cloud's extent
    depth of field: sharp 7.97 m to 1000000.00 m (hyperfocal 10.2 m)
+   machine: no machine block -- the project's default placement
    FAIL: a survey camera has no body and may not draw truth: truth in frame means the camera claims a place it has not proved
 
 xfail_into_the_cloud       trailer      REJECTED   [survey]
    35 mm (32.3 deg v)  T4.0  4.0s  ease inout  handheld 0.00 deg
    travel 2.40 m  peak 1.12 m/s  no body; -1.53 m clear of the cloud's extent
    depth of field: sharp 3.58 m to 11.85 m (hyperfocal 10.2 m)
+   machine: no machine block -- the project's default placement
    FAIL: camera is 1.53 m inside the cloud's own extent at t=1.00: a survey camera may not enter its subject
 
 6 of 9 shots execute; 3 rejected.
+
+HERO AUDIT: every machine block in this file is the one machine.
