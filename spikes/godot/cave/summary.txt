@@ -2,11 +2,13 @@ adapter=NVIDIA GeForce RTX 3080 Laptop GPU
 seed=7 len_cells=240 length_m=144.0
 flags shadow=true fog=true props=true vis=true
 topology_hash=0xAD83E3ED
-gen_ms topo=3.84 dress=626.41 total=630.26
+topology_schema=v1 levels=1
+vertical_range_m=8.4 reach_down=2006 reach_up=2006 pitches=0
+gen_ms topo=7.07 dress=753.88 total=760.94
 chunks=49 shell_tris=113656 instances=19015 multimeshes=946
-fps mean=251.8 p50=218.0 p05=134.0 min=120.0
-gpu_ms p50=3.71 p95=6.36 max=7.78
-cpu_ms p50=5.15 p95=7.91 max=8.81
-draws p50=302 p95=415 max=447
-prims p50=224146 p95=289616 max=314360
+fps mean=149.6 p50=146.0 p05=110.0 min=96.0
+gpu_ms p50=4.26 p95=6.58 max=8.26
+cpu_ms p50=10.77 p95=13.22 max=14.51
+draws p50=306 p95=412 max=447
+prims p50=228412 p95=291308 max=314356
 vram_mb p50=188.7 max=188.7

@@ -29,6 +29,11 @@ var cfg := {
 	"pom": true, "scales": true, "water": true,
 	"cinema": "", "fx": "all", "shot": "", "seqframes": 0, "capfps": 60.0,
 	"stations": "",
+	# LEVELS. 1 is the flat cave this spike shipped with and it is the DEFAULT,
+	# because spikes/godot/cloud/ cuts its belief frames from these cameras and
+	# the current trailer was rendered against seed 7 / 240 / 1 levels. 2..4 is
+	# the layered cave of THE-ICE section 5. See VERTICAL.md.
+	"levels": 1,
 }
 
 var sub: SubViewport
@@ -112,6 +117,10 @@ func _parse_args() -> void:
 			cfg["stations"] = a.substr(11)
 		elif a.begins_with("--seqframes="):
 			cfg["seqframes"] = int(a.substr(12))
+		elif a.begins_with("--levels="):
+			cfg["levels"] = clampi(int(a.substr(9)), 1, 4)
+		elif a == "--vertical":
+			cfg["levels"] = 4
 
 func _stage(msg: String) -> void:
 	# stdout is fully buffered when Godot's output is redirected, so progress
@@ -208,7 +217,7 @@ func _ready() -> void:
 	# --- generate ---------------------------------------------------------
 	var t0: int = Time.get_ticks_usec()
 	topo = CaveTopology.new()
-	topo.generate(cfg["seed"], cfg["len"])
+	topo.generate(cfg["seed"], cfg["len"], cfg["levels"])
 	var t1: int = Time.get_ticks_usec()
 	_stage("topology done")
 	dress = CaveDressing.new()
@@ -230,12 +239,14 @@ func _ready() -> void:
 	# switch reported parallax as FREE and three normal scales as a saving,
 	# which is what sent me looking.
 	if not cfg["pom"]:
-		dress.mat_rock.set_shader_parameter("pom_far", 0.001)
+		dress.set_rock_param("pom_far", 0.001)
 	if not cfg["scales"]:
-		dress.mat_rock.set_shader_parameter("bump_gain", 0.0)
-		dress.mat_rock.set_shader_parameter("detail_far", 0.001)
-		dress.mat_rock.set_shader_parameter("micro_far", 0.001)
-		dress.mat_rock.set_shader_parameter("floor_bump_far", 0.001)
+		dress.set_rock_param("bump_gain", 0.0)
+		dress.set_rock_param("detail_far", 0.001)
+		dress.set_rock_param("micro_far", 0.001)
+		dress.set_rock_param("floor_bump_far", 0.001)
+		dress.set_ice_param("bump_gain", 0.0)
+		dress.set_ice_param("detail_far", 0.001)
 		dress.mat_stone.set_shader_parameter("detail_far", 0.001)
 		dress.mat_stone.set_shader_parameter("micro_far", 0.001)
 	if not cfg["water"]:
@@ -281,6 +292,27 @@ func _ready() -> void:
 		ol.distance_fade_length = 4.0
 		world_root.add_child(ol)
 		nlit += 1
+
+	# --- DAYLIGHT DOWN THE COLLAR -----------------------------------------
+	# ART-DIRECTION 2.1's fifth row, added by THE-ICE 2.7: "the sky ... the
+	# same light as the shaft's, and the shaft's row becomes the last of it."
+	# It is 12000 K, it reaches about three metres, and then it stops. This is
+	# the only light in the cave that is not carried or dropped.
+	if topo.levels > 1 and topo.pitches.size() > 0:
+		var cpr: PackedInt32Array = topo.pitch(0)
+		if (cpr[CaveTopology.P_FLAGS] & CaveTopology.PF_DAYLIGHT) != 0:
+			var sky := OmniLight3D.new()
+			sky.position = Vector3(float(cpr[CaveTopology.P_X]) * 0.6,
+				float(cpr[CaveTopology.P_TOP_MM]) * 0.001 + 1.4,
+				float(cpr[CaveTopology.P_Y]) * 0.6)
+			sky.light_color = Color(0.60, 0.74, 1.00)
+			sky.light_energy = 19.0
+			sky.omni_range = 15.0
+			sky.omni_attenuation = 2.6
+			sky.shadow_enabled = false
+			world_root.add_child(sky)
+			print("daylight         : collar at %s, 12000 K, range %.1f m" % [
+				str(sky.position.round()), sky.omni_range])
 
 	# --- the camera and the one lamp --------------------------------------
 	cam = Camera3D.new()
@@ -343,10 +375,60 @@ func _ready() -> void:
 	print("=== BLINDSIDE cave spike ===")
 	print("adapter          : %s (%s)" % [adapter, RenderingServer.get_video_adapter_vendor()])
 	print("seed             : %d   stretch %d cells = %.1f m" % [cfg["seed"], cfg["len"], float(cfg["len"]) * 0.6])
+	# BOTH HASHES, EVERY RUN. The flat cave is regenerated from scratch and its
+	# hash printed beside the built one, so a machine can tell the two schemas
+	# apart and can see that the flat path still produces what it always did.
+	# spikes/godot/cloud/ matches its belief frames to THIS cave's cameras.
+	var v1 := CaveTopology.new()
+	v1.generate(cfg["seed"], cfg["len"], 1)
+	var v1h: int = v1.content_hash()
+	print("topology schema  : v%d  (%d level%s)" % [
+		topo.schema_version(), topo.levels, "" if topo.levels == 1 else "s"])
 	print("topology hash    : 0x%08X" % topo.content_hash())
+	print("topology hash v1 : 0x%08X   (flat path, same seed and length)" % v1h)
+	if cfg["seed"] == 7 and cfg["len"] == 240:
+		print("v1 regression    : %s   (recorded 0x%08X)" % [
+			"PASS" if v1h == CaveTopology.V1_SEED7_LEN240_HASH else "FAIL",
+			CaveTopology.V1_SEED7_LEN240_HASH])
 	print("open cells       : %d of %d" % [topo.open_cells(), topo.grid_state.size()])
 	print("stations         : %d   edges %d   chambers %d   junctions %d" % [
-		topo.stations.size(), topo.edges.size(), topo.chambers.size() / 5, topo.junctions.size()])
+		topo.stations.size(), topo.edges.size(), topo.chambers.size() / CaveTopology.CH_ROW,
+		topo.junctions.size()])
+	print("vertical range   : %.1f m   datum %.1f m   melt front %.1f m" % [
+		float(topo.vertical_range_mm()) * 0.001, float(topo.datum_mm) * 0.001,
+		float(topo.melt_mm) * 0.001])
+	print("connectivity     : reachable %d of %d open cells   RETURNABLE %d (%.1f%%)" % [
+		topo.reach_down, topo.open_cells(), topo.reach_up,
+		100.0 * float(topo.reach_up) / float(maxi(1, topo.open_cells()))])
+	print("ceiling invariant: %d violations" % topo.ceil_violations)
+	if topo.pitches.size() > 0:
+		print("pitches          : %d" % topo.pitches.size())
+		for pi in range(topo.pitches.size()):
+			var prw: PackedInt32Array = topo.pitch(pi)
+			print("  %-9s L%d->L%d  drop %6.1f m  bore %4.2f m  %-8s %-8s down=%s up=%s flow=%d" % [
+				CaveTopology.PK_NAME[prw[CaveTopology.P_KIND]],
+				prw[CaveTopology.P_FROM_LEVEL], prw[CaveTopology.P_TO_LEVEL],
+				float(prw[CaveTopology.P_DROP_MM]) * 0.001,
+				float(prw[CaveTopology.P_BORE_MM]) * 0.001,
+				CaveTopology.CL_NAME[prw[CaveTopology.P_CLIMB]],
+				CaveTopology.MED_NAME[prw[CaveTopology.P_MEDIUM]],
+				"Y" if (prw[CaveTopology.P_FLAGS] & CaveTopology.PF_DOWN) != 0 else "n",
+				"Y" if (prw[CaveTopology.P_FLAGS] & CaveTopology.PF_UP) != 0 else "n",
+				prw[CaveTopology.P_FLOW]])
+		var medn := PackedInt32Array([0, 0, 0, 0])
+		for i in range(topo.stations.size()):
+			medn[(topo.stations[i] as PackedInt32Array)[CaveTopology.S_MEDIUM]] += 1
+		print("media            : rock %d  worked %d  ice %d  ice-over-rock %d" % [
+			medn[0], medn[1], medn[2], medn[3]])
+		for L in range(topo.levels):
+			var nst: int = 0
+			for i in range(topo.stations.size()):
+				if (topo.stations[i] as PackedInt32Array)[CaveTopology.S_LEVEL] == L:
+					nst += 1
+			print("  level %d        : datum %7.1f m  band %d  %3d stations  water %s" % [
+				L, float(CaveTopology.LEVEL_DATUM_MM[L]) * 0.001,
+				topo.band_of(int(CaveTopology.LEVEL_DATUM_MM[L])), nst,
+				("%.1f m" % (float(topo.level_water_mm[L]) * 0.001)) if topo.level_water_mm[L] > -1000000 else "dry"])
 	print("gen topology ms  : %.2f" % gen_ms_topo)
 	print("gen dressing ms  : %.2f" % gen_ms_dress)
 	print("gen total ms     : %.2f" % gen_ms_total)
@@ -456,7 +538,7 @@ func _build_shot_list() -> void:
 		return func(s: PackedInt32Array) -> bool: return (s[CaveTopology.S_WORKS] & bit) != 0
 	var i_rail: int = _straight(0.30, 12, CaveTopology.WC_PASSAGE)
 	var i_dense: int = _straight(0.50, 14, CaveTopology.WC_PASSAGE)
-	var i_cham: int = topo.chambers[1 * 5 + 4] if topo.chambers.size() >= 10 else int(ids.size() * 0.4)
+	var i_cham: int = topo.chambers[1 * CaveTopology.CH_ROW + CaveTopology.CH_SID] if topo.chambers.size() >= 2 * CaveTopology.CH_ROW else int(ids.size() * 0.4)
 	var i_plant: int = _find(func(s): return (s[CaveTopology.S_WORKS] & CaveTopology.WK_PLANT) != 0, 0.6)
 	var i_flood: int = _find(func(s): return s[CaveTopology.S_STATE] == CaveTopology.FLOODED, 0.4)
 	var i_junc: int = topo.junctions[mini(2, topo.junctions.size() - 1)] if topo.junctions.size() > 0 else int(ids.size() * 0.3)
@@ -485,6 +567,9 @@ func _build_shot_list() -> void:
 	# a station carrying BOTH a timber set and a bolt line, so the iron-against-
 	# rock frame is guaranteed rather than hoped for
 	var i_iron: int = _find(func(s): return (s[CaveTopology.S_WORKS] & CaveTopology.WK_SETS) != 0 		and (s[CaveTopology.S_WORKS] & CaveTopology.WK_BOLTLINE) != 0 		and (s[CaveTopology.S_WORKS] & CaveTopology.WK_PIPE) != 0, 0.45)
+	if String(cfg["shotset"]) == "vertical":
+		shot_list = _build_vertical_shots()
+		return
 	if String(cfg["shotset"]) == "photoreal":
 		# The photoreal pair set. Format is deliberately different from the
 		# legacy one so a pose is an ABSOLUTE eye height, yaw offset and pitch
@@ -507,6 +592,12 @@ func _build_shot_list() -> void:
 		]
 
 func _pose_for(shot: Array) -> Array:
+	# VW: an absolute world pose. The vertical frames are posed against the
+	# topology's own geometry (a pitch axis, a chamber floor) rather than
+	# against a station index on one drive, because there is no longer one
+	# drive.
+	if shot.size() == 6 and typeof(shot[5]) == TYPE_STRING:
+		return [shot[1], float(shot[2]), float(shot[3]), float(shot[4])]
 	var ids: PackedInt32Array = topo.edges[0]
 	var idx: int = clampi(shot[1], 1, dress.path_points.size() - 2)
 	if shot.size() == 7 and typeof(shot[6]) == TYPE_STRING:
@@ -537,6 +628,354 @@ func _pose_for(shot: Array) -> Array:
 	var yaw: float = atan2(-dir.x, -dir.z) + float(shot[4])
 	var pitch: float = asin(clampf(dir.y, -1.0, 1.0)) + float(shot[5])
 	return [p, yaw, pitch, float(shot[6])]
+
+# ===========================================================================
+# THE VERTICAL SHOT SET -- posed against the topology, not against one drive
+# ===========================================================================
+func _look_pose(nm: String, from: Vector3, to: Vector3, fov: float) -> Array:
+	var d: Vector3 = to - from
+	if d.length() < 0.0001:
+		d = Vector3(0, 0, -1)
+	d = d.normalized()
+	return [nm, from, atan2(-d.x, -d.z), asin(clampf(d.y, -1.0, 1.0)), fov, "VW"]
+
+func _main_pitch(from_level: int) -> int:
+	for pi in range(topo.pitches.size()):
+		var pr: PackedInt32Array = topo.pitch(pi)
+		if (pr[CaveTopology.P_FLAGS] & CaveTopology.PF_MAIN) == 0:
+			continue
+		if pr[CaveTopology.P_KIND] == CaveTopology.PK_COLLAR:
+			continue
+		if pr[CaveTopology.P_FROM_LEVEL] == from_level:
+			return pi
+	return -1
+
+func _pitch_t_at_y(pi: int, y: float) -> float:
+	var pr: PackedInt32Array = topo.pitch(pi)
+	var top: float = float(pr[CaveTopology.P_TOP_MM]) * 0.001
+	var bot: float = float(_st_of(pr[CaveTopology.P_TO_ST])[CaveTopology.S_CEIL_MM]) * 0.001
+	if absf(top - bot) < 0.01:
+		return 0.5
+	return clampf((top - y) / (top - bot), 0.0, 1.0)
+
+func _st_of(sid: int) -> PackedInt32Array:
+	return topo.stations[sid]
+
+# A CAMERA MUST STAND ON THE DRIVE CENTRELINE. The chamber dome is a 5-7 m
+# hemisphere and the swept passage is a 2.9 m tube running THROUGH it, so
+# anywhere off the centreline by more than the tube's half width is inside the
+# tube's wall and the frame is a grey slab. That is cave/NOTES.md 7's
+# "chamber interpenetration" weakness, met head-on by a vertical camera.
+func _on_drive(level: int, sid: int, back: int, eye: float) -> Vector3:
+	var ids: PackedInt32Array = topo.edges[topo.level_main_edge[level]]
+	var at: int = 0
+	for i in range(ids.size()):
+		if ids[i] == sid:
+			at = i
+			break
+	var j: int = clampi(at + back, 0, ids.size() - 1)
+	return dress._st_pos(ids[j]) + Vector3.UP * eye
+
+# the drawn radius of the chamber at this station
+func _chamber_r_of(sid: int) -> float:
+	var n: int = topo.chambers.size() / CaveTopology.CH_ROW
+	for ci in range(n):
+		if topo.chambers[ci * CaveTopology.CH_ROW + CaveTopology.CH_SID] == sid:
+			return float(topo.chambers[ci * CaveTopology.CH_ROW + CaveTopology.CH_R]) * 0.6 + 1.6
+	return 4.0
+
+# a station on `level` whose medium is `med` (or any if med < 0), taken at
+# `frac` along that level's main drive and searched forward from there
+func _level_station(level: int, med: int, frac: float, min_w: int) -> int:
+	if level >= topo.level_main_edge.size():
+		return -1
+	var ids: PackedInt32Array = topo.edges[topo.level_main_edge[level]]
+	var start: int = clampi(int(float(ids.size()) * frac), 1, ids.size() - 8)
+	for k in range(ids.size() - 8):
+		var i: int = (start + k) % (ids.size() - 8)
+		var st: PackedInt32Array = topo.stations[ids[i]]
+		if st[CaveTopology.S_WIDTH] < min_w:
+			continue
+		# never stand in a chamber, at a junction, or at the mouth of a pitch:
+		# the section flares over one station there and the frame is a wall
+		if st[CaveTopology.S_KIND] != CaveTopology.K_DRIVE:
+			continue
+		if st[CaveTopology.S_PITCH_HEAD] >= 0 or st[CaveTopology.S_PITCH_FOOT] >= 0:
+			continue
+		var clear: bool = true
+		for k2 in range(-4, 5):
+			var jj: int = clampi(i + k2, 0, ids.size() - 1)
+			if topo.stations[ids[jj]][CaveTopology.S_KIND] == CaveTopology.K_CHAMBER:
+				clear = false
+		if not clear:
+			continue
+		if med >= 0 and st[CaveTopology.S_MEDIUM] != med:
+			continue
+		return i
+	return clampi(start, 1, ids.size() - 8)
+
+func _drive_pose(nm: String, level: int, med: int, frac: float, eye: float,
+				 ahead: int, fov: float, dp: float) -> Array:
+	var ids: PackedInt32Array = topo.edges[topo.level_main_edge[level]]
+	var i: int = _level_station(level, med, frac, CaveTopology.WC_NARROW)
+	var a: Vector3 = dress._st_pos(ids[i]) + Vector3.UP * eye
+	var j: int = clampi(i + ahead, 0, ids.size() - 1)
+	var b: Vector3 = dress._st_pos(ids[j]) + Vector3.UP * (eye * 0.9 + dp)
+	return _look_pose(nm, a, b, fov)
+
+func _build_vertical_shots() -> Array:
+	var out: Array = []
+	var p0: int = _main_pitch(0)
+	var p1: int = _main_pitch(1)
+	var p2: int = _main_pitch(2)
+	var ice_base: float = float(CaveTopology.BAND_ICE_BASE_MM) * 0.001
+	var melt: float = float(topo.melt_mm) * 0.001
+	# 0 -- the collar, from underneath. The only daylight in the game, three
+	# metres of it, seen from the bottom of the hole it comes down.
+	if topo.pitches.size() > 0:
+		var c0: PackedInt32Array = topo.pitch(0)
+		var cf: Vector3 = dress._st_pos(c0[CaveTopology.P_TO_ST])
+		out.append(_look_pose("v0_collar_daylight",
+			cf + Vector3(1.4, 1.15, 0.9), dress.pitch_axis(0, 0.0) + Vector3.UP * 2.5, 64.0))
+	# 1 -- looking DOWN the moulin from the lip. The frame the whole task is
+	# about: a hole in the floor with nothing at the bottom of it.
+	if p0 >= 0:
+		var b0: float = float(topo.pitch(p0)[CaveTopology.P_BORE_MM]) * 0.001
+		var lip: Vector3 = dress.pitch_axis(p0, 0.0)
+		out.append(_look_pose("v1_down_the_shaft",
+			_on_drive(0, topo.pitch(p0)[CaveTopology.P_FROM_ST], -5, 1.30),
+			dress.pitch_axis(p0, 0.55), 60.0))
+		# 2 -- looking UP it from the bottom, with the beacon chain receding
+		# stand UNDER the hole, not beside it: the drive's own crown occludes a
+		# ceiling opening from anywhere more than a couple of metres away, which
+		# is itself the point -- a machine standing in a chamber cannot see the
+		# shaft that dropped into it unless it is directly beneath it.
+		out.append(_look_pose("v2_up_from_the_bottom",
+			dress._st_pos(topo.pitch(p0)[CaveTopology.P_TO_ST]) + Vector3(0.35, 0.80, 0.20),
+			dress.pitch_axis(p0, 0.03), 70.0))
+		# 4 -- the meltwater, inside the bore
+		var t4: float = 0.30
+		var h0: float = float(topo.pitch(p0)[CaveTopology.P_DROP_MM]) * 0.001
+		var ang: float = 0.9 + t4 * h0 * 0.26
+		out.append(_look_pose("v4_moulin_meltwater",
+			dress.pitch_axis(p0, t4 - 0.16) - Vector3(cos(ang), 0.0, sin(ang)) * (b0 * 0.20),
+			dress.pitch_axis(p0, t4 + 0.16) + Vector3(cos(ang), 0.0, sin(ang)) * (b0 * 0.46), 62.0))
+		# 5 -- the ice-to-rock transition, which happens inside this shaft
+		var t5: float = _pitch_t_at_y(p0, ice_base)
+		if t5 > 0.06 and t5 < 0.94:
+			out.append(_look_pose("v5_ice_to_rock",
+				dress.pitch_axis(p0, maxf(0.03, t5 - 0.20)),
+				dress.pitch_axis(p0, minf(0.97, t5 + 0.26)), 56.0))
+	# 3 -- a chamber with another chamber above it, through the hole in the back
+	if p1 >= 0:
+		out.append(_look_pose("v3_chamber_below_chamber",
+			dress._st_pos(topo.pitch(p1)[CaveTopology.P_TO_ST]) + Vector3(1.9, 1.10, 1.1),
+			dress.pitch_axis(p1, 0.06), 74.0))
+	# 6 -- the ice band. A meltwater conduit in dead ice, at walking height.
+	out.append(_drive_pose("v6_ice_band", 0, CaveTopology.MED_ICE, 0.34, 1.05, 7, 52.0, 0.0))
+	# 7 -- the melt front, crossed inside the deepest winze. Nothing marks it.
+	if p2 >= 0:
+		var t7: float = _pitch_t_at_y(p2, melt)
+		if t7 > 0.05 and t7 < 0.95:
+			out.append(_look_pose("v7_melt_front",
+				dress.pitch_axis(p2, maxf(0.03, t7 - 0.22)),
+				dress.pitch_axis(p2, minf(0.97, t7 + 0.30)), 56.0))
+	# 8 -- past the front. Dry, silent, and older than everything above it.
+	if topo.levels >= 4:
+		out.append(_drive_pose("v8_below_the_melt_front", 3, -1, 0.55, 1.20, 5, 56.0, 0.20))
+	# 9 -- the workings, for the comparison. Same cave, three media.
+	out.append(_drive_pose("v9_the_workings", mini(2, topo.levels - 1), -1, 0.45, 1.15, 6, 52.0, 0.10))
+	return out
+
+# ===========================================================================
+# THE SECTION. ART-DIRECTION 3.6: "the wide shot in Blindside is a schematic."
+# A vertical cave has no wide shot that is a photograph -- there is no place to
+# stand that sees two levels at once -- so the frame that makes the structure
+# legible is drawn from the plan rather than lit. Everything below comes out of
+# `topology.gd` and nothing out of `dressing.gd`.
+# ===========================================================================
+const SEC_MED_COL: Array = [
+	Color(0.40, 0.31, 0.22),   # rock
+	Color(0.80, 0.57, 0.30),   # worked
+	Color(0.82, 0.85, 0.87),   # ice
+	Color(0.58, 0.57, 0.53),   # ice over rock
+]
+const SEC_CLIMB_COL: Array = [
+	Color(0.90, 0.90, 0.84),   # walk
+	Color(0.96, 0.76, 0.34),   # scramble  -- you can get back up
+	Color(0.95, 0.44, 0.16),   # pitch     -- down only
+	Color(0.74, 0.17, 0.13),   # vertical  -- neither
+]
+
+func _sec_quad(v: PackedVector3Array, c: PackedColorArray, idx: PackedInt32Array,
+			   a: Vector3, b: Vector3, w: float, col: Color) -> void:
+	var d: Vector3 = b - a
+	if d.length() < 0.0001:
+		return
+	d = d.normalized()
+	var nrm := Vector3(-d.y, d.x, 0.0) * (w * 0.5)
+	var base: int = v.size()
+	v.push_back(a - nrm)
+	v.push_back(a + nrm)
+	v.push_back(b - nrm)
+	v.push_back(b + nrm)
+	for i in range(4):
+		c.push_back(col)
+	idx.push_back(base); idx.push_back(base + 1); idx.push_back(base + 2)
+	idx.push_back(base + 2); idx.push_back(base + 1); idx.push_back(base + 3)
+
+func _shot_section() -> void:
+	var v := PackedVector3Array()
+	var c := PackedColorArray()
+	var idx := PackedInt32Array()
+	var minx: float = 1e9
+	var maxx: float = -1e9
+	var miny: float = 1e9
+	var maxy: float = -1e9
+	# the drives, drawn at their real section height
+	for e in range(topo.edges.size()):
+		var ids: PackedInt32Array = topo.edges[e]
+		var main: bool = false
+		for L in range(topo.level_main_edge.size()):
+			if topo.level_main_edge[L] == e:
+				main = true
+		for i in range(ids.size() - 1):
+			var a: PackedInt32Array = topo.stations[ids[i]]
+			var b: PackedInt32Array = topo.stations[ids[i + 1]]
+			var ax: float = float(a[CaveTopology.S_X]) * 0.6
+			var bx: float = float(b[CaveTopology.S_X]) * 0.6
+			var ay: float = float(a[CaveTopology.S_FLOOR_MM]) * 0.001
+			var by: float = float(b[CaveTopology.S_FLOOR_MM]) * 0.001
+			var ah: float = float(a[CaveTopology.S_CEIL_MM] - a[CaveTopology.S_FLOOR_MM]) * 0.001
+			var bh: float = float(b[CaveTopology.S_CEIL_MM] - b[CaveTopology.S_FLOOR_MM]) * 0.001
+			var col: Color = SEC_MED_COL[a[CaveTopology.S_MEDIUM]]
+			if not main:
+				col = col.darkened(0.45)
+			_sec_quad(v, c, idx, Vector3(ax, ay + ah * 0.5, 0), Vector3(bx, by + bh * 0.5, 0),
+				maxf(0.55, (ah + bh) * 0.5), col)
+			minx = minf(minx, ax); maxx = maxf(maxx, ax)
+			miny = minf(miny, ay); maxy = maxf(maxy, ay + ah)
+	# the pitches, coloured by whether a machine can come back up them
+	for pi in range(topo.pitches.size()):
+		var pr: PackedInt32Array = topo.pitch(pi)
+		var px: float = float(pr[CaveTopology.P_X]) * 0.6
+		var qx: float = float(pr[CaveTopology.P_TO_X]) * 0.6
+		var ty: float = float(pr[CaveTopology.P_TOP_MM]) * 0.001
+		var by2: float = float(pr[CaveTopology.P_BOT_MM]) * 0.001
+		var bore: float = float(pr[CaveTopology.P_BORE_MM]) * 0.001
+		_sec_quad(v, c, idx, Vector3(px, ty, 0), Vector3(qx, by2, 0),
+			maxf(0.5, bore), SEC_CLIMB_COL[pr[CaveTopology.P_CLIMB]])
+		miny = minf(miny, by2); maxy = maxf(maxy, ty)
+		minx = minf(minx, minf(px, qx)); maxx = maxf(maxx, maxf(px, qx))
+	# the datum, the three band boundaries, the water surfaces and the front
+	var x0: float = minx - 6.0
+	var x1: float = maxx + 6.0
+	_sec_quad(v, c, idx, Vector3(x0, 0.0, -0.4), Vector3(x1, 0.0, -0.4), 0.45,
+		Color(0.52, 0.52, 0.52))
+	for bmm in [CaveTopology.BAND_ICE_BASE_MM, CaveTopology.BAND_KARST_BASE_MM,
+				CaveTopology.BAND_WORK_BASE_MM]:
+		var by3: float = float(bmm) * 0.001
+		var xx: float = x0
+		while xx < x1:
+			_sec_quad(v, c, idx, Vector3(xx, by3, -0.4), Vector3(xx + 1.6, by3, -0.4), 0.22,
+				Color(0.34, 0.31, 0.27))
+			xx += 3.2
+	for L in range(topo.levels):
+		if topo.level_water_mm[L] > -1000000:
+			var wy: float = float(topo.level_water_mm[L]) * 0.001
+			_sec_quad(v, c, idx, Vector3(x0, wy, -0.2), Vector3(x1, wy, -0.2), 0.30,
+				Color(0.30, 0.44, 0.52))
+	var my: float = float(topo.melt_mm) * 0.001
+	var mx: float = x0
+	while mx < x1:
+		_sec_quad(v, c, idx, Vector3(mx, my, -0.1), Vector3(mx + 2.6, my, -0.1), 0.40,
+			Color(0.62, 0.58, 0.46))
+		mx += 4.4
+	var am := ArrayMesh.new()
+	var arr := []
+	arr.resize(Mesh.ARRAY_MAX)
+	arr[Mesh.ARRAY_VERTEX] = v
+	arr[Mesh.ARRAY_COLOR] = c
+	arr[Mesh.ARRAY_INDEX] = idx
+	am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	var smat := StandardMaterial3D.new()
+	smat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	smat.vertex_color_use_as_albedo = true
+	smat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	am.surface_set_material(0, smat)
+	var mi := MeshInstance3D.new()
+	mi.mesh = am
+	world_root.add_child(mi)
+	# frame it
+	var cx: float = (minx + maxx) * 0.5
+	var cy: float = (miny + maxy) * 0.5
+	var hgt: float = (maxy - miny) * 1.12
+	var wid: float = (maxx - minx) * 1.04
+	var sc := Camera3D.new()
+	sc.projection = Camera3D.PROJECTION_ORTHOGONAL
+	sc.size = maxf(hgt, wid / 1.7778) * 1.30
+	sc.near = 0.05
+	sc.far = 400.0
+	sc.position = Vector3(cx - sc.size * 1.7778 * 0.145, cy, 120.0)
+	sub.add_child(sc)
+	sc.current = true
+	var fog_was: bool = envr.volumetric_fog_enabled
+	envr.volumetric_fog_enabled = false
+	var glow_was: bool = envr.glow_enabled
+	envr.glow_enabled = false
+	geo_root.visible = false
+	# the legend sits in the black below the workings, on a panel, because the
+	# drives run the full width of the frame and text over them is unreadable
+	var panel := ColorRect.new()
+	panel.color = Color(0, 0, 0, 0.62)
+	panel.position = Vector2(10, 10)
+	panel.size = Vector2(452, 1058)
+	sub.add_child(panel)
+	var legend := Label.new()
+	legend.position = Vector2(22, 22)
+	legend.add_theme_font_size_override("font_size", 15)
+	legend.add_theme_color_override("font_color", Color(0.86, 0.85, 0.82))
+	legend.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+	legend.add_theme_constant_override("outline_size", 6)
+	var txt: String = "SECTION\nseed %d   %d levels\n%.1f m of vertical range\n\n" % [
+		cfg["seed"], topo.levels, float(topo.vertical_range_mm()) * 0.001]
+	txt += "datum 0 m = the valley floor\n"
+	txt += "bands\n  ice      0 .. %.0f\n  karst      .. %.0f\n  workings   .. %.0f\n  deep     below\n" % [
+		float(CaveTopology.BAND_ICE_BASE_MM) * 0.001,
+		float(CaveTopology.BAND_KARST_BASE_MM) * 0.001,
+		float(CaveTopology.BAND_WORK_BASE_MM) * 0.001]
+	txt += "\nmelt front %.0f m\n  above it the water has arrived,\n  below it nothing has run\n" % my
+	txt += "\nmedium  rock / worked / ice / ice-over-rock\n"
+	txt += "pitch   walk / scramble (up ok)\n        PITCH (down only) / VERTICAL (neither)\n"
+	for pi in range(topo.pitches.size()):
+		var pr2: PackedInt32Array = topo.pitch(pi)
+		txt += "  %-8s %5.1f m  %.2f  %-8s  dn %s up %s\n" % [
+			CaveTopology.PK_NAME[pr2[CaveTopology.P_KIND]],
+			float(pr2[CaveTopology.P_DROP_MM]) * 0.001,
+			float(pr2[CaveTopology.P_BORE_MM]) * 0.001,
+			CaveTopology.CL_NAME[pr2[CaveTopology.P_CLIMB]],
+			"Y" if (pr2[CaveTopology.P_FLAGS] & CaveTopology.PF_DOWN) != 0 else "n",
+			"Y" if (pr2[CaveTopology.P_FLAGS] & CaveTopology.PF_UP) != 0 else "n"]
+	txt += "\nreachable      %d of %d open cells\nable to return %d  (%.0f%%)" % [
+		topo.reach_down, topo.open_cells(), topo.reach_up,
+		100.0 * float(topo.reach_up) / float(maxi(1, topo.open_cells()))]
+	legend.text = txt
+	sub.add_child(legend)
+	for k in range(SETTLE):
+		await RenderingServer.frame_post_draw
+	var img: Image = sub.get_texture().get_image()
+	img.save_png(ProjectSettings.globalize_path(shot_dir + "v10_section.png"))
+	print("shot %-22s  %dx%d  ortho size %.1f m" % ["v10_section", img.get_width(),
+		img.get_height(), sc.size])
+	legend.queue_free()
+	panel.queue_free()
+	sc.current = false
+	sc.queue_free()
+	cam.current = true
+	geo_root.visible = true
+	envr.volumetric_fog_enabled = fog_was
+	envr.glow_enabled = glow_was
+	mi.queue_free()
 
 # ---------------------------------------------------------------------------
 func _process(delta: float) -> void:
@@ -660,6 +1099,10 @@ func _finish_walk() -> void:
 		sf.store_line("seed=%d len_cells=%d length_m=%.1f" % [cfg["seed"], cfg["len"], float(cfg["len"]) * 0.6])
 		sf.store_line("flags shadow=%s fog=%s props=%s vis=%s" % [cfg["shadow"], cfg["fog"], cfg["props"], cfg["vis"]])
 		sf.store_line("topology_hash=0x%08X" % topo.content_hash())
+		sf.store_line("topology_schema=v%d levels=%d" % [topo.schema_version(), topo.levels])
+		sf.store_line("vertical_range_m=%.1f reach_down=%d reach_up=%d pitches=%d" % [
+			float(topo.vertical_range_mm()) * 0.001, topo.reach_down, topo.reach_up,
+			topo.pitches.size()])
 		sf.store_line("gen_ms topo=%.2f dress=%.2f total=%.2f" % [gen_ms_topo, gen_ms_dress, gen_ms_total])
 		sf.store_line("chunks=%d shell_tris=%d instances=%d multimeshes=%d" % [
 			dress.stat_chunks, dress.stat_shell_tris, dress.stat_instances, dress.stat_multimeshes])
@@ -696,6 +1139,8 @@ func _do_shots() -> void:
 		print("     cam %s  fwd %s   lampfwd %s  dot %.3f" % [
 			str(cam.global_position.round()), str(cf.snapped(Vector3(0.01,0.01,0.01))),
 			str(lf.snapped(Vector3(0.01,0.01,0.01))), cf.dot(lf)])
+	if String(cfg["shotset"]) == "vertical" and topo.levels > 1:
+		await _shot_section()
 	busy = false
 	phase = 3
 	if not cfg["stay"]:

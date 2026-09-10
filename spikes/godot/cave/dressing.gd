@@ -30,6 +30,12 @@ const VIS_SHELL: float = 44.0
 const VIS_SILHOUETTE: float = 30.0  # sets, arches, pipes, duct, spoil
 const VIS_LAMP: float = 19.0        # bolts, trays, plates, cable, kit
 const VIS_UNDERFOOT: float = 12.0   # loose stone, ballast, fines, litter
+# A VERTICAL sightline defeats a visibility range. Standing at the lip of a
+# 34 m winze, the far end is more than twice VIS_SHELL away, and THE-ICE 2.4
+# predicted exactly this: "LOD comes back... a vertical sightline is what
+# defeats them." This spike answers it the cheap way -- a longer range on the
+# chunks that hold pitch geometry only -- and reports what that costs.
+const VIS_PITCH: float = 96.0
 
 var topo: CaveTopology
 var rng: RandomNumberGenerator
@@ -58,7 +64,21 @@ var mat_alu: ShaderMaterial
 var mat_porcelain: ShaderMaterial
 var mat_cable: ShaderMaterial
 var mat_water: ShaderMaterial
+var mat_ice: ShaderMaterial
 var mat_pilot: StandardMaterial3D
+# ONE ROCK AND ONE ICE MATERIAL PER LEVEL. The only thing that differs between
+# them is `water_y`: the cave now has a water surface per level rather than one
+# global datum, which cave/PHOTOREAL.md 7 already listed as guess 4 -- "this
+# treats the whole cave as having drowned once, to one level" -- and which
+# THE-ICE 2.3 says the melt turns from a flagged guess into a required change.
+# A chunk only ever belongs to one level, so this costs no extra draw calls.
+var mat_rock_lv: Array = []
+var mat_ice_lv: Array = []
+var max_depth: float = 1.0
+# What `dark` (the depth fade in COLOR.b) is normalised by. On the flat path it
+# is the main drive's length, which is what it always was; on the layered path
+# graph depth runs far past that, so it is the deepest station.
+var dark_div: float = 1.0
 
 var kit: Dictionary = {}            # name -> Mesh
 var kit_vis: Dictionary = {}        # name -> visibility range
@@ -189,8 +209,13 @@ func build(p_topo: CaveTopology, p_seed: int, root: Node3D) -> void:
 	_make_materials()
 	_make_kit()
 	stage.call("kit built")
+	for i in range(topo.stations.size()):
+		max_depth = maxf(max_depth, float((topo.stations[i] as PackedInt32Array)[CaveTopology.S_DEPTH]))
+	dark_div = float(maxi(1, topo.edges[0].size())) if topo.levels <= 1 else max_depth
 	_sweep_edges()
 	stage.call("swept")
+	_sweep_pitches()
+	stage.call("pitches")
 	_build_chambers()
 	stage.call("chambers")
 	_place_props()
@@ -254,13 +279,29 @@ func _make_noise_textures(sd: int) -> void:
 
 # --- materials -------------------------------------------------------------
 func _make_materials() -> void:
-	mat_rock = ShaderMaterial.new()
-	mat_rock.shader = load("res://rock.gdshader")
-	mat_rock.set_shader_parameter("t_fbm", tex_fbm)
-	mat_rock.set_shader_parameter("t_cel", tex_cel)
-	mat_rock.set_shader_parameter("t_agg", tex_agg)
-	mat_rock.set_shader_parameter("t_cid", tex_cid)
-	mat_rock.set_shader_parameter("water_y", float(topo.water_datum_mm) * 0.001)
+	var rsh: Shader = load("res://rock.gdshader")
+	var ish: Shader = load("res://ice.gdshader")
+	mat_rock_lv = []
+	mat_ice_lv = []
+	for L in range(topo.levels):
+		var wy: float = -1000.0
+		if L < topo.level_water_mm.size() and topo.level_water_mm[L] > -1000000:
+			wy = float(topo.level_water_mm[L]) * 0.001
+		var mr := ShaderMaterial.new()
+		mr.shader = rsh
+		mr.set_shader_parameter("t_fbm", tex_fbm)
+		mr.set_shader_parameter("t_cel", tex_cel)
+		mr.set_shader_parameter("t_agg", tex_agg)
+		mr.set_shader_parameter("t_cid", tex_cid)
+		mr.set_shader_parameter("water_y", wy)
+		mat_rock_lv.append(mr)
+		var mi := ShaderMaterial.new()
+		mi.shader = ish
+		mi.set_shader_parameter("t_fbm", tex_fbm)
+		mi.set_shader_parameter("water_y", wy)
+		mat_ice_lv.append(mi)
+	mat_rock = mat_rock_lv[0]
+	mat_ice = mat_ice_lv[0]
 	mat_stone = ShaderMaterial.new()
 	mat_stone.shader = load("res://stone.gdshader")
 	mat_stone.set_shader_parameter("t_fbm", tex_fbm)
@@ -694,18 +735,44 @@ func _make_kit() -> void:
 	b.add_prim(mat_cable, _cyl(0.014, 1.0, 5), _xf(Vector3.ZERO, Vector3(PI * 0.5, 0, 0)), C_CABLE)
 	_reg("cablelink", b.commit(), VIS_LAMP)
 
+	# --- the ancients' shaft rings. NEW 2026-09-10. A UNIT ring, radius 1.0,
+	# built from 16 tangential segments and four vertical straps; a pitch
+	# scales it to its own bore. It is the one thing that gives a bore a scale
+	# and a rhythm when there is nothing else in frame but wall going past.
+	var cb := MB.new()
+	for i in range(16):
+		var ra: float = float(i) / 16.0 * TAU
+		var rq := Vector3(cos(ra), 0.0, sin(ra))
+		cb.add_prim(mat_iron, _box(0.075, 0.085, 0.42),
+			Transform3D(Basis.from_euler(Vector3(0, -ra, 0)), rq), C_IRON)
+	for i in range(4):
+		var ra2: float = float(i) / 4.0 * TAU + 0.39
+		var rq2 := Vector3(cos(ra2) * 0.97, 0.0, sin(ra2) * 0.97)
+		cb.add_prim(mat_iron, _box(0.055, 0.34, 0.055), _xf(rq2), C_IRON_L)
+	_reg("collarring", cb.commit(), VIS_PITCH)
+
 # ===========================================================================
 # chunking
 # ===========================================================================
 func _chunk_key(p: Vector3) -> int:
+	# 8 m CUBES, 2026-09-10. This was XZ only, and THE-ICE 2.3 named the
+	# consequence before there was any vertical geometry to suffer it: "a
+	# vertical shaft puts an entire cave's worth of geometry into one chunk
+	# key." It now has a Y axis, so a chunk is a chunk of cave rather than a
+	# column through all of it.
 	var cx: int = int(floor(p.x / CHUNK_M))
 	var cz: int = int(floor(p.z / CHUNK_M))
-	return (cx + 4096) * 8192 + (cz + 4096)
+	if topo.levels <= 1:
+		# the flat cave keeps its old partition, so the frames the trailer was
+		# cut from are drawn by exactly the same MeshInstances as before
+		return (cx + 4096) * 8192 + (cz + 4096)
+	var cy: int = int(floor(p.y / CHUNK_M))
+	return ((cx + 2048) * 4096 + (cy + 2048)) * 4096 + (cz + 2048)
 
 func _chunk(p: Vector3) -> Dictionary:
 	var k: int = _chunk_key(p)
 	if not chunks.has(k):
-		var c := {"shell": MB.new(), "props": {}, "key": k}
+		var c := {"shell": MB.new(), "props": {}, "key": k, "pitch": false}
 		chunks[k] = c
 		chunk_order.push_back(k)
 	return chunks[k]
@@ -748,6 +815,69 @@ func _ht(s: PackedInt32Array) -> float:
 	if s[CaveTopology.S_KIND] == CaveTopology.K_CHAMBER:
 		base *= 1.35
 	return base
+
+# --- the ice scalars -------------------------------------------------------
+# ART-DIRECTION 3.1's four, derived from ONE topology field (`medium`) plus the
+# depth band, because THE-ICE 5.4 note 4 puts exactly one enum above the line
+# and everything else is the client's business.
+#   polish   water-shaped or not. A conduit is polished; a fill is not.
+#   clarity  bubble content. Refrozen meltwater is clear; dead glacier ice is
+#            full of air and white.
+#   debris   what the ice pushed into and carried.
+# Returns (polish, clarity, debris).
+func _ice_params(s: PackedInt32Array) -> Vector3:
+	var med: int = s[CaveTopology.S_MEDIUM]
+	var elev: int = s[CaveTopology.S_FLOOR_MM]
+	var bnd: int = topo.band_of(elev)
+	var jit: float = noise_lo.get_noise_3d(float(s[CaveTopology.S_X]) * 0.7, 3.0,
+		float(s[CaveTopology.S_Y]) * 0.7) * 0.18
+	if med == CaveTopology.MED_ICE and bnd == 0:
+		# the meltwater conduit: scoured, clear, and it carries little
+		return Vector3(clampf(0.86 + jit, 0.0, 1.0), clampf(0.78 + jit, 0.0, 1.0),
+			clampf(0.16 + jit * 0.6, 0.0, 1.0))
+	if med == CaveTopology.MED_ICE:
+		# dead ice in the fill: bubbly, dirty, and nothing has polished it
+		return Vector3(clampf(0.30 + jit, 0.0, 1.0), clampf(0.26 + jit, 0.0, 1.0),
+			clampf(0.52 + jit, 0.0, 1.0))
+	# a plug or a floor of ice over rock: it froze standing still, so it is
+	# clear, flat and full of the muck it settled onto
+	return Vector3(clampf(0.55 + jit, 0.0, 1.0), clampf(0.66 + jit, 0.0, 1.0),
+		clampf(0.40 + jit, 0.0, 1.0))
+
+# the ablation switches used to poke one material; there are now one per
+# level plus the ice family, so they poke all of them.
+func set_rock_param(n: String, v: Variant) -> void:
+	for m in mat_rock_lv:
+		(m as ShaderMaterial).set_shader_parameter(n, v)
+
+func set_ice_param(n: String, v: Variant) -> void:
+	for m in mat_ice_lv:
+		(m as ShaderMaterial).set_shader_parameter(n, v)
+
+# the world point on a pitch's axis at parameter t, corkscrew included. Shared
+# with cave_root so a camera can be put down a hole without duplicating it.
+func pitch_axis(pi: int, t: float) -> Vector3:
+	var pr: PackedInt32Array = topo.pitch(pi)
+	var tp := Vector3(float(pr[CaveTopology.P_X]) * CELL,
+		float(pr[CaveTopology.P_TOP_MM]) * 0.001, float(pr[CaveTopology.P_Y]) * CELL)
+	var foot: PackedInt32Array = _st(pr[CaveTopology.P_TO_ST])
+	var bp := Vector3(float(pr[CaveTopology.P_TO_X]) * CELL,
+		float(foot[CaveTopology.S_CEIL_MM]) * 0.001, float(pr[CaveTopology.P_TO_Y]) * CELL)
+	var hgt: float = tp.y - bp.y
+	var c: Vector3 = tp.lerp(bp, t)
+	var kind: int = pr[CaveTopology.P_KIND]
+	var bore: float = float(pr[CaveTopology.P_BORE_MM]) * 0.001
+	if kind == CaveTopology.PK_MOULIN or kind == CaveTopology.PK_COLLAR:
+		c += Vector3(cos(t * hgt * 0.22), 0.0, sin(t * hgt * 0.22)) * (bore * 0.32 * sin(t * PI))
+	elif kind == CaveTopology.PK_COLLAPSE:
+		c += Vector3(sin(t * 2.4) * bore * 0.38, 0.0, cos(t * 1.7) * bore * 0.30)
+	return c
+
+func _rock_mat(L: int) -> Material:
+	return mat_rock_lv[clampi(L, 0, mat_rock_lv.size() - 1)]
+
+func _ice_mat(L: int) -> Material:
+	return mat_ice_lv[clampi(L, 0, mat_ice_lv.size() - 1)]
 
 # The profile. Two registers interpolated on `worked` (ART-DIRECTION 3.4).
 #   worked 0 : natural. Rounded, no flat surface, no straight line.
@@ -830,8 +960,10 @@ func _sweep_edge(ids: PackedInt32Array) -> void:
 			# the parallax height field where the ground is actually low.
 			if (sa[CaveTopology.S_WORKS] & CaveTopology.WK_STANDWATER) != 0:
 				wet = maxf(wet, 0.82)
-			var dark: float = float(sa[CaveTopology.S_DEPTH]) / float(maxi(1, topo.edges[0].size()))
-			dark = clampf(dark, 0.0, 1.0)
+			var dark: float = clampf(float(sa[CaveTopology.S_DEPTH]) / dark_div, 0.0, 1.0)
+			var lvl: int = sa[CaveTopology.S_LEVEL]
+			var is_ice: bool = sa[CaveTopology.S_MEDIUM] == CaveTopology.MED_ICE
+			var icep: Vector3 = _ice_params(sa)
 			var frac01: float = clampf((float(sa[CaveTopology.S_FRACTURE]) - 3.0) / 11.0, 0.0, 1.0)
 			var bed01: float = clampf((float(sa[CaveTopology.S_BEDDING]) - 4.0) / 31.0, 0.0, 1.0)
 			var packed: float = floor(frac01 * 31.0) * 32.0 + floor(bed01 * 31.0)
@@ -866,15 +998,21 @@ func _sweep_edge(ids: PackedInt32Array) -> void:
 				var floor_mask: float = clampf(uv.y / 0.35, 0.0, 1.0)
 				var big: float = noise_lo.get_noise_3d(lp.x * 1.0, lp.y * 1.0, lp.z * 1.0)
 				var fine: float = noise.get_noise_3d(lp.x * 2.2, lp.y * 2.2, lp.z * 2.2)
-				var amp: float = lerp(0.52, 0.155, worked) * floor_mask
+				# ICE IS SMOOTH, and this is not only an art choice. THE-ICE 6.2
+				# rests on a meltwater conduit having no features to lock a scan
+				# onto; a 0.5 m lumpy ice wall would hand the estimator exactly
+				# what the design says it cannot have.
+				var amp: float = lerp(0.52, 0.155, worked) * floor_mask * (0.30 if is_ice else 1.0)
 				var d: float = big * amp + fine * amp * 0.45
 				# BEDDING AS GEOMETRY, not only as a shader band. A lamp that
 				# sits at the eye returns almost no shading contrast from a
 				# normal map (N.L equals N.V), so the beds have to be real
 				# ledges in the silhouette or they do not read at all.
 				var bedp: float = lerp(0.25, 0.60, fposmod(floor(lp.y * 0.7) * 0.37 + 0.31, 1.0))
-				d += sin(lp.y * TAU / bedp) * 0.030 * bed01 * floor_mask
-				d -= smoothstep(0.86, 1.0, sin(lp.y * TAU / bedp) * 0.5 + 0.5) * 0.045 * bed01 * floor_mask
+				# bedding is a property of the ROCK. Ice has no beds.
+				var bedg: float = 0.0 if is_ice else (bed01 * floor_mask)
+				d += sin(lp.y * TAU / bedp) * 0.030 * bedg
+				d -= smoothstep(0.86, 1.0, sin(lp.y * TAU / bedp) * 0.5 + 0.5) * 0.045 * bedg
 				lp += outward * d
 				# the floor is not flat either: rubble relief under the sweep
 				if uv.y < 0.02:
@@ -884,13 +1022,25 @@ func _sweep_edge(ids: PackedInt32Array) -> void:
 				# metres. The waterline moved into a shader uniform; the floor
 				# needed a lateral coordinate so the trammed way and the wheel
 				# ruts have somewhere to be.
-				data.append([
-					Color(wet, worked, dark, iron_base * clampf(1.2 - abs(uv.y - 1.5), 0.0, 1.0)),
-					Vector2(axial, s01 * 0.5 + (0.5 if side < 0.0 else 0.0)),
-					Vector2(uv.x, packed)
-				])
+				if is_ice:
+					# same four channels, ice meanings. UV2.x is the FLOW
+					# coordinate: along a passage the water ran along it, so
+					# the flutes lie down the drive.
+					data.append([
+						Color(wet, icep.x, dark, icep.z),
+						Vector2(axial, s01 * 0.5 + (0.5 if side < 0.0 else 0.0)),
+						Vector2(axial, icep.y)
+					])
+				else:
+					data.append([
+						Color(wet, worked, dark, iron_base * clampf(1.2 - abs(uv.y - 1.5), 0.0, 1.0)),
+						Vector2(axial, s01 * 0.5 + (0.5 if side < 0.0 else 0.0)),
+						Vector2(uv.x, packed)
+					])
 			if prev_ring.size() == RING_VERTS:
-				_emit_band(prev_ring, prev_data, ring, data, prev_centre, p + Vector3.UP * ht * 0.42)
+				_emit_band(prev_ring, prev_data, ring, data, prev_centre,
+					p + Vector3.UP * ht * 0.42,
+					_ice_mat(lvl) if is_ice else _rock_mat(lvl))
 			prev_ring = ring
 			prev_data = data
 			prev_centre = p + Vector3.UP * ht * 0.42
@@ -902,7 +1052,8 @@ func _catmull(p0: Vector3, p1: Vector3, p2: Vector3, p3: Vector3, t: float) -> V
 	return 0.5 * ((2.0 * p1) + (-p0 + p2) * t + (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * t2
 		+ (-p0 + 3.0 * p1 - 3.0 * p2 + p3) * t3)
 
-func _emit_band(r0: Array, d0: Array, r1: Array, d1: Array, c0: Vector3, c1: Vector3) -> void:
+func _emit_band(r0: Array, d0: Array, r1: Array, d1: Array, c0: Vector3, c1: Vector3,
+				mat: Material = null) -> void:
 	var mid: Vector3 = ((r0[0] as Vector3) + (r1[0] as Vector3)) * 0.5
 	var c: Dictionary = _chunk(mid)
 	var mb: MB = c["shell"]
@@ -927,29 +1078,46 @@ func _emit_band(r0: Array, d0: Array, r1: Array, d1: Array, c0: Vector3, c1: Vec
 		var ctr: Vector3 = c0 if i < RING_VERTS else c1
 		if nn[i].dot(ctr - v[i]) < 0.0:
 			nn[i] = -nn[i]
-	mb.add_arrays(mat_rock, v, nn, cc, uu, u2, idx, Transform3D.IDENTITY)
+	mb.add_arrays(mat if mat != null else mat_rock, v, nn, cc, uu, u2, idx, Transform3D.IDENTITY)
 
 # --- chambers: a noise-displaced dome dropped over the station -------------
+# 2026-09-10: a chamber can now have a HOLE IN ITS FLOOR (a pitch is sunk from
+# it) and a HOLE IN ITS BACK (a pitch lands in it through the ceiling). That is
+# what "things below other things" costs in geometry, and it is two skipped
+# index ranges plus one skirt.
 func _build_chambers() -> void:
-	var nrow: int = topo.chambers.size() / 5
+	var nrow: int = topo.chambers.size() / CaveTopology.CH_ROW
 	for ci in range(nrow):
-		var sid: int = topo.chambers[ci * 5 + 4]
-		var r: float = float(topo.chambers[ci * 5 + 2]) * CELL + 1.6
+		var sid: int = topo.chambers[ci * CaveTopology.CH_ROW + CaveTopology.CH_SID]
+		var r: float = float(topo.chambers[ci * CaveTopology.CH_ROW + CaveTopology.CH_R]) * CELL + 1.6
 		var p: Vector3 = _st_pos(sid)
 		var s: PackedInt32Array = _st(sid)
+		var lvl: int = s[CaveTopology.S_LEVEL]
 		var ht: float = _ht(s) * 1.25
 		var worked: float = float(s[CaveTopology.S_WORKED]) / 255.0
 		var wet: float = float(s[CaveTopology.S_WET]) / 255.0
-		var dark: float = clampf(float(s[CaveTopology.S_DEPTH]) / float(maxi(1, topo.edges[0].size())), 0.0, 1.0)
+		var dark: float = clampf(float(s[CaveTopology.S_DEPTH]) / dark_div, 0.0, 1.0)
 		var frac01: float = clampf((float(s[CaveTopology.S_FRACTURE]) - 3.0) / 11.0, 0.0, 1.0)
 		var bed01: float = clampf((float(s[CaveTopology.S_BEDDING]) - 4.0) / 31.0, 0.0, 1.0)
 		var packed: float = floor(frac01 * 31.0) * 32.0 + floor(bed01 * 31.0)
+		var is_ice: bool = s[CaveTopology.S_MEDIUM] == CaveTopology.MED_ICE
+		var mat: Material = _ice_mat(lvl) if is_ice else _rock_mat(lvl)
+		var icep: Vector3 = _ice_params(s)
+		# the two holes, as radii in metres
+		var hole_floor: float = 0.0
+		var hole_back: float = 0.0
+		if s[CaveTopology.S_PITCH_HEAD] >= 0:
+			hole_floor = float(topo.pitch(s[CaveTopology.S_PITCH_HEAD])[CaveTopology.P_BORE_MM]) * 0.0005
+		if s[CaveTopology.S_PITCH_FOOT] >= 0:
+			hole_back = float(topo.pitch(s[CaveTopology.S_PITCH_FOOT])[CaveTopology.P_BORE_MM]) * 0.0005 + 0.60
 		var RINGS: int = 9
 		var SEG: int = 26
 		var rows: Array = []
+		var nominal: PackedFloat32Array = PackedFloat32Array()
 		for a in range(RINGS + 1):
 			var ph: float = float(a) / float(RINGS) * (PI * 0.5)
 			var row: Array = []
+			nominal.push_back(r * cos(ph))
 			for b2 in range(SEG):
 				var th: float = float(b2) / float(SEG) * TAU
 				var rr: float = r * cos(ph)
@@ -963,54 +1131,365 @@ func _build_chambers() -> void:
 					lp.y = p.y
 				row.append(lp)
 			rows.append(row)
-		for a in range(RINGS):
+		# the highest dome row we keep. Above it is the hole the pitch came
+		# down through; _pitch_skirt closes the join.
+		var top_row: int = RINGS
+		if hole_back > 0.0:
+			for a2 in range(RINGS + 1):
+				if nominal[a2] < hole_back:
+					top_row = maxi(1, a2 - 1)
+					break
+		for a3 in range(top_row):
 			for b2 in range(SEG):
 				var b3: int = (b2 + 1) % SEG
-				var q0: Vector3 = rows[a][b2]
-				var q1: Vector3 = rows[a][b3]
-				var q2: Vector3 = rows[a + 1][b2]
-				var q3: Vector3 = rows[a + 1][b3]
+				var q0: Vector3 = rows[a3][b2]
+				var q1: Vector3 = rows[a3][b3]
+				var q2: Vector3 = rows[a3 + 1][b2]
+				var q3: Vector3 = rows[a3 + 1][b3]
 				var v := PackedVector3Array([q0, q1, q2, q3])
 				var idx := PackedInt32Array([0, 2, 1, 1, 2, 3])
 				var cc := PackedColorArray()
 				var uu := PackedVector2Array()
 				var u2 := PackedVector2Array()
 				for w in range(4):
-					cc.push_back(Color(wet, worked, dark, 0.15))
-					uu.push_back(Vector2(v[w].x, float(b2) / float(SEG)))
-					u2.push_back(Vector2(6.0, packed))
+					if is_ice:
+						cc.push_back(Color(wet, icep.x, dark, icep.z))
+						uu.push_back(Vector2(v[w].x, float(b2) / float(SEG)))
+						u2.push_back(Vector2(v[w].y, icep.y))
+					else:
+						cc.push_back(Color(wet, worked, dark, 0.15))
+						uu.push_back(Vector2(v[w].x, float(b2) / float(SEG)))
+						u2.push_back(Vector2(6.0, packed))
 				var nn: PackedVector3Array = _recalc_normals(v, idx)
 				var ctr: Vector3 = p + Vector3.UP * (ht * 0.35)
-				for w in range(4):
-					if nn[w].dot(ctr - v[w]) < 0.0:
-						nn[w] = -nn[w]
+				for w2 in range(4):
+					if nn[w2].dot(ctr - v[w2]) < 0.0:
+						nn[w2] = -nn[w2]
 				var mid: Vector3 = (q0 + q3) * 0.5
 				var mb: MB = _chunk(mid)["shell"]
-				mb.add_arrays(mat_rock, v, nn, cc, uu, u2, idx, Transform3D.IDENTITY)
-		# a flat-ish chamber floor so props sit on something
+				mb.add_arrays(mat, v, nn, cc, uu, u2, idx, Transform3D.IDENTITY)
+		# --- the floor. A fan, unless a pitch is sunk from it, in which case it
+		# is an ANNULUS and the hole in the middle of it is the whole point.
 		var fv := PackedVector3Array()
 		var fi := PackedInt32Array()
 		var fc := PackedColorArray()
 		var fu := PackedVector2Array()
 		var fu2 := PackedVector2Array()
-		fv.push_back(p)
-		fc.push_back(Color(wet, worked, dark, 0.1))
-		fu.push_back(Vector2(p.x, 0.0))
-		fu2.push_back(Vector2(6.0, packed))
-		for b2 in range(SEG + 1):
-			var th2: float = float(b2 % SEG) / float(SEG) * TAU
-			var lp2: Vector3 = rows[0][b2 % SEG]
-			fv.push_back(lp2)
-			fc.push_back(Color(wet, worked, dark, 0.1))
-			fu.push_back(Vector2(lp2.x, float(b2) / float(SEG)))
-			fu2.push_back(Vector2(6.0, packed))
-		for b2 in range(SEG):
-			fi.push_back(0); fi.push_back(b2 + 1); fi.push_back(((b2 + 1) % SEG) + 1)
+		var fcol: Color = Color(wet, icep.x, dark, icep.z) if is_ice else Color(wet, worked, dark, 0.1)
+		var fuv2: Vector2 = Vector2(p.y, icep.y) if is_ice else Vector2(6.0, packed)
+		if hole_floor > 0.01:
+			for b4 in range(SEG):
+				var th3: float = float(b4) / float(SEG) * TAU
+				fv.push_back(Vector3(p.x + cos(th3) * hole_floor, p.y, p.z + sin(th3) * hole_floor))
+				fc.push_back(fcol)
+				fu.push_back(Vector2(p.x, float(b4) / float(SEG)))
+				fu2.push_back(fuv2)
+			for b5 in range(SEG):
+				var lpo: Vector3 = rows[0][b5]
+				fv.push_back(lpo)
+				fc.push_back(fcol)
+				fu.push_back(Vector2(lpo.x, float(b5) / float(SEG)))
+				fu2.push_back(fuv2)
+			for b6 in range(SEG):
+				var b7: int = (b6 + 1) % SEG
+				fi.push_back(b6); fi.push_back(SEG + b6); fi.push_back(b7)
+				fi.push_back(b7); fi.push_back(SEG + b6); fi.push_back(SEG + b7)
+		else:
+			fv.push_back(p)
+			fc.push_back(fcol)
+			fu.push_back(Vector2(p.x, 0.0))
+			fu2.push_back(fuv2)
+			for b8 in range(SEG + 1):
+				var lp2: Vector3 = rows[0][b8 % SEG]
+				fv.push_back(lp2)
+				fc.push_back(fcol)
+				fu.push_back(Vector2(lp2.x, float(b8) / float(SEG)))
+				fu2.push_back(fuv2)
+			for b9 in range(SEG):
+				fi.push_back(0); fi.push_back(b9 + 1); fi.push_back(((b9 + 1) % SEG) + 1)
 		var fn: PackedVector3Array = PackedVector3Array()
 		fn.resize(fv.size())
-		for w in range(fv.size()):
-			fn[w] = Vector3.UP
-		_chunk(p)["shell"].add_arrays(mat_rock, fv, fn, fc, fu, fu2, fi, Transform3D.IDENTITY)
+		for w3 in range(fv.size()):
+			fn[w3] = Vector3.UP
+		_chunk(p)["shell"].add_arrays(mat, fv, fn, fc, fu, fu2, fi, Transform3D.IDENTITY)
+
+# ===========================================================================
+# PITCHES -- THE SECOND PROFILE FAMILY
+# ===========================================================================
+# THE-ICE 5.3, on what the built cave costs above the seam: "_half_profile()
+# builds a floor, two legs and a crown, which a vertical shaft is not. A moulin
+# needs a SECOND PROFILE FAMILY beside the sweep, not a modification of it."
+#
+# This is that family, and the two really are different functions rather than
+# one function with a flag:
+#
+#   passage   an OPEN half-section (floor centre -> crown) mirrored about a
+#             vertical and swept along a horizontal spine, oriented by a
+#             tangent and a right vector. It cannot close over itself.
+#   pitch     a CLOSED ring in the HORIZONTAL plane swept down an axis that is
+#             allowed to corkscrew. No floor, no legs, no crown, and its
+#             perimeter coordinate is an angle rather than an arc up from the
+#             floor.
+#
+# Six kinds share it and each is a different RADIUS FUNCTION, not a different
+# parameter: a winze is square-set, a crevasse is a slot, an aven bells out
+# upward, a collapse is broken, a moulin is fluted, and a collar is a moulin
+# with the ancients' rings still in it.
+func _sweep_pitches() -> void:
+	for pi in range(topo.pitches.size()):
+		_sweep_pitch(pi)
+
+func _pitch_radius(kind: int, bore: float, th: float, t: float, hgt: float) -> float:
+	if kind == CaveTopology.PK_WINZE or kind == CaveTopology.PK_ORE_PASS:
+		# square-set: four timbered sides, so the section is a rounded square
+		var c: float = absf(cos(th))
+		var sn: float = absf(sin(th))
+		return bore * 0.5 / maxf(0.62, pow(pow(c, 8.0) + pow(sn, 8.0), 0.125))
+	if kind == CaveTopology.PK_CREVASSE:
+		# a slot: wide one way, a hand's width the other
+		var ex: float = cos(th)
+		var ez: float = sin(th) / 4.2
+		return bore * 0.5 / maxf(0.12, sqrt(ex * ex + ez * ez))
+	if kind == CaveTopology.PK_AVEN:
+		return bore * 0.5 * (0.72 + 0.55 * (1.0 - t))
+	if kind == CaveTopology.PK_COLLAPSE:
+		return bore * 0.5 * (0.80 + 0.34 * sin(th * 2.0 + t * 5.0))
+	return bore * 0.5 * (1.0 + 0.13 * sin(th * 3.0 + t * hgt * 0.55))
+
+func _sweep_pitch(pi: int) -> void:
+	var pr: PackedInt32Array = topo.pitch(pi)
+	var kind: int = pr[CaveTopology.P_KIND]
+	var bore: float = float(pr[CaveTopology.P_BORE_MM]) * 0.001
+	var top_y: float = float(pr[CaveTopology.P_TOP_MM]) * 0.001
+	var foot: PackedInt32Array = _st(pr[CaveTopology.P_TO_ST])
+	# the tube stops at the BACK of the chamber it lands in. A shaft breaking
+	# into a level comes through the ceiling; it does not grow out of the floor.
+	var bot_y: float = float(foot[CaveTopology.S_CEIL_MM]) * 0.001
+	var top_p := Vector3(float(pr[CaveTopology.P_X]) * CELL, top_y, float(pr[CaveTopology.P_Y]) * CELL)
+	var bot_p := Vector3(float(pr[CaveTopology.P_TO_X]) * CELL, bot_y, float(pr[CaveTopology.P_TO_Y]) * CELL)
+	var hgt: float = top_y - bot_y
+	if hgt < 0.8:
+		return
+	var nr: int = maxi(8, int(hgt / 0.55))
+	var lvl: int = pr[CaveTopology.P_FROM_LEVEL]
+	var flow: float = float(pr[CaveTopology.P_FLOW]) / 255.0
+	var ice_base: float = float(CaveTopology.BAND_ICE_BASE_MM) * 0.001
+	var meltm: float = float(topo.melt_mm) * 0.001
+	var worked_pitch: bool = kind == CaveTopology.PK_WINZE or kind == CaveTopology.PK_ORE_PASS
+	var pf01: float = clampf((float(foot[CaveTopology.S_FRACTURE]) - 3.0) / 11.0, 0.0, 1.0)
+	var pb01: float = clampf((float(foot[CaveTopology.S_BEDDING]) - 4.0) / 31.0, 0.0, 1.0)
+	var packed: float = floor(pf01 * 31.0) * 32.0 + floor(pb01 * 31.0)
+	var worked: float = float(foot[CaveTopology.S_WORKED]) / 255.0
+	var dark: float = clampf(float(foot[CaveTopology.S_DEPTH]) / dark_div, 0.0, 1.0)
+	# the ice scalars of a pitch, per kind
+	var pol: float = 0.45
+	var cla: float = 0.55
+	var deb: float = 0.35
+	if kind == CaveTopology.PK_MOULIN or kind == CaveTopology.PK_COLLAR:
+		pol = 0.93
+		cla = 0.84
+		deb = 0.10
+	elif kind == CaveTopology.PK_CREVASSE:
+		pol = 0.72
+		cla = 0.90
+		deb = 0.06
+	elif kind == CaveTopology.PK_COLLAPSE:
+		pol = 0.18
+		cla = 0.22
+		deb = 0.72
+	var prev_ring: Array = []
+	var prev_data: Array = []
+	var prev_c: Vector3 = Vector3.ZERO
+	var prev_ice: bool = false
+	var bottom_ring: Array = []
+	for i in range(nr + 1):
+		var t: float = float(i) / float(nr)
+		var c: Vector3 = top_p.lerp(bot_p, t)
+		# the axis wanders. A moulin CORKSCREWS -- that is what falling water
+		# does to a hole in ice -- and a collapse leans.
+		if kind == CaveTopology.PK_MOULIN or kind == CaveTopology.PK_COLLAR:
+			var aa: float = t * hgt * 0.22
+			var amp: float = bore * 0.32 * sin(t * PI)
+			c += Vector3(cos(aa) * amp, 0.0, sin(aa) * amp)
+		elif kind == CaveTopology.PK_COLLAPSE:
+			c += Vector3(sin(t * 2.4) * bore * 0.38, 0.0, cos(t * 1.7) * bore * 0.30)
+		var y: float = c.y
+		var is_ice: bool = (not worked_pitch) and y > ice_base
+		if kind == CaveTopology.PK_CREVASSE:
+			is_ice = true
+		# the ends are CLEAN so they meet the floor annulus and the skirt
+		var ends: float = smoothstep(0.0, 0.055, t) * smoothstep(0.0, 0.055, 1.0 - t)
+		var wetv: float = clampf(0.35 + flow * 0.6, 0.0, 1.0) if y > meltm else 0.10
+		var ring: Array = []
+		var data: Array = []
+		for k in range(RING_VERTS):
+			var th: float = float(k) / float(RING_VERTS) * TAU
+			var rr: float = _pitch_radius(kind, bore, th, t, hgt)
+			var ax: float = cos(th)
+			var az: float = sin(th)
+			var lp := Vector3(c.x + ax * rr, y, c.z + az * rr)
+			var nlo: float = noise_lo.get_noise_3d(lp.x * 0.9, lp.y * 0.35, lp.z * 0.9)
+			var nhi: float = noise.get_noise_3d(lp.x * 2.4, lp.y * 1.1, lp.z * 2.4)
+			var amp2: float = (0.10 if is_ice else 0.30) * bore * ends
+			if kind == CaveTopology.PK_COLLAPSE:
+				amp2 = 0.55 * bore * ends
+			lp += Vector3(ax, 0.0, az) * (nlo * amp2 + nhi * amp2 * 0.4)
+			ring.append(lp)
+			if is_ice:
+				# UV2.x is the FLOW COORDINATE, and in a pitch it is the
+				# ELEVATION, so the flutes run DOWN the bore rather than round
+				# it. That one line is why a moulin does not look like a
+				# passage stood on end.
+				data.append([Color(wetv, pol, dark, deb),
+					Vector2(t * hgt, float(k) / float(RING_VERTS)),
+					Vector2(y, cla)])
+			else:
+				data.append([Color(wetv, worked, dark, 0.35 if worked_pitch else 0.05),
+					Vector2(t * hgt, float(k) / float(RING_VERTS)),
+					Vector2(ax * rr, packed)])
+		if prev_ring.size() == RING_VERTS:
+			_emit_band(prev_ring, prev_data, ring, data, prev_c, c,
+				_ice_mat(lvl) if prev_ice else _rock_mat(lvl))
+		prev_ring = ring
+		prev_data = data
+		prev_c = c
+		prev_ice = is_ice
+		bottom_ring = ring
+		var ch: Dictionary = _chunk(c)
+		ch["pitch"] = true
+		_chunk(ring[0])["pitch"] = true
+		_chunk(ring[RING_VERTS / 2])["pitch"] = true
+	# --- the skirt that closes the join into the chamber below --------------
+	_pitch_skirt(bot_p, bore * 0.5 + 0.60, bottom_ring, lvl, worked, dark, packed)
+	_pitch_props(pi, pr, top_p, bot_p, bore, hgt, nr, flow)
+
+func _pitch_skirt(c: Vector3, outer: float, ring: Array, lvl: int, worked: float,
+				  dark: float, packed: float) -> void:
+	if ring.size() != RING_VERTS:
+		return
+	var v := PackedVector3Array()
+	var cc := PackedColorArray()
+	var uu := PackedVector2Array()
+	var u2 := PackedVector2Array()
+	var idx := PackedInt32Array()
+	for k in range(RING_VERTS):
+		var th: float = float(k) / float(RING_VERTS) * TAU
+		v.push_back(ring[k])
+		v.push_back(Vector3(c.x + cos(th) * outer, c.y - 0.34, c.z + sin(th) * outer))
+	for k2 in range(RING_VERTS):
+		var a: int = k2 * 2
+		var b: int = ((k2 + 1) % RING_VERTS) * 2
+		idx.push_back(a); idx.push_back(a + 1); idx.push_back(b)
+		idx.push_back(b); idx.push_back(a + 1); idx.push_back(b + 1)
+	for i in range(v.size()):
+		cc.push_back(Color(0.5, worked, dark, 0.2))
+		uu.push_back(Vector2(v[i].x, 0.0))
+		u2.push_back(Vector2(3.0, packed))
+	var nn: PackedVector3Array = _recalc_normals(v, idx)
+	for i2 in range(nn.size()):
+		if nn[i2].dot(c - v[i2]) < 0.0:
+			nn[i2] = -nn[i2]
+	_chunk(c)["shell"].add_arrays(_rock_mat(lvl), v, nn, cc, uu, u2, idx, Transform3D.IDENTITY)
+
+# --- what is IN a pitch ----------------------------------------------------
+# The ancients' rings where they left steel; the players' beacon chain going
+# DOWN, which is ART-DIRECTION 6.3's "the most beautiful image in the game"
+# rotated ninety degrees; the meltwater; and the cone of rubble at the bottom
+# that is everything the hole has ever dropped.
+func _pitch_props(pi: int, pr: PackedInt32Array, top_p: Vector3, bot_p: Vector3,
+				  bore: float, hgt: float, nr: int, flow: float) -> void:
+	var kind: int = pr[CaveTopology.P_KIND]
+	var flags: int = pr[CaveTopology.P_FLAGS]
+	var meltm: float = float(topo.melt_mm) * 0.001
+	var curly: bool = kind == CaveTopology.PK_MOULIN or kind == CaveTopology.PK_COLLAR
+	if (flags & CaveTopology.PF_FIXED) != 0:
+		var nring: int = maxi(2, int(hgt / 1.2))
+		for i in range(1, nring):
+			var t: float = float(i) / float(nring)
+			var q: Vector3 = top_p.lerp(bot_p, t)
+			if curly:
+				q += Vector3(cos(t * hgt * 0.22), 0.0, sin(t * hgt * 0.22)) * (bore * 0.32 * sin(t * PI))
+			var sc: float = bore * 0.5 * 0.97
+			_prop(q, "collarring", Transform3D(Basis.from_euler(Vector3(0, t * 0.4, 0))
+				* Basis.from_scale(Vector3(sc, 1.0, sc)), q))
+	# A BEACON AT THE HEAD AND THE FOOT OF EVERY PITCH A MACHINE CAN GO DOWN.
+	# The players mark a route they intend to come back along, and a drop is
+	# the one place on a route where being wrong is not recoverable. It is also
+	# the only thing that makes a shaft photograph: the lamp reaches about six
+	# metres on a floor and a shaft has no floor to reach.
+	if (flags & CaveTopology.PF_DOWN) != 0:
+		var hb: Vector3 = top_p + Vector3(bore * 0.62, 0.02, bore * 0.30)
+		_prop(hb, "beacon", _xf(hb, Vector3(0, 2.1, 0)))
+		lights.append(hb + Vector3.UP * 0.56)
+		var fb2: Vector3 = _st_pos(pr[CaveTopology.P_TO_ST]) + Vector3(bore * 0.75, 0.02, -bore * 0.4)
+		_prop(fb2, "beacon", _xf(fb2, Vector3(0, 0.7, 0)))
+		lights.append(fb2 + Vector3.UP * 0.56)
+	if (flags & CaveTopology.PF_MAIN) != 0:
+		# ART-DIRECTION 6.3 calls a beacon chain receding down a drive the most
+		# beautiful image in the game. Rotated ninety degrees it is also the
+		# ONLY thing that makes a shaft read as deep rather than as black: the
+		# lamp reaches about six metres on a floor and a shaft has no floor.
+		var nbe: int = maxi(2, int(hgt / 3.2))
+		for i2 in range(nbe):
+			var t2: float = (float(i2) + 0.5) / float(nbe)
+			var q2: Vector3 = top_p.lerp(bot_p, t2)
+			if curly:
+				q2 += Vector3(cos(t2 * hgt * 0.22), 0.0, sin(t2 * hgt * 0.22)) * (bore * 0.32 * sin(t2 * PI))
+			var ang: float = t2 * 3.1
+			var rr: float = _pitch_radius(kind, bore, ang, t2, hgt) - 0.20
+			q2 += Vector3(cos(ang) * rr, 0.0, sin(ang) * rr)
+			_prop(q2, "beacon", _xf(q2, Vector3(0, ang, 0)))
+			lights.append(q2 + Vector3.UP * 0.30)
+	# the meltwater: a ribbon down the flutes, not a column. What runs down a
+	# moulin clings to the wall until it does not.
+	if flow > 0.02 and top_p.y > meltm:
+		var v := PackedVector3Array()
+		var idx := PackedInt32Array()
+		var n2: int = maxi(6, nr / 2)
+		for i3 in range(n2 + 1):
+			var t3: float = float(i3) / float(n2)
+			var q3: Vector3 = top_p.lerp(bot_p, t3)
+			if curly:
+				q3 += Vector3(cos(t3 * hgt * 0.22), 0.0, sin(t3 * hgt * 0.22)) * (bore * 0.32 * sin(t3 * PI))
+			var ang3: float = 0.9 + t3 * hgt * 0.26
+			var rr3: float = _pitch_radius(kind, bore, ang3, t3, hgt) - 0.06
+			var e0 := Vector3(cos(ang3), 0.0, sin(ang3))
+			var e1 := Vector3(-sin(ang3), 0.0, cos(ang3))
+			v.push_back(q3 + e0 * rr3 - e1 * (0.10 + 0.24 * flow))
+			v.push_back(q3 + e0 * rr3 + e1 * (0.10 + 0.24 * flow))
+		for i4 in range(n2):
+			var a2: int = i4 * 2
+			idx.push_back(a2); idx.push_back(a2 + 1); idx.push_back(a2 + 2)
+			idx.push_back(a2 + 2); idx.push_back(a2 + 1); idx.push_back(a2 + 3)
+		var cc := PackedColorArray()
+		var uu := PackedVector2Array()
+		for i5 in range(v.size()):
+			cc.push_back(Color(1, 1, 1, 1))
+			uu.push_back(Vector2(v[i5].y, float(i5 % 2)))
+		var nn: PackedVector3Array = _recalc_normals(v, idx)
+		for i6 in range(nn.size()):
+			var axis := Vector3(top_p.x, v[i6].y, top_p.z)
+			if nn[i6].dot(axis - v[i6]) < 0.0:
+				nn[i6] = -nn[i6]
+		_chunk(top_p.lerp(bot_p, 0.5))["shell"].add_arrays(mat_water, v, nn, cc, uu,
+			PackedVector2Array(), idx, Transform3D.IDENTITY)
+	# the cone of rubble under it. Everything the hole has ever dropped.
+	var foot: PackedInt32Array = _st(pr[CaveTopology.P_TO_ST])
+	var fp: Vector3 = _st_pos(pr[CaveTopology.P_TO_ST])
+	var nst: int = 26 + int(bore * 14.0)
+	var cone_r: float = bore * 0.62 + 0.45
+	for i7 in range(nst):
+		var ang4: float = rng.randf() * TAU
+		var rad: float = sqrt(rng.randf()) * cone_r
+		var q4 := Vector3(fp.x + cos(ang4) * rad, fp.y, fp.z + sin(ang4) * rad)
+		q4.y += _floor_y(q4, float(foot[CaveTopology.S_WORKED]) / 255.0)
+		q4.y += maxf(0.0, 1.0 - rad / cone_r) * 0.22
+		if i7 % 9 == 0:
+			_prop(q4, "block%d" % (rng.randi() % 3), _xf(q4, Vector3(rng.randf() * TAU,
+				rng.randf() * TAU, rng.randf() * TAU)))
+		else:
+			_prop(q4, "stone%d" % (rng.randi() % 4), _xf(q4, Vector3(rng.randf() * TAU,
+				rng.randf() * TAU, rng.randf() * TAU)))
 
 # ===========================================================================
 # props -- every rule here reads topology and writes only to chunks
@@ -1024,6 +1503,12 @@ func _place_props() -> void:
 
 func _dress_station(sid: int, i: int, ids: PackedInt32Array) -> void:
 	var s: PackedInt32Array = _st(sid)
+	# THE ICE BAND IS EMPTY, and that is the design rather than a saving.
+	# THE-ICE 5.2 band 0 is "round, polished, steep and smooth" with no
+	# ancients in it; ART-DIRECTION 3.7 makes it the friendly band. Everything
+	# gated on this is a thing that cannot be in dead ice: speleothems, a
+	# breakdown field, and the prior industry's ground support.
+	var icy_here: bool = s[CaveTopology.S_MEDIUM] == CaveTopology.MED_ICE
 	var p: Vector3 = _st_pos(sid)
 	var nxt: Vector3 = _st_pos(ids[mini(ids.size() - 1, i + 1)])
 	var tangent: Vector3 = (nxt - p).normalized()
@@ -1145,25 +1630,27 @@ func _dress_station(sid: int, i: int, ids: PackedInt32Array) -> void:
 			Color(1, 1, 1).lerp(Color(0.6, 0.55, 0.5), rng.randf()))
 	# breakdown blocks: bad ground and natural passage
 	if integ < 0.55 or worked < 0.3:
-		var nb: int = 1 + int((1.0 - integ) * 2.5)
+		var nb: int = 1 if icy_here else (1 + int((1.0 - integ) * 2.5))
 		for k in range(nb):
-			if rng.randf() > 0.55:
+			if rng.randf() > (0.16 if icy_here else 0.55):
 				continue
 			var side_bk: float = 1.0 if rng.randf() < 0.5 else -1.0
 			var qbk: Vector3 = p + right * (side_bk * rng.randf_range(0.42, 0.88) * hw) + tangent * rng.randf_range(-0.3, 0.3)
 			qbk.y += 0.10
 			_prop(qbk, "block%d" % (rng.randi() % 3),
 				_xf(qbk, Vector3(rng.randf() * 0.5, rng.randf() * TAU, rng.randf() * 0.5),
-					Vector3.ONE * rng.randf_range(0.7, 1.8)),
+					Vector3.ONE * (rng.randf_range(0.30, 0.70) if icy_here else rng.randf_range(0.7, 1.8))),
 				Color(1, 1, 1).lerp(Color(0.6, 0.55, 0.5), rng.randf() * 0.7))
-	# roof pendants in natural ground
-	if worked < 0.35 and rng.randf() < 0.45:
+	# roof pendants in natural ground. NOT IN ICE: a pendant and a flowstone
+	# boss are both limestone speleothems and take ten thousand years of
+	# dripping to make. The ice band is younger than the machinery.
+	if worked < 0.35 and not icy_here and rng.randf() < 0.45:
 		var qp: Vector3 = p + right * rng.randf_range(-0.6, 0.6) * hw
 		qp.y += ht * rng.randf_range(0.78, 0.95)
 		_prop(qp, "pendant", _xf(qp, Vector3(rng.randf() * 0.25, rng.randf() * TAU, rng.randf() * 0.25),
 			Vector3(rng.randf_range(0.5, 1.2), rng.randf_range(0.6, 1.6), rng.randf_range(0.5, 1.2))),
 			Color(1, 1, 1))
-	if worked < 0.5 and rng.randf() < 0.5:
+	if worked < 0.5 and not icy_here and rng.randf() < 0.5:
 		var sgn3: float = 1.0 if rng.randf() < 0.5 else -1.0
 		var qf: Vector3 = p + right * (sgn3 * hw * 0.92)
 		qf.y += rng.randf_range(0.3, ht * 0.6)
@@ -1277,27 +1764,34 @@ func _dress_station(sid: int, i: int, ids: PackedInt32Array) -> void:
 				prev = cur
 
 # --- standing water in the sump -------------------------------------------
+# 2026-09-10: the water surface is PER LEVEL, not one global datum. The datum
+# was cave/PHOTOREAL.md's guess 4 -- "this treats the whole cave as having
+# drowned once, to one level" -- and THE-ICE 2.3 says meltwater cutting
+# downward is precisely the case where one horizontal datum is wrong. Each
+# station now carries its own surface, and below the melt front there is none.
 func _place_water() -> void:
-	var ids: PackedInt32Array = topo.edges[0]
-	var y: float = float(topo.water_datum_mm) * 0.001
-	var run_start: int = -1
-	for i in range(ids.size() + 1):
-		var flooded: bool = false
-		if i < ids.size():
-			flooded = _st(ids[i])[CaveTopology.S_STATE] == CaveTopology.FLOODED
-		if flooded and run_start < 0:
-			run_start = i
-		elif not flooded and run_start >= 0:
-			for j in range(run_start, i):
-				var p: Vector3 = _st_pos(ids[j])
-				var hw: float = _hw(_st(ids[j])) * 1.05
-				var nxt: Vector3 = _st_pos(ids[mini(ids.size() - 1, j + 1)])
-				var tangent: Vector3 = (nxt - p).normalized()
-				var yaw: float = atan2(tangent.x, tangent.z)
-				var q := Vector3(p.x, y, p.z)
-				_prop(q, "watertile", Transform3D(Basis.from_euler(Vector3(0, yaw, 0)) * Basis.from_scale(
-					Vector3(hw * 2.0, 1.0, 0.75)), q), Color(1, 1, 1))
-			run_start = -1
+	for e in range(topo.edges.size()):
+		var ids: PackedInt32Array = topo.edges[e]
+		var run_start: int = -1
+		for i in range(ids.size() + 1):
+			var flooded: bool = false
+			if i < ids.size():
+				flooded = _st(ids[i])[CaveTopology.S_STATE] == CaveTopology.FLOODED
+			if flooded and run_start < 0:
+				run_start = i
+			elif not flooded and run_start >= 0:
+				for j in range(run_start, i):
+					var sj: PackedInt32Array = _st(ids[j])
+					var y: float = float(sj[CaveTopology.S_WATER_MM]) * 0.001
+					var p: Vector3 = _st_pos(ids[j])
+					var hw: float = _hw(sj) * 1.05
+					var nxt: Vector3 = _st_pos(ids[mini(ids.size() - 1, j + 1)])
+					var tangent: Vector3 = (nxt - p).normalized()
+					var yaw: float = atan2(tangent.x, tangent.z)
+					var q := Vector3(p.x, y, p.z)
+					_prop(q, "watertile", Transform3D(Basis.from_euler(Vector3(0, yaw, 0)) * Basis.from_scale(
+						Vector3(hw * 2.0, 1.0, 0.75)), q), Color(1, 1, 1))
+				run_start = -1
 
 # ===========================================================================
 # emit: one MeshInstance3D per chunk for the shell, one MultiMeshInstance3D
@@ -1322,7 +1816,7 @@ func _emit(root: Node3D) -> void:
 		if shell.tri_count() > 0:
 			var mi := MeshInstance3D.new()
 			mi.mesh = shell.commit()
-			mi.visibility_range_end = VIS_SHELL
+			mi.visibility_range_end = VIS_PITCH if bool(c.get("pitch", false)) else VIS_SHELL
 			mi.visibility_range_end_margin = 3.0
 			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 			stat_shell_tris += shell.tri_count()
@@ -1365,14 +1859,57 @@ func _emit(root: Node3D) -> void:
 
 # --- the camera path, straight down the main drive -------------------------
 func _build_camera_path() -> void:
-	var ids: PackedInt32Array = topo.edges[0]
-	for i in range(ids.size()):
-		var p: Vector3 = _st_pos(ids[i])
-		var s: PackedInt32Array = _st(ids[i])
-		var eye: float = 1.15
-		if s[CaveTopology.S_WIDTH] == CaveTopology.WC_CRAWL:
-			eye = 0.70
-		path_points.push_back(p + Vector3.UP * eye)
+	if topo.levels <= 1:
+		var ids: PackedInt32Array = topo.edges[0]
+		for i in range(ids.size()):
+			var p: Vector3 = _st_pos(ids[i])
+			var s: PackedInt32Array = _st(ids[i])
+			var eye: float = 1.15
+			if s[CaveTopology.S_WIDTH] == CaveTopology.WC_CRAWL:
+				eye = 0.70
+			path_points.push_back(p + Vector3.UP * eye)
+		for i in range(path_points.size()):
+			var j: int = mini(path_points.size() - 1, i + 3)
+			path_look.push_back(path_points[j])
+		return
+	# the layered walk: cross a level to its far end, drop, cross the next one
+	# back the other way. It is the descent, and it is the shape of the mine.
+	for L in range(topo.levels):
+		var lids: PackedInt32Array = topo.edges[topo.level_main_edge[L]]
+		var head: int = lids.size() - 1
+		if topo.level_head_st[L] >= 0:
+			for i in range(lids.size()):
+				if lids[i] == topo.level_head_st[L]:
+					head = i
+					break
+		for i in range(head + 1):
+			var p2: Vector3 = _st_pos(lids[i])
+			var s2: PackedInt32Array = _st(lids[i])
+			var eye2: float = 1.15
+			if s2[CaveTopology.S_WIDTH] == CaveTopology.WC_CRAWL:
+				eye2 = 0.70
+			path_points.push_back(p2 + Vector3.UP * eye2)
+		var hs: int = topo.level_head_st[L]
+		if hs < 0:
+			continue
+		var ph: int = _st(hs)[CaveTopology.S_PITCH_HEAD]
+		if ph < 0:
+			continue
+		var pr: PackedInt32Array = topo.pitch(ph)
+		var tp := Vector3(float(pr[CaveTopology.P_X]) * CELL,
+			float(pr[CaveTopology.P_TOP_MM]) * 0.001, float(pr[CaveTopology.P_Y]) * CELL)
+		var bp := Vector3(float(pr[CaveTopology.P_TO_X]) * CELL,
+			float(pr[CaveTopology.P_BOT_MM]) * 0.001 + 1.15, float(pr[CaveTopology.P_TO_Y]) * CELL)
+		var dh: float = tp.y - bp.y
+		var ns: int = maxi(3, int(dh / 1.1))
+		var bore2: float = float(pr[CaveTopology.P_BORE_MM]) * 0.001
+		var kind2: int = pr[CaveTopology.P_KIND]
+		for i in range(1, ns + 1):
+			var t: float = float(i) / float(ns)
+			var q: Vector3 = tp.lerp(bp, t)
+			if kind2 == CaveTopology.PK_MOULIN or kind2 == CaveTopology.PK_COLLAR:
+				q += Vector3(cos(t * dh * 0.22), 0.0, sin(t * dh * 0.22)) * (bore2 * 0.32 * sin(t * PI))
+			path_points.push_back(q)
 	for i in range(path_points.size()):
-		var j: int = mini(path_points.size() - 1, i + 3)
-		path_look.push_back(path_points[j])
+		var j2: int = mini(path_points.size() - 1, i + 3)
+		path_look.push_back(path_points[j2])

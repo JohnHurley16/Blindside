@@ -25,6 +25,14 @@
 extends Node3D
 
 const CELL := 0.6
+
+# The depth gauge (CHASSIS-TIMING D8 assigns SensorId 7 to every chassis). Height is measured
+# rather than dead-reckoned, which is why belief drift is planar -- but it is measured by an
+# instrument, not read off the world. Before 2026-09-10 this file copied the true height into
+# belief verbatim; on a flat cave that was invisible, and on a vertical one it is a truth leak
+# into the one view that exists to show what the machine does NOT know.
+const GAUGE_BIAS_M: float = 0.42     # fixed offset for a match, sign and size from the seed
+const GAUGE_NOISE_M: float = 0.08    # per-reading, one sigma
 const VOID := Color(0.0235, 0.0314, 0.0431)
 const SENSED := Color(0.388, 0.839, 0.969)
 const LIE := Color(1.000, 0.824, 0.247)
@@ -298,6 +306,11 @@ func _build_hud() -> void:
 # ===========================================================================
 # maths
 # ===========================================================================
+func _gauge_y(true_y: float, seed_i: int, step_i: int) -> float:
+	"""What the depth gauge reports. The only place belief may learn a height."""
+	var bias: float = (float((seed_i * 2654435761) % 2000) / 1000.0 - 1.0) * GAUGE_BIAS_M
+	return true_y + bias + _gauss(43, step_i, 0) * GAUGE_NOISE_M
+
 func _yawrot(v: Vector3, y: float) -> Vector3:
 	var c := cos(y)
 	var s := sin(y)
@@ -473,10 +486,10 @@ func _integrate_belief(fix_spec: Array) -> void:
 			var fwd: Vector3 = _yawrot(Vector3(ds, 0, 0), byaw)
 			var jitter: float = DR_POS_NOISE_PER_CELL * CELL * sqrt(maxf(cells, 0.0))
 			bp += fwd + Vector3(_gauss(42, step, 0) * jitter, 0, _gauss(42, step, 1) * jitter)
-			bp.y = tpos.y
+			bp.y = _gauge_y(tpos.y, seed_v, step)
 			step += 1
 		else:
-			bp.y = tpos.y
+			bp.y = _gauge_y(tpos.y, seed_v, step)
 
 		# a correction lands between this tick and the last
 		while fi < fix_spec.size() and float((fix_spec[fi] as Array)[0]) <= t:
@@ -741,7 +754,7 @@ func _place(scans: Array) -> void:
 			var n0: Vector3 = _yawrot(m, byaw)
 			# the believed sensor origin at that instant; the y datum is
 			# measured, not dead-reckoned, so drift is planar (as in phase1)
-			var org := Vector3(bpos.x, s.out_org[i].y, bpos.z)
+			var org := Vector3(bpos.x, _gauge_y(s.out_org[i].y, seed_v, i), bpos.z)
 			var p0: Vector3 = org + n0
 			var p1: Vector3 = p0
 			var n1: Vector3 = n0

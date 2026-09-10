@@ -36,8 +36,14 @@ GODOT="C:/Users/jackh/Downloads/Godot_v4.7.2-stable_win64.exe/Godot_v4.7.2-stabl
 # just the screenshots (~25 s)
 "$GODOT" --path spikes/godot/cave --resolution 1280x720 -- --shotsonly
 
+# THE LAYERED CAVE (2026-09-10). Four levels, nine pitches, 83 m of vertical
+# range, three media by depth. NOT the default: the flat cave is, because the
+# trailer cut is matched to it. See VERTICAL.md.
+"$GODOT" --path spikes/godot/cave --resolution 1280x720 --     --levels=4 --shotset=vertical --shotdir=vertical --shotsonly
+
 # other flags: --seed=N --len=CELLS --speed=M_PER_S --noshadow --nofog --noprops
 #              --novis --walkonly --stay
+#              --levels=1..4  (1 = the flat cave, the DEFAULT)  --vertical
 ./check.sh                 # GDScript parse gate, headless
 ./shadercheck.sh           # SHADER compile gate -- check.sh never compiles one
 ./ablate.sh                # the performance ablation table in §5.3
@@ -56,10 +62,12 @@ Intel UHD. Every number below is on the NVIDIA.
 
 | file | what it is |
 |---|---|
+| `VERTICAL.md` | **the layered cave, 2026-09-10.** Levels, pitches, the three media, the seam changes, and why the flat cave is still the default. Read it before touching `topology.gd`. |
 | `topology.gd` | **the deterministic layer.** Integer only. This is `blindside-gen`. |
 | `dressing.gd` | **the client layer.** Geometry, kit, scatter, materials. |
 | `cave_root.gd` | scene, camera walk, lamp, metrics, screenshots |
 | `rock.gdshader` | the one rock material, four scalars, world-space, no texture |
+| `ice.gdshader` | the second material family. Its own flow-shaped primitive; it shares no function with the rock family. See VERTICAL.md section 4.1 |
 | `kit.gdshader` | one shader, six parameter sets: iron / steel / timber / porcelain / composite / aluminium |
 | `stone.gdshader` | loose rock and spoil — the cheap shader, tens of thousands of instances |
 | `lumcheck.py` | the exposure contract, computed on **linearised** luminance |
