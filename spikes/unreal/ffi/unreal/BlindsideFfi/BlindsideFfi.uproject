@@ -1,0 +1,14 @@
+{
+	"FileVersion": 3,
+	"EngineAssociation": "5.6",
+	"Category": "Spike",
+	"Description": "Rust-to-Unreal C ABI boundary spike. See spikes/unreal/ffi/NOTES.md.",
+	"Modules": [
+		{
+			"Name": "BlindsideFfi",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	],
+	"Plugins": []
+}

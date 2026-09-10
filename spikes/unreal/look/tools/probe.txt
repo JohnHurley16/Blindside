@@ -1,0 +1,402 @@
+=== geometry-ish ===
+AbcGeometryCacheMotionVectorsImport
+AbcGeometryCacheSettings
+ChaosVDGeometryContainer
+DataflowGeometryCollectionDynamicState
+FGeometryScriptFitOrientedBoxMethod
+FixTinyGeoGeometrySelectionMethod
+GenerateStaticMeshLODSimpleCollisionGeometryType
+Geometry
+GeometryCache
+GeometryCacheActor
+GeometryCacheCodecBase
+GeometryCacheComponent
+GeometryCacheStreamerSettings
+GeometryCacheTrack
+GeometryCacheTrackStreamable
+GeometryCacheTrack_FlipbookAnimation
+GeometryCacheTrack_TransformAnimation
+GeometryCacheTrack_TransformGroupAnimation
+GeometryCollection
+GeometryCollectionActor
+GeometryCollectionAutoInstanceMesh
+GeometryCollectionCacheFactory
+GeometryCollectionCollisionParticleData
+GeometryCollectionCollisionTypeData
+GeometryCollectionComponent
+GeometryCollectionComponent_NotifyGeometryCollectionPhysicsLoadingStateChange
+GeometryCollectionComponent_NotifyGeometryCollectionPhysicsStateChange
+GeometryCollectionDamagePropagationData
+GeometryCollectionDebugDrawActor
+GeometryCollectionDebugDrawActorHideGeometry
+GeometryCollectionDebugDrawComponent
+GeometryCollectionEmbeddedExemplar
+GeometryCollectionFactory
+GeometryCollectionISMPoolActor
+GeometryCollectionISMPoolComponent
+GeometryCollectionISMPoolDebugDrawComponent
+GeometryCollectionLevelSetData
+GeometryCollectionLibrary
+GeometryCollectionPhysicsTypeEnum
+GeometryCollectionProxyMeshData
+GeometryCollectionProxyMeshMaterials
+GeometryCollectionRenderLevelSetActor
+GeometryCollectionSizeSpecificData
+GeometryCollectionSource
+GeometryScript3DGridParameters
+GeometryScriptAdaptiveRemeshOptions
+GeometryScriptAdaptiveTessellationOptions
+GeometryScriptAppendMeshOptions
+GeometryScriptAxis
+GeometryScriptBakeBitDepth
+GeometryScriptBakeCurvatureClampMode
+GeometryScriptBakeCurvatureColorMode
+GeometryScriptBakeCurvatureTypeMode
+GeometryScriptBakeFilteringType
+GeometryScriptBakeHeightRangeMode
+GeometryScriptBakeNormalSpace
+GeometryScriptBakeOutputMode
+GeometryScriptBakeOutputType
+GeometryScriptBakeRenderCaptureOptions
+GeometryScriptBakeResolution
+GeometryScriptBakeSamplesPerPixel
+GeometryScriptBakeSourceMeshOptions
+GeometryScriptBakeTargetMeshOptions
+GeometryScriptBakeTextureOptions
+GeometryScriptBakeTypeOptions
+GeometryScriptBakeTypes
+GeometryScriptBakeVertexOptions
+GeometryScriptBakeVertexTopology
+GeometryScriptBendWarpOptions
+GeometryScriptBlurColorMode
+GeometryScriptBlurMeshVertexColorsOptions
+GeometryScriptBoneHierarchyMismatchHandling
+GeometryScriptBoneInfo
+GeometryScriptBoneWeight
+GeometryScriptBoneWeightProfile
+GeometryScriptBooleanOperation
+GeometryScriptBooleanOutputSpace
+GeometryScriptCalculateNormalsOptions
+GeometryScriptChannelPackResult
+GeometryScriptChannelPackSource
+GeometryScriptClusterSimplifyConstraintLevel
+GeometryScriptClusterSimplifyEdgeConstraintOptions
+GeometryScriptClusterSimplifyMeshOptions
+GeometryScriptCollisionFromMeshOptions
+GeometryScriptCollisionGenerationMethod
+GeometryScriptColorFlags
+GeometryScriptColorList
+GeometryScriptCombineAttributesMode
+GeometryScriptCombineSelectionMode
+GeometryScriptConstrainedDelaunayTriangulationOptions
+GeometryScriptContainmentOutcomePins
+GeometryScriptConvexDecompositionOptions
+GeometryScriptConvexHullApproximationOptions
+GeometryScriptConvexHullOptions
+GeometryScriptConvexHullSimplificationOptions
+GeometryScriptConvexHullSimplifyMethod
+GeometryScriptCoordinateSpace
+GeometryScriptCopyBonesFromMeshOptions
+GeometryScriptCopyMeshFromAssetOptions
+GeometryScriptCopyMeshFromComponentOptions
+GeometryScriptCopyMeshToAssetOptions
+GeometryScriptCopyMorphTargetToAssetOptions
+GeometryScriptCopySkinWeightProfileToAssetOptions
+GeometryScriptCreateNewSkeletalMeshAssetOptions
+GeometryScriptCreateNewStaticMeshAssetOptions
+GeometryScriptCreateNewTexture2DAssetOptions
+GeometryScriptCreateNewVolumeFromMeshOptions
+GeometryScriptDebug
+GeometryScriptDebugMessage
+GeometryScriptDebugMessageType
+GeometryScriptDegenerateTriangleOptions
+GeometryScriptDetermineMeshOcclusionOptions
+GeometryScriptDisplaceFromTextureOptions
+GeometryScriptDynamicMeshBVH
+GeometryScriptEmptySelectionBehavior
+GeometryScriptErrorType
+GeometryScriptEvaluateSplineRange
+GeometryScriptExpMapUVOptions
+GeometryScriptFillHolesMethod
+GeometryScriptFillHolesOptions
+GeometryScriptFitOrientedBoxOptions
+GeometryScriptFlareType
+GeometryScriptFlareWarpOptions
+GeometryScriptGeneralPolygonList
+GeometryScriptGenerateLightmapUVOptions
+GeometryScriptGridSizingMethod
+GeometryScriptGroupLayer
+GeometryScriptIndexList
+GeometryScriptIndexType
+GeometryScriptInitKMeansMethod
+GeometryScriptIsSameMeshOptions
+GeometryScriptIterativeMeshSmoothingOptions
+GeometryScriptLODType
+GeometryScriptLayoutUVsOptions
+GeometryScriptLinearExtrudeDirection
+GeometryScriptMathWarpOptions
+GeometryScriptMathWarpType
+GeometryScriptMeasureMeshDistanceOptions
+GeometryScriptMergeSimpleCollisionOptions
+GeometryScriptMergeVertexOptions
+GeometryScriptMeshBevelOptions
+GeometryScriptMeshBevelSelectionMode
+GeometryScriptMeshBevelSelectionOptions
+GeometryScriptMeshBooleanOptions
+GeometryScriptMeshDifferenceInfo
+GeometryScriptMeshDifferenceReason
+GeometryScriptMeshEditPolygroupMode
+GeometryScriptMeshEditPolygroupOptions
+GeometryScriptMeshExtrudeOptions
+GeometryScriptMeshInsetOutsetFacesOptions
+GeometryScriptMeshIsoCurveOptions
+GeometryScriptMeshLinearExtrudeOptions
+GeometryScriptMeshMirrorOptions
+GeometryScriptMeshOffsetFacesOptions
+GeometryScriptMeshOffsetOptions
+GeometryScriptMeshPlaneCutOptions
+GeometryScriptMeshPlaneSliceOptions
+GeometryScriptMeshPointSamplingOptions
+GeometryScriptMeshProjectionSettings
+GeometryScriptMeshReadLOD
+GeometryScriptMeshSelection
+GeometryScriptMeshSelectionConversionType
+GeometryScriptMeshSelectionType
+GeometryScriptMeshSelfUnionOptions
+GeometryScriptMeshSimplificationQuadricVariant
+GeometryScriptMeshWriteLOD
+GeometryScriptMorphologicalOpType
+GeometryScriptMorphologyOptions
+GeometryScriptNaniteOptions
+GeometryScriptNonUniformPointSamplingOptions
+GeometryScriptOffsetFacesType
+GeometryScriptOpenPathOffsetOptions
+GeometryScriptOutcomePins
+GeometryScriptPNTessellateOptions
+GeometryScriptPatchBuilderOptions
+GeometryScriptPathOffsetEndType
+GeometryScriptPerVertexNormalSource
+GeometryScriptPerlinNoiseLayerOptions
+GeometryScriptPerlinNoiseOptions
+GeometryScriptPixelSamplingMethod
+GeometryScriptPlanarSimplifyOptions
+GeometryScriptPointClusteringOptions
+GeometryScriptPointFlatteningOptions
+GeometryScriptPointPriorityOptions
+GeometryScriptPolyOffsetJoinType
+GeometryScriptPolyOperationArea
+GeometryScriptPolyPath
+GeometryScriptPolygonFillMode
+GeometryScriptPolygonOffsetOptions
+GeometryScriptPolygonsTriangulationOptions
+GeometryScriptPolygroupSimplifyOptions
+GeometryScriptPrimitiveOptions
+GeometryScriptPrimitiveOriginMode
+GeometryScriptPrimitivePolygroupMode
+GeometryScriptPrimitiveUVMode
+GeometryScriptPruneBoneWeightsAssignmentType
+GeometryScriptPruneBoneWeightsOptions
+GeometryScriptRGBAChannel
+GeometryScriptRayHitResult
+GeometryScriptReadGammaSpace
+GeometryScriptRecomputeUVsOptions
+GeometryScriptRemeshEdgeConstraintType
+GeometryScriptRemeshOptions
+GeometryScriptRemeshSmoothingType
+GeometryScriptRemoveHiddenTrianglesMethod
+GeometryScriptRemoveHiddenTrianglesOptions
+GeometryScriptRemoveMeshSimplificationType
+GeometryScriptRemoveSmallComponentOptions
+GeometryScriptRenderCaptureCamera
+GeometryScriptRenderCaptureCamerasForBoxOptions
+GeometryScriptRenderCaptureTextures
+GeometryScriptRepackUVsOptions
+GeometryScriptRepairMeshMode
+GeometryScriptResolveTJunctionOptions
+GeometryScriptRevolveOptions
+GeometryScriptSampleSpacing
+GeometryScriptSampleTextureOptions
+GeometryScriptSamplingDistributionMode
+GeometryScriptSamplingWeightMode
+GeometryScriptScalarList
+GeometryScriptSculptLayerUpdateOptions
+GeometryScriptSearchOutcomePins
+GeometryScriptSelectHiddenTrianglesFromOutsideOptions
+GeometryScriptSelectiveTessellateOptions
+GeometryScriptSetSimpleCollisionOptions
+GeometryScriptSetStaticMeshCollisionOptions
+GeometryScriptSimpleCollision
+GeometryScriptSimpleCollisionTriangulationOptions
+GeometryScriptSimpleMeshBuffers
+GeometryScriptSimplePolygon
+GeometryScriptSimplifyMeshOptions
+GeometryScriptSmoothBoneWeightsOptions
+GeometryScriptSmoothBoneWeightsType
+GeometryScriptSnapBoundariesOptions
+GeometryScriptSolidifyOptions
+GeometryScriptSpatialQueryOptions
+GeometryScriptSpectralConformalUVOptions
+GeometryScriptSphereCovering
+GeometryScriptSplineSamplingOptions
+GeometryScriptSplitNormalsOptions
+GeometryScriptSweptHullAxis
+GeometryScriptSweptHullOptions
+GeometryScriptTangentTypes
+GeometryScriptTangentsOptions
+GeometryScriptTessellationErrorMode
+GeometryScriptTexelDensityMode
+GeometryScriptTopologyConnectionType
+GeometryScriptTransferBoneWeightsOptions
+GeometryScriptTransferMeshVertexColorsOptions
+GeometryScriptTransformCollisionOptions
+GeometryScriptTriangle
+GeometryScriptTriangleList
+GeometryScriptTrianglePoint
+GeometryScriptTwistWarpOptions
+GeometryScriptUVFlattenMethod
+GeometryScriptUVIslandSource
+GeometryScriptUVLayoutType
+GeometryScriptUVList
+GeometryScriptUVTexelDensityOptions
+GeometryScriptUVTriangle
+GeometryScriptUniformRemeshOptions
+GeometryScriptUniformRemeshTargetType
+GeometryScriptUniqueAssetNameOptions
+GeometryScriptVectorList
+GeometryScriptVoronoiOptions
+GeometryScriptWeightMapDensity
+GeometryScriptWeightMapHandle
+GeometryScriptWeldEdgesOptions
+GeometryScriptXAtlasOptions
+GeometryScript_AssetUtils
+GeometryScript_Bake
+GeometryScript_BoneWeights
+GeometryScript_Box
+GeometryScript_Collision
+GeometryScript_Containment
+GeometryScript_EditorDynamicMeshUtil
+GeometryScript_EditorTextureUtils
+GeometryScript_List
+GeometryScript_Materials
+GeometryScript_MeshBooleans
+GeometryScript_MeshComparison
+GeometryScript_MeshDecomposition
+GeometryScript_MeshDeformers
+GeometryScript_MeshEdits
+GeometryScript_MeshGeodesic
+GeometryScript_MeshModeling
+GeometryScript_MeshPoolUtility
+GeometryScript_MeshQueries
+GeometryScript_MeshRepair
+GeometryScript_MeshSampling
+GeometryScript_MeshSculptLayers
+GeometryScript_MeshSelection
+GeometryScript_MeshSelectionQueries
+GeometryScript_MeshSimplification
+GeometryScript_MeshSpatial
+GeometryScript_MeshSubdivide
+GeometryScript_MeshTransforms
+GeometryScript_MeshVoxelProcessing
+GeometryScript_NewAssetUtils
+GeometryScript_Normals
+GeometryScript_OpenSubdiv
+GeometryScript_OrientedBox
+GeometryScript_PointSetSampling
+GeometryScript_PolyGroups
+GeometryScript_PolyPath
+GeometryScript_PolygonList
+GeometryScript_Primitives
+GeometryScript_Ray
+GeometryScript_Remeshing
+GeometryScript_SceneUtils
+GeometryScript_SimplePolygon
+GeometryScript_TextureUtils
+GeometryScript_Transform
+GeometryScript_UVs
+GeometryScript_VectorMath
+GeometryScript_VertexColors
+GeometryScript_VolumeBake
+GeometryScript_WeightMaps
+GroomGeometryType
+HairGeometrySettings
+HasCustomNavigableGeometry
+ImportGeometryType
+InterchangeGeometryCacheActorFactory
+InterchangeGeometryCacheFactory
+InterchangeGeometryCacheFactoryNode
+InterchangeGeometryCacheNode
+InterchangeMeshGeometry
+LandscapeNaniteComponent
+MaterialExpressionNaniteReplace
+MaterialOverrideNanite
+MeshNaniteSettings
+MovieSceneGeometryCacheParams
+MovieSceneGeometryCacheSection
+MovieSceneGeometryCacheSectionTemplateParameters
+MovieSceneGeometryCacheTrack
+MovieSceneGeometryCollectionParams
+MovieSceneGeometryCollectionSection
+MovieSceneGeometryCollectionTrack
+NaniteAssemblyBoneInfluence
+NaniteAssemblyData
+NaniteAssemblyNodeTransformSpace
+NaniteAssemblyPart
+NaniteFallbackTarget
+NaniteGenerateFallback
+NaniteSettings
+NaniteShapePreservation
+OccludedGeometryFilteringPolicy
+OnGeometryCollectionFullyDecayedEvent
+OnGeometryCollectionRootMovedEvent
+OnItemGeometryMulticastDynamic
+PreviewGeometryActor
+SourceGeometryPartID
+SpeedTreeGeometryType
+SpriteGeometryCollection
+SpriteGeometryShape
+WidgetGeometryMode
+=== key presence ===
+HAS Landscape                                  True
+HAS LandscapeProxy                             True
+HAS LandscapeEditorSubsystem                   False
+HAS DynamicMesh                                True
+HAS DynamicMeshActor                           True
+HAS MaterialEditingLibrary                     True
+HAS MaterialExpressionNoise                    True
+HAS MaterialExpressionWorldPosition            True
+HAS SceneCaptureComponent2D                    True
+HAS SceneCapture2D                             True
+HAS TextureRenderTarget2D                      True
+HAS RenderingLibrary                           True
+HAS VolumetricCloud                            True
+HAS SkyAtmosphere                              True
+HAS ExponentialHeightFog                       True
+HAS SkyLight                                   True
+HAS DirectionalLight                           True
+HAS PostProcessVolume                          True
+HAS StaticMeshActor                            True
+HAS CameraActor                                True
+HAS LevelSequence                              True
+HAS MoviePipelineQueueSubsystem                True
+HAS EditorAssetLibrary                         True
+HAS EditorLevelLibrary                         True
+HAS EditorActorSubsystem                       True
+HAS LevelEditorSubsystem                       True
+HAS AssetToolsHelpers                          True
+HAS StaticMesh                                 True
+HAS AssetImportTask                            True
+HAS AutomationLibrary                          True
+HAS Texture2DFactoryNew                        True
+HAS InstancedStaticMeshComponent               True
+HAS HierarchicalInstancedStaticMeshComponent   True
+HAS MaterialInstanceConstant                   True
+HAS MaterialFactoryNew                         True
+HAS TextureFactory                             True
+HAS NaniteSettings                             True
+HAS MeshNaniteSettings                         True
+HAS PointLight                                 True
+HAS SpotLight                                  True
+HAS NiagaraSystem                              True
+HAS LocalFogVolume                             True
+HAS HeterogeneousVolume                        True
+HAS SparseVolumeTexture                        True

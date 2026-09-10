@@ -1,0 +1,33 @@
+[package]
+name = "blindside-ffi"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "C ABI over blindside-sim, for engine clients (Unreal spike)"
+
+[lib]
+# cdylib  -> blindside_ffi.dll + blindside_ffi.dll.lib (import library), what Unreal loads.
+# staticlib -> blindside_ffi.lib, the alternative link mode; built so the spike can report
+#              on both. See NOTES.md "staticlib vs cdylib".
+# rlib    -> so this crate's own tests and the bench binary can link it as a Rust library.
+crate-type = ["cdylib", "staticlib", "rlib"]
+
+[dependencies]
+# The ONLY dependency. blindside-sim's public API is the entire input to this crate; if a
+# second sim-side crate ever appears here, the boundary has widened and that is a review.
+blindside-sim = { path = "../../vendor/blindside-sim" }
+
+[build-dependencies]
+# The header is generated, never hand-written: a hand-written header can drift from the
+# Rust and the drift is a memory-safety bug, not a compile error.
+cbindgen = "0.29"
+
+[[bin]]
+name = "bench-snapshot"
+path = "src/bin/bench_snapshot.rs"
+
+[dev-dependencies]
+# Also a dev-dependency so `tests/header_surface.rs` can regenerate the header in memory
+# and assert the checked-in copy matches. Same version as the build-dependency.
+cbindgen = "0.29"

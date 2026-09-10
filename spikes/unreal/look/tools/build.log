@@ -1,0 +1,9 @@
+actors 977
+T_main mesh=SM_main tris=8380418 nanite=False bounds=<Struct 'Box' (0x0000025CB39D4240) {min: {x: -307200.000000, y: -307200.000000, z: -191.021973}, max: {x: 307200.000000, y: 307200.000000, z: 453725.906250}, is_valid: True}> loc=<Struct 'Vector' (0x0000025D4D07CCE0) {x: 0.000000, y: 0.000000, z: 0.000000}> mat=MI_main
+T_back mesh=SM_back tris=1176578 nanite=False bounds=<Struct 'Box' (0x0000025CB39D33C0) {min: {x: -1228800.000000, y: -1228800.000000, z: -90897.710938}, max: {x: 1228800.000000, y: 1228800.000000, z: 290627.625000}, is_valid: True}> loc=<Struct 'Vector' (0x0000025D5E0EE770) {x: 0.000000, y: 0.000000, z: 0.000000}> mat=MI_back
+T_near mesh=SM_near tris=4712450 nanite=False bounds=<Struct 'Box' (0x0000025CB39D5F00) {min: {x: -32000.000000, y: -32000.000000, z: -24.714817}, max: {x: 32000.000000, y: 32000.000000, z: 956.008057}, is_valid: True}> loc=<Struct 'Vector' (0x0000025D5E0EE7C0) {x: 90000.000000, y: -10000.000000, z: 5.000000}> mat=MI_near
+probe cube at <Struct 'Vector' (0x0000025D5E0EE8B0) {x: 89400.091383, y: -15000.000000, z: 418.602629}> (cam <Struct 'Vector' (0x0000025D5E0EE810) {x: 90000.000000, y: -15000.000000, z: 429.074073}> fwd <Struct 'Vector' (0x0000025D5E0EE950) {x: -0.999848, y: 0.000000, z: -0.017452}>)
+diag nanite_on
+diag nanite_off
+diag unlit
+DIAG DONE

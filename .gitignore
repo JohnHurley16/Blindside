@@ -63,3 +63,13 @@ spikes/godot/surface/shots/valley/
 spikes/godot/surface/shots/tracks/
 spikes/godot/cave/shots/ice/assayer/
 spikes/godot/cloud/shots/cinema/seq/map_reveal/
+# Unreal/Rust FFI spike build output
+spikes/unreal/**/Binaries/
+spikes/unreal/**/Intermediate/
+spikes/unreal/**/DerivedDataCache/
+spikes/unreal/**/Saved/
+spikes/unreal/**/target/
+# Unreal look-test content: generated landscape meshes and heightmaps, hundreds of MB,
+# rebuilt by the tools in spikes/unreal/look/tools/.
+spikes/unreal/look/Blindside/Content/
+spikes/unreal/look/gen/

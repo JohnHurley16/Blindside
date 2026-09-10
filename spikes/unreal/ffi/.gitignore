@@ -1,0 +1,12 @@
+# Cargo
+rust/target/
+
+# Unreal
+unreal/BlindsideFfi/Binaries/
+unreal/BlindsideFfi/Intermediate/
+unreal/BlindsideFfi/Saved/
+unreal/BlindsideFfi/DerivedDataCache/
+unreal/BlindsideFfi/.vs/
+unreal/BlindsideFfi/*.sln
+
+# Run logs are evidence for NOTES.md; keep the trimmed ones under logs/ only.

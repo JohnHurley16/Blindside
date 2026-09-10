@@ -1,0 +1,85 @@
+﻿cmd : 'vswhere.exe' is not recognized as an internal or external command,
+At line:2 char:1
++ cmd /c "C:\Users\jackh\documents\programming\Blindside\spikes\unreal\ ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ('vswhere.exe' i...ternal command,:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+operable program or batch file.
+=== cdylib, via the import library ===
+smoke.cpp
+
+thread '<unnamed>' (71748) panicked at crates\blindside-ffi\src\lib.rs:616:14:
+deliberate spike panic, to prove the boundary catches it
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+blindside C++ smoke test (cdylib via import library)
+  abi version matches the header                 ok
+  header size agrees with sizeof                 ok
+  point size agrees with sizeof                  ok
+  layout is 72 + 16                              ok
+  bs_sim_create                                  ok
+  bs_sim_belief_bytes                            ok
+  snapshot is 184072 bytes                       ok
+  bs_sim_belief_snapshot                         ok
+  wrote exactly what it said it would            ok
+  bs_sim_step(100)                               ok
+  tick is 100                                    ok
+  bs_sim_state_hash                              ok
+  tick 100  hash eb59d1821479e18815fb85f91daa806f106cd00d9e5c2998f9b9cc6ac86f1b63
+  a short buffer is refused, not overrun         ok
+  a bad agent is refused                         ok
+  a null handle is refused                       ok
+  bs_status_message                              ok
+  a panic becomes a status code                  ok
+  and the process is still running               ok
+
+reference hashes, seed 0xB11D51DE:
+  tick      0  189bc407a3ce778bbf0ce7a29ac5648b6f9a5e1fc8a7305dd1d21854403da1c2
+  tick      1  b42af8111359e718056a8f776b64d7fda6c1ebfcf3402afd33631d4317995a31
+  tick    100  eb59d1821479e18815fb85f91daa806f106cd00d9e5c2998f9b9cc6ac86f1b63
+  tick    101  31bf7017315f1652e20ec7f69a2d7bd22b995095ca004b4b46561297df267f85
+  tick   1000  eb89683a0b4b0474ec90839fad6319a1fe5d1203362996bc2a4662ce35efc6a8
+  tick   2071  27c5edacdf537861cc17af4b5fb459b13b3dd00a6216b40eb05c8346101ab571
+  tick   2171  5c0e594f00738875bfcd62546227ce0507d24adf4cc0239c809652a9d82cb8fa
+PASS: 0 failure(s)
+
+=== staticlib ===
+smoke.cpp
+
+thread '<unnamed>' (29000) panicked at crates\blindside-ffi\src\lib.rs:616:14:
+deliberate spike panic, to prove the boundary catches it
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+blindside C++ smoke test (staticlib)
+  abi version matches the header                 ok
+  header size agrees with sizeof                 ok
+  point size agrees with sizeof                  ok
+  layout is 72 + 16                              ok
+  bs_sim_create                                  ok
+  bs_sim_belief_bytes                            ok
+  snapshot is 184072 bytes                       ok
+  bs_sim_belief_snapshot                         ok
+  wrote exactly what it said it would            ok
+  bs_sim_step(100)                               ok
+  tick is 100                                    ok
+  bs_sim_state_hash                              ok
+  tick 100  hash eb59d1821479e18815fb85f91daa806f106cd00d9e5c2998f9b9cc6ac86f1b63
+  a short buffer is refused, not overrun         ok
+  a bad agent is refused                         ok
+  a null handle is refused                       ok
+  bs_status_message                              ok
+  a panic becomes a status code                  ok
+  and the process is still running               ok
+
+reference hashes, seed 0xB11D51DE:
+  tick      0  189bc407a3ce778bbf0ce7a29ac5648b6f9a5e1fc8a7305dd1d21854403da1c2
+  tick      1  b42af8111359e718056a8f776b64d7fda6c1ebfcf3402afd33631d4317995a31
+  tick    100  eb59d1821479e18815fb85f91daa806f106cd00d9e5c2998f9b9cc6ac86f1b63
+  tick    101  31bf7017315f1652e20ec7f69a2d7bd22b995095ca004b4b46561297df267f85
+  tick   1000  eb89683a0b4b0474ec90839fad6319a1fe5d1203362996bc2a4662ce35efc6a8
+  tick   2071  27c5edacdf537861cc17af4b5fb459b13b3dd00a6216b40eb05c8346101ab571
+  tick   2171  5c0e594f00738875bfcd62546227ce0507d24adf4cc0239c809652a9d82cb8fa
+PASS: 0 failure(s)
+
+16384 bytes  smoke_dll.exe
+216576 bytes  smoke_static.exe
+211968 bytes  blindside_ffi.dll

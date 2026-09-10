@@ -1,0 +1,32 @@
+[package]
+name = "blindside-sim"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "deterministic core. no I/O, no time, no float, no rand"
+
+# ARCHITECTURE.md: blindside-sim depends only on blindside-vm and blindside-content
+# (plus the numeric and hashing primitives named in DETERMINISM.md / PHASE-0-HARNESS.md).
+# Both external crates are pinned to an exact version in the workspace root. A test in
+# blindside-harness (tests/workspace.rs) fails if anything else appears here.
+[dependencies]
+blindside-vm = { path = "../blindside-vm" }
+blindside-content = { path = "../blindside-content" }
+fixed = { workspace = true }
+blake3 = { workspace = true }
+
+# Both features are OFF by default and are not a privacy boundary: Cargo unifies features
+# per package across a build, so `cargo build --workspace` with the harness in it turns
+# them on for every dependent in that build. Hash-producing and shippable binaries are
+# built with `-p <crate>` (BLD-29). The determinism lint checks the dependency list; the
+# BLD-29 CI step checks the resolved feature set.
+[features]
+default = []
+# Tooling window onto ground truth, as strings only: `blindside_sim::diagnostics::{diff,
+# dump}` and the `testing` helpers. Enabled by blindside-harness for the canary and bisect.
+diagnostics = []
+# The BLD-35 fixture: at a chosen tick the sim folds a real `HashMap` iteration order into a
+# hashed field, so the canary is proven against the actual failure mode. Never shipped;
+# only the canary-injection CI job and the harness's own tests enable it.
+inject-desync = []

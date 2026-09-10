@@ -1,0 +1,730 @@
+
+===== GeometryScript_Primitives =====
+  append_bounding_box :: X.append_bounding_box(target_mesh, primitive_options, transform, box, steps_x=0, steps_y=0, steps_z=0, debug=None) -> DynamicMesh
+  append_bounding_box_with_collision :: X.append_bounding_box_with_collision(target_mesh, primitive_options, transform, box, steps_x=0, steps_y=0, steps_z=0, debug=None) -> (DynamicMesh, simple_collision=GeometryScriptSimpleCollision)
+  append_box :: X.append_box(target_mesh, primitive_options, transform, dimension_x=100.000000, dimension_y=100.000000, dimension_z=100.000000, steps_x=0, steps_y=0, steps_z=0, origin=GeometryScriptPrimitiveOriginMode.BASE, debug=None) -> DynamicMesh
+  append_box_with_collision :: X.append_box_with_collision(target_mesh, primitive_options, transform, dimension_x=100.000000, dimension_y=100.000000, dimension_z=100.000000, steps_x=0, steps_y=0, steps_z=0, origin=GeometryScriptPrimitiveOriginMode.BASE, debug=None) -> (DynamicMesh, simple_collision=GeometryScriptSimpleCollision)
+  append_cylinder :: X.append_cylinder(target_mesh, primitive_options, transform, radius=50.000000, height=100.000000, radial_steps=12, height_steps=0, capped=True, origin=GeometryScriptPrimitiveOriginMode.BASE, debug=None) -> DynamicMesh
+  append_disc :: X.append_disc(target_mesh, primitive_options, transform, radius=50.000000, angle_steps=16, spoke_steps=0, start_angle=0.000000, end_angle=360.000000, hole_radius=0.000000, debug=None) -> DynamicMesh
+  append_oriented_box :: X.append_oriented_box(target_mesh, primitive_options, transform, box, steps_x=0, steps_y=0, steps_z=0, debug=None) -> DynamicMesh
+  append_oriented_box_with_collision :: X.append_oriented_box_with_collision(target_mesh, primitive_options, transform, box, steps_x=0, steps_y=0, steps_z=0, debug=None) -> (DynamicMesh, simple_collision=GeometryScriptSimpleCollision)
+  append_rectangle :: deprecated: 'append_rectangle' was renamed to 'append_rectangle_compatibility_5_0'.
+  append_rectangle_compatibility_5_0 :: X.append_rectangle_compatibility_5_0(target_mesh, primitive_options, transform, dimension_x=100.000000, dimension_y=100.000000, steps_width=0, steps_height=0, debug=None) -> DynamicMesh
+  append_rectangle_xy :: X.append_rectangle_xy(target_mesh, primitive_options, transform, dimension_x=100.000000, dimension_y=100.000000, steps_width=0, steps_height=0, debug=None) -> DynamicMesh
+  append_revolve_path :: X.append_revolve_path(target_mesh, primitive_options, transform, path_vertices, revolve_options, steps=8, capped=True, debug=None) -> DynamicMesh
+  append_revolve_polygon :: X.append_revolve_polygon(target_mesh, primitive_options, transform, polygon_vertices, revolve_options, radius=100.000000, steps=8, debug=None) -> DynamicMesh
+  append_round_rectangle :: deprecated: 'append_round_rectangle' was renamed to 'append_round_rectangle_compatibility_5_0'.
+  append_round_rectangle_compatibility_5_0 :: X.append_round_rectangle_compatibility_5_0(target_mesh, primitive_options, transform, dimension_x=100.000000, dimension_y=100.000000, corner_radius=5.000000, steps_width=0, steps_height=0, steps_round=4, debug=None) -> DynamicMesh
+  append_round_rectangle_xy :: X.append_round_rectangle_xy(target_mesh, primitive_options, transform, dimension_x=100.000000, dimension_y=100.000000, corner_radius=5.000000, steps_width=0, steps_height=0, steps_round=4, debug=None) -> DynamicMesh
+  append_sphere_box :: X.append_sphere_box(target_mesh, primitive_options, transform, radius=50.000000, steps_x=6, steps_y=6, steps_z=6, origin=GeometryScriptPrimitiveOriginMode.CENTER, debug=None) -> DynamicMesh
+  append_sphere_box_with_collision :: X.append_sphere_box_with_collision(target_mesh, primitive_options, transform, radius=50.000000, steps_x=6, steps_y=6, steps_z=6, origin=GeometryScriptPrimitiveOriginMode.CENTER, debug=None) -> (DynamicMesh, simple_collision=GeometryScriptSimpleCollision)
+  append_sphere_covering :: X.append_sphere_covering(target_mesh, primitive_options, transform, sphere_covering, steps_x=6, steps_y=6, steps_z=6, debug=None) -> DynamicMesh
+  append_sphere_lat_long :: X.append_sphere_lat_long(target_mesh, primitive_options, transform, radius=50.000000, steps_phi=10, steps_theta=16, origin=GeometryScriptPrimitiveOriginMode.CENTER, debug=None) -> DynamicMesh
+  append_sphere_lat_long_with_collision :: X.append_sphere_lat_long_with_collision(target_mesh, primitive_options, transform, radius=50.000000, steps_phi=10, steps_theta=16, origin=GeometryScriptPrimitiveOriginMode.CENTER, debug=None) -> (DynamicMesh, simple_collision=GeometryScriptSimpleCollision)
+  append_spiral_revolve_polygon :: X.append_spiral_revolve_polygon(target_mesh, primitive_options, transform, polygon_vertices, revolve_options, radius=100.000000, steps=18, rise_per_revolution=50.000000, debug=None) -> DynamicMesh
+  append_sweep_polygon :: X.append_sweep_polygon(target_mesh, primitive_options, transform, polygon_vertices, sweep_path, loop=False, capped=True, start_scale=1.000000, end_scale=1.000000, rotation_angle_deg=0.000000, miter_limit=1.000000, debug=None) -> DynamicMesh
+  append_sweep_polyline :: X.append_sweep_polyline(target_mesh, primitive_options, transform, polyline_vertices, sweep_path, polyline_tex_param_u, sweep_path_tex_param_v, loop=False, start_scale=1.000000, end_scale=1.000000, rotation_angle_deg=0.000000, miter_limit=1.000000, debug=None) -> DynamicMesh
+
+===== GeometryScript_MeshDeformers =====
+  apply_bend_warp_to_mesh :: X.apply_bend_warp_to_mesh(target_mesh, options, bend_orientation, bend_angle=45.000000, bend_extent=50.000000, debug=None) -> DynamicMesh
+  apply_displace_from_per_vertex_vectors :: X.apply_displace_from_per_vertex_vectors(target_mesh, selection, vector_list, magnitude=5.000000, debug=None) -> DynamicMesh
+  apply_displace_from_texture_map :: X.apply_displace_from_texture_map(target_mesh, texture, selection, options, tessellation_options, uv_layer=0, debug=None) -> DynamicMesh
+  apply_flare_warp_to_mesh :: X.apply_flare_warp_to_mesh(target_mesh, options, flare_orientation, flare_percent_x=0.000000, flare_percent_y=0.000000, flare_extent=50.000000, debug=None) -> DynamicMesh
+  apply_iterative_smoothing_to_mesh :: X.apply_iterative_smoothing_to_mesh(target_mesh, selection, options, debug=None) -> DynamicMesh
+  apply_math_warp_to_mesh :: X.apply_math_warp_to_mesh(target_mesh, warp_orientation, warp_type, options, debug=None) -> DynamicMesh
+  apply_perlin_noise_to_mesh :: X.apply_perlin_noise_to_mesh(target_mesh, selection, options, debug=None) -> DynamicMesh
+  apply_perlin_noise_to_mesh2 :: X.apply_perlin_noise_to_mesh2(target_mesh, selection, options, debug=None) -> DynamicMesh
+  apply_twist_warp_to_mesh :: X.apply_twist_warp_to_mesh(target_mesh, options, twist_orientation, twist_angle=45.000000, twist_extent=50.000000, debug=None) -> DynamicMesh
+  compute_perlin_noise :: X.compute_perlin_noise(positions, options) -> GeometryScriptScalarList
+
+===== GeometryScript_NewAssetUtils =====
+  acquire_editor_element_handle :: x.acquire_editor_element_handle(allow_create=True) -> ScriptTypedElementHandle
+  call_method :: call_method(self, name: str, *args: Tuple[object, ...], **kwargs: Mapping[str, object]) -> Any -- call a method on this object via Unreal reflection using the given ordered (a tuple passed as args) or named (a dict passed as kwargs) argument data - allows calling methods that don't have Python glue
+  cast :: cast(cls: Type[_T], object: object) -> _T -- cast the given object to this Unreal object type or raise an exception if the cast is not possible
+  create_new_skeletal_mesh_asset_from_mesh :: X.create_new_skeletal_mesh_asset_from_mesh(from_dynamic_mesh, skeleton, asset_path_and_name, options, debug=None) -> (SkeletalMesh, outcome=GeometryScriptOutcomePins)
+  create_new_skeletal_mesh_asset_from_mesh_lo_ds :: deprecated: 'create_new_skeletal_mesh_asset_from_mesh_lo_ds' was renamed to 'create_new_skeletal_mesh_asset_from_mesh_lods'.
+  create_new_skeletal_mesh_asset_from_mesh_lods :: X.create_new_skeletal_mesh_asset_from_mesh_lods(from_dynamic_mesh_lo_ds, skeleton, asset_path_and_name, options, debug=None) -> (SkeletalMesh, outcome=GeometryScriptOutcomePins)
+  create_new_static_mesh_asset_from_mesh :: X.create_new_static_mesh_asset_from_mesh(from_dynamic_mesh, asset_path_and_name, options, debug=None) -> (StaticMesh, outcome=GeometryScriptOutcomePins)
+  create_new_static_mesh_asset_from_mesh_lo_ds :: deprecated: 'create_new_static_mesh_asset_from_mesh_lo_ds' was renamed to 'create_new_static_mesh_asset_from_mesh_lods'.
+  create_new_static_mesh_asset_from_mesh_lods :: X.create_new_static_mesh_asset_from_mesh_lods(from_dynamic_mesh, asset_path_and_name, options, debug=None) -> (StaticMesh, outcome=GeometryScriptOutcomePins)
+  create_new_texture2d_asset :: X.create_new_texture2d_asset(from_texture, asset_path_and_name, options, debug=None) -> (Texture2D, outcome=GeometryScriptOutcomePins)
+  create_new_volume_from_mesh :: X.create_new_volume_from_mesh(from_dynamic_mesh, create_in_world, actor_transform, base_actor_name, options, debug=None) -> (Volume, create_in_world=World, outcome=GeometryScriptOutcomePins)
+  create_new_volume_from_mesh_world_context :: X.create_new_volume_from_mesh_world_context(world_context_object, from_dynamic_mesh, actor_transform, base_actor_name, options, debug=None) -> (Volume, outcome=GeometryScriptOutcomePins)
+  create_unique_new_asset_path_name :: X.create_unique_new_asset_path_name(asset_folder_path, base_asset_name, options, debug=None) -> (unique_asset_path_and_name=str, unique_asset_name=str, outcome=GeometryScriptOutcomePins)
+  get_class :: get_class(self) -> Class -- get the Unreal class of this instance
+  get_default_object :: get_default_object(cls: Type[_T]) -> _T -- get the Unreal class default object (CDO) of this type
+  get_editor_property :: get_editor_property(self, name: str) -> object -- get the value of any property visible to the editor
+  get_fname :: get_fname(self) -> Name -- get the name of this instance
+  get_full_name :: get_full_name(self) -> str -- get the full name (class name + full path) of this instance
+  get_name :: get_name(self) -> str -- get the name of this instance
+  get_outer :: get_outer(self) -> Any -- get the outer object from this instance (if any)
+  get_outermost :: get_outermost(self) -> Package -- get the outermost object (the package) from this instance
+  get_package :: get_package(self) -> Package -- get the package directly associated with this instance
+  get_path_name :: get_path_name(self) -> str -- get the path name of this instance
+  get_typed_outer :: get_typed_outer(self, type: Union[Class, type]) -> Any -- get the first outer object of the given type from this instance (if any)
+  get_world :: get_world(self) -> Optional[World] -- get the world associated with this instance (if any)
+  is_editor_property_overridden :: x.is_editor_property_overridden(property_name) -> EditorPropertyValueState
+  is_package_external :: is_package_external(self) -> bool -- returns true if this instance has a different package than its outer's package
+  modify :: modify(self, always_mark_dirty: bool = True) -> bool -- inform that this instance is about to be modified (tracks changes for undo/redo if transactional)
+  rename :: rename(self, name: Union[Name, str]="None", outer: Optional[Object]=None) -> bool -- rename this instance and/or change its outer
+  reset_editor_property :: x.reset_editor_property(property_name, change_notify_mode=PropertyAccessChangeNotifyMode.DEFAULT) -> bool
+  set_editor_properties :: set_editor_properties(self, properties: Mapping[str, object]) -> None -- set the value of any properties visible to the editor (from a name->value dict), ensuring that the pre/post change notifications are called
+  set_editor_property :: set_editor_property(self, name: str, value: object, notify_mode: PropertyAccessChangeNotifyMode=PropertyAccessChangeNotifyMode.DEFAULT) -> None -- set the value of any property visible to the editor, ensuring that the pre/post change notifications are called
+  static_class :: static_class(cls) -> Class -- get the Unreal class of this type
+
+===== GeometryScript_Normals =====
+  auto_repair_normals :: X.auto_repair_normals(target_mesh, debug=None) -> DynamicMesh
+  compute_split_normals :: X.compute_split_normals(target_mesh, split_options, calculate_options, debug=None) -> DynamicMesh
+  compute_tangents :: X.compute_tangents(target_mesh, options, debug=None) -> DynamicMesh
+  discard_tangents :: X.discard_tangents(target_mesh, debug=None) -> DynamicMesh
+  flip_normals :: X.flip_normals(target_mesh, debug=None) -> DynamicMesh
+  flip_triangle_selection_normals :: X.flip_triangle_selection_normals(target_mesh, selection, flip_triangle_orientation=True, flip_normal_direction=True, debug=None) -> DynamicMesh
+  get_mesh_has_tangents :: X.get_mesh_has_tangents(target_mesh, debug=None) -> (DynamicMesh, has_tangents=bool)
+  get_mesh_per_vertex_normals :: X.get_mesh_per_vertex_normals(target_mesh, average_split_vertex_values=True) -> (DynamicMesh, normal_list=GeometryScriptVectorList, is_valid_normal_set=bool, has_vertex_id_gaps=bool)
+  get_mesh_per_vertex_tangents :: X.get_mesh_per_vertex_tangents(target_mesh, average_split_vertex_values=True) -> (DynamicMesh, tangent_x_list=GeometryScriptVectorList, tangent_y_list=GeometryScriptVectorList, is_valid_tangent_set=bool, has_vertex_id_gaps=bool)
+  recompute_normals :: X.recompute_normals(target_mesh, calculate_options, defer_change_notifications=False, debug=None) -> DynamicMesh
+  recompute_normals_for_mesh_selection :: X.recompute_normals_for_mesh_selection(target_mesh, selection, calculate_options, defer_change_notifications=False, debug=None) -> DynamicMesh
+  set_mesh_per_vertex_normals :: X.set_mesh_per_vertex_normals(target_mesh, vertex_normal_list, debug=None) -> DynamicMesh
+  set_mesh_per_vertex_tangents :: X.set_mesh_per_vertex_tangents(target_mesh, tangent_x_list, tangent_y_list, debug=None) -> DynamicMesh
+  set_mesh_triangle_normals :: X.set_mesh_triangle_normals(target_mesh, triangle_id, normals, defer_change_notifications=False) -> (DynamicMesh, is_valid_triangle=bool)
+  set_per_face_normals :: X.set_per_face_normals(target_mesh, debug=None) -> DynamicMesh
+  set_per_vertex_normals :: X.set_per_vertex_normals(target_mesh, debug=None) -> DynamicMesh
+  set_split_normals_along_selected_edges :: X.set_split_normals_along_selected_edges(target_mesh, selection, split=True, recalculate_normals=True, calculate_options=[True, True], defer_change_notifications=False, debug=None) -> DynamicMesh
+  update_vertex_normal :: X.update_vertex_normal(target_mesh, vertex_id, update_normal=True, new_normal, update_tangents, new_tangent_x, new_tangent_y, merge_split_values, defer_change_notifications=False) -> (DynamicMesh, is_valid_vertex=bool)
+
+===== GeometryScript_MeshTransforms =====
+  inverse_transform_mesh :: X.inverse_transform_mesh(target_mesh, transform, fix_orientation_for_negative_scale=True, debug=None) -> DynamicMesh
+  inverse_transform_mesh_selection :: X.inverse_transform_mesh_selection(target_mesh, selection, transform, debug=None) -> DynamicMesh
+  scale_mesh :: X.scale_mesh(target_mesh, scale=[1.000000, 1.000000, 1.000000], scale_origin=[0.000000, 0.000000, 0.000000], fix_orientation_for_negative_scale=True, debug=None) -> DynamicMesh
+  scale_mesh_selection :: X.scale_mesh_selection(target_mesh, selection, scale=[1.000000, 1.000000, 1.000000], scale_origin=[0.000000, 0.000000, 0.000000], debug=None) -> DynamicMesh
+  transform_mesh :: X.transform_mesh(target_mesh, transform, fix_orientation_for_negative_scale=True, debug=None) -> DynamicMesh
+  transform_mesh_selection :: X.transform_mesh_selection(target_mesh, selection, transform, debug=None) -> DynamicMesh
+  translate_mesh :: X.translate_mesh(target_mesh, translation, debug=None) -> DynamicMesh
+  translate_mesh_selection :: X.translate_mesh_selection(target_mesh, selection, translation, debug=None) -> DynamicMesh
+  translate_pivot_to_location :: X.translate_pivot_to_location(target_mesh, pivot_location, debug=None) -> DynamicMesh
+
+===== GeometryScript_MeshVoxelProcessing =====
+  acquire_editor_element_handle :: x.acquire_editor_element_handle(allow_create=True) -> ScriptTypedElementHandle
+  apply_mesh_morphology :: X.apply_mesh_morphology(target_mesh, options, debug=None) -> DynamicMesh
+  apply_mesh_solidify :: X.apply_mesh_solidify(target_mesh, options, debug=None) -> DynamicMesh
+  call_method :: call_method(self, name: str, *args: Tuple[object, ...], **kwargs: Mapping[str, object]) -> Any -- call a method on this object via Unreal reflection using the given ordered (a tuple passed as args) or named (a dict passed as kwargs) argument data - allows calling methods that don't have Python glue
+  cast :: cast(cls: Type[_T], object: object) -> _T -- cast the given object to this Unreal object type or raise an exception if the cast is not possible
+  get_class :: get_class(self) -> Class -- get the Unreal class of this instance
+  get_default_object :: get_default_object(cls: Type[_T]) -> _T -- get the Unreal class default object (CDO) of this type
+  get_editor_property :: get_editor_property(self, name: str) -> object -- get the value of any property visible to the editor
+  get_fname :: get_fname(self) -> Name -- get the name of this instance
+  get_full_name :: get_full_name(self) -> str -- get the full name (class name + full path) of this instance
+  get_name :: get_name(self) -> str -- get the name of this instance
+  get_outer :: get_outer(self) -> Any -- get the outer object from this instance (if any)
+  get_outermost :: get_outermost(self) -> Package -- get the outermost object (the package) from this instance
+  get_package :: get_package(self) -> Package -- get the package directly associated with this instance
+  get_path_name :: get_path_name(self) -> str -- get the path name of this instance
+  get_typed_outer :: get_typed_outer(self, type: Union[Class, type]) -> Any -- get the first outer object of the given type from this instance (if any)
+  get_world :: get_world(self) -> Optional[World] -- get the world associated with this instance (if any)
+  is_editor_property_overridden :: x.is_editor_property_overridden(property_name) -> EditorPropertyValueState
+  is_package_external :: is_package_external(self) -> bool -- returns true if this instance has a different package than its outer's package
+  modify :: modify(self, always_mark_dirty: bool = True) -> bool -- inform that this instance is about to be modified (tracks changes for undo/redo if transactional)
+  rename :: rename(self, name: Union[Name, str]="None", outer: Optional[Object]=None) -> bool -- rename this instance and/or change its outer
+  reset_editor_property :: x.reset_editor_property(property_name, change_notify_mode=PropertyAccessChangeNotifyMode.DEFAULT) -> bool
+  set_editor_properties :: set_editor_properties(self, properties: Mapping[str, object]) -> None -- set the value of any properties visible to the editor (from a name->value dict), ensuring that the pre/post change notifications are called
+  set_editor_property :: set_editor_property(self, name: str, value: object, notify_mode: PropertyAccessChangeNotifyMode=PropertyAccessChangeNotifyMode.DEFAULT) -> None -- set the value of any property visible to the editor, ensuring that the pre/post change notifications are called
+  static_class :: static_class(cls) -> Class -- get the Unreal class of this type
+
+===== GeometryScript_MeshBooleans =====
+  acquire_editor_element_handle :: x.acquire_editor_element_handle(allow_create=True) -> ScriptTypedElementHandle
+  apply_mesh_boolean :: X.apply_mesh_boolean(target_mesh, target_transform, tool_mesh, tool_transform, operation, options, debug=None) -> DynamicMesh
+  apply_mesh_iso_curves :: X.apply_mesh_iso_curves(target_mesh, options, per_vertex_value, iso_value=0.500000, debug=None) -> DynamicMesh
+  apply_mesh_mirror :: X.apply_mesh_mirror(target_mesh, mirror_frame, options, debug=None) -> DynamicMesh
+  apply_mesh_plane_cut :: X.apply_mesh_plane_cut(target_mesh, cut_frame, options, debug=None) -> DynamicMesh
+  apply_mesh_plane_slice :: X.apply_mesh_plane_slice(target_mesh, cut_frame, options, debug=None) -> DynamicMesh
+  apply_mesh_self_union :: X.apply_mesh_self_union(target_mesh, options, debug=None) -> DynamicMesh
+  call_method :: call_method(self, name: str, *args: Tuple[object, ...], **kwargs: Mapping[str, object]) -> Any -- call a method on this object via Unreal reflection using the given ordered (a tuple passed as args) or named (a dict passed as kwargs) argument data - allows calling methods that don't have Python glue
+  cast :: cast(cls: Type[_T], object: object) -> _T -- cast the given object to this Unreal object type or raise an exception if the cast is not possible
+  get_class :: get_class(self) -> Class -- get the Unreal class of this instance
+  get_default_object :: get_default_object(cls: Type[_T]) -> _T -- get the Unreal class default object (CDO) of this type
+  get_editor_property :: get_editor_property(self, name: str) -> object -- get the value of any property visible to the editor
+  get_fname :: get_fname(self) -> Name -- get the name of this instance
+  get_full_name :: get_full_name(self) -> str -- get the full name (class name + full path) of this instance
+  get_name :: get_name(self) -> str -- get the name of this instance
+  get_outer :: get_outer(self) -> Any -- get the outer object from this instance (if any)
+  get_outermost :: get_outermost(self) -> Package -- get the outermost object (the package) from this instance
+  get_package :: get_package(self) -> Package -- get the package directly associated with this instance
+  get_path_name :: get_path_name(self) -> str -- get the path name of this instance
+  get_typed_outer :: get_typed_outer(self, type: Union[Class, type]) -> Any -- get the first outer object of the given type from this instance (if any)
+  get_world :: get_world(self) -> Optional[World] -- get the world associated with this instance (if any)
+  is_editor_property_overridden :: x.is_editor_property_overridden(property_name) -> EditorPropertyValueState
+  is_package_external :: is_package_external(self) -> bool -- returns true if this instance has a different package than its outer's package
+  modify :: modify(self, always_mark_dirty: bool = True) -> bool -- inform that this instance is about to be modified (tracks changes for undo/redo if transactional)
+  rename :: rename(self, name: Union[Name, str]="None", outer: Optional[Object]=None) -> bool -- rename this instance and/or change its outer
+  reset_editor_property :: x.reset_editor_property(property_name, change_notify_mode=PropertyAccessChangeNotifyMode.DEFAULT) -> bool
+  set_editor_properties :: set_editor_properties(self, properties: Mapping[str, object]) -> None -- set the value of any properties visible to the editor (from a name->value dict), ensuring that the pre/post change notifications are called
+  set_editor_property :: set_editor_property(self, name: str, value: object, notify_mode: PropertyAccessChangeNotifyMode=PropertyAccessChangeNotifyMode.DEFAULT) -> None -- set the value of any property visible to the editor, ensuring that the pre/post change notifications are called
+  static_class :: static_class(cls) -> Class -- get the Unreal class of this type
+
+===== GeometryScript_MeshEdits =====
+  append_buffers_to_mesh :: X.append_buffers_to_mesh(target_mesh, buffers, material_id=0, defer_change_notifications=False, debug=None) -> (DynamicMesh, new_triangle_indices_list=GeometryScriptIndexList)
+  append_mesh :: X.append_mesh(target_mesh, append_mesh, append_transform, defer_change_notifications=False, append_options=[GeometryScriptCombineAttributesMode.ENABLE_ALL_MATCHING], debug=None) -> DynamicMesh
+  append_mesh_repeated :: X.append_mesh_repeated(target_mesh, append_mesh, append_transform, repeat_count=1, apply_transform_to_first_instance=True, defer_change_notifications=False, append_options=[GeometryScriptCombineAttributesMode.ENABLE_ALL_MATCHING], debug=None) -> DynamicMesh
+  append_mesh_repeated_with_materials :: X.append_mesh_repeated_with_materials(target_mesh, target_mesh_material_list, append_mesh, append_mesh_material_list, append_transform, repeat_count=1, apply_transform_to_first_instance=True, defer_change_notifications=False, append_options=[GeometryScriptCombineAttributesMode.ENABLE_ALL_MATCHING], compact_appended_materials=True, debug=None) -> (DynamicMesh, result_mesh_material_list=Array[MaterialInterface])
+  append_mesh_transformed :: X.append_mesh_transformed(target_mesh, append_mesh, append_transforms, constant_transform, constant_transform_is_relative=True, defer_change_notifications=False, append_options=[GeometryScriptCombineAttributesMode.ENABLE_ALL_MATCHING], debug=None) -> DynamicMesh
+  append_mesh_transformed_with_materials :: X.append_mesh_transformed_with_materials(target_mesh, target_mesh_material_list, append_mesh, append_mesh_material_list, append_transforms, constant_transform, constant_transform_is_relative=True, defer_change_notifications=False, append_options=[GeometryScriptCombineAttributesMode.ENABLE_ALL_MATCHING], compact_appended_materials=True, debug=None) -> (DynamicMesh, result_mesh_material_list=Array[MaterialInterface])
+  append_mesh_with_materials :: X.append_mesh_with_materials(target_mesh, target_mesh_material_list, append_mesh, append_mesh_material_list, append_transform, defer_change_notifications=False, append_options=[GeometryScriptCombineAttributesMode.ENABLE_ALL_MATCHING], compact_appended_materials=True, debug=None) -> (DynamicMesh, result_mesh_material_list=Array[MaterialInterface])
+
+===== GeometryScript_UVs =====
+  copy_uv_set :: X.copy_uv_set(target_mesh, from_uv_set, to_uv_set, debug=None) -> DynamicMesh
+  intersects_uv_box2d :: X.intersects_uv_box2d(a, b, wrapped_to_unit_range=False) -> bool
+  reset_editor_property :: x.reset_editor_property(property_name, change_notify_mode=PropertyAccessChangeNotifyMode.DEFAULT) -> bool
+  set_editor_properties :: set_editor_properties(self, properties: Mapping[str, object]) -> None -- set the value of any properties visible to the editor (from a name->value dict), ensuring that the pre/post change notifications are called
+  set_editor_property :: set_editor_property(self, name: str, value: object, notify_mode: PropertyAccessChangeNotifyMode=PropertyAccessChangeNotifyMode.DEFAULT) -> None -- set the value of any property visible to the editor, ensuring that the pre/post change notifications are called
+  set_mesh_triangle_u_vs :: X.set_mesh_triangle_u_vs(target_mesh, uv_set_index, triangle_id, u_vs, defer_change_notifications=False) -> (DynamicMesh, is_valid_triangle=bool)
+  set_mesh_triangle_uv_element_i_ds :: X.set_mesh_triangle_uv_element_i_ds(target_mesh, uv_set_index, triangle_id, triangle_uv_elements, defer_change_notifications=False) -> (DynamicMesh, is_valid_triangle=bool)
+  set_mesh_u_vs_from_box_projection :: X.set_mesh_u_vs_from_box_projection(target_mesh, uv_set_index, box_transform, selection, min_island_tri_count=2, debug=None) -> DynamicMesh
+  set_mesh_u_vs_from_cylinder_projection :: X.set_mesh_u_vs_from_cylinder_projection(target_mesh, uv_set_index, cylinder_transform, selection, split_angle=45.000000, debug=None) -> DynamicMesh
+  set_mesh_u_vs_from_planar_projection :: X.set_mesh_u_vs_from_planar_projection(target_mesh, uv_set_index, plane_transform, selection, debug=None) -> DynamicMesh
+  set_mesh_uv_element_position :: X.set_mesh_uv_element_position(target_mesh, uv_set_index, element_id, new_uv_position, defer_change_notifications=False) -> (DynamicMesh, is_valid_element_id=bool)
+  set_num_uv_sets :: X.set_num_uv_sets(target_mesh, num_uv_sets, debug=None) -> DynamicMesh
+  set_uv_seams_along_selected_edges :: X.set_uv_seams_along_selected_edges(target_mesh, uv_channel, selection, insert_seams=True, defer_change_notifications=False, debug=None) -> DynamicMesh
+
+===== GeometryScript_MeshSelection =====
+  combine_mesh_selections :: X.combine_mesh_selections(selection_a, selection_b, combine_mode=GeometryScriptCombineSelectionMode.ADD) -> GeometryScriptMeshSelection
+  convert_index_array_to_mesh_selection :: X.convert_index_array_to_mesh_selection(target_mesh, index_array, selection_type) -> (DynamicMesh, selection=GeometryScriptMeshSelection)
+  convert_index_list_to_mesh_selection :: X.convert_index_list_to_mesh_selection(target_mesh, index_list, selection_type) -> (DynamicMesh, selection=GeometryScriptMeshSelection)
+  convert_index_set_to_mesh_selection :: X.convert_index_set_to_mesh_selection(target_mesh, index_set, selection_type) -> (DynamicMesh, selection=GeometryScriptMeshSelection)
+  convert_mesh_selection :: X.convert_mesh_selection(target_mesh, from_selection, new_type=GeometryScriptMeshSelectionType.TRIANGLES, allow_partial_inclusion=True) -> (DynamicMesh, to_selection=GeometryScriptMeshSelection)
+  convert_mesh_selection_to_index_array :: X.convert_mesh_selection_to_index_array(target_mesh, selection) -> (DynamicMesh, index_array=Array[int32], selection_type=GeometryScriptMeshSelectionType)
+  convert_mesh_selection_to_index_list :: X.convert_mesh_selection_to_index_list(target_mesh, selection, convert_to_type=GeometryScriptIndexType.ANY) -> (DynamicMesh, index_list=GeometryScriptIndexList, result_list_type=GeometryScriptIndexType)
+  create_select_all_mesh_selection :: X.create_select_all_mesh_selection(target_mesh, selection_type=GeometryScriptMeshSelectionType.TRIANGLES) -> (DynamicMesh, selection=GeometryScriptMeshSelection)
+  debug_print_mesh_selection :: X.debug_print_mesh_selection(selection, disable=False) -> None
+  expand_contract_mesh_selection :: X.expand_contract_mesh_selection(target_mesh, selection, iterations=1, contract=False, only_expand_to_face_neighbours=False) -> (DynamicMesh, new_selection=GeometryScriptMeshSelection)
+  expand_mesh_selection_to_connected :: X.expand_mesh_selection_to_connected(target_mesh, selection, connection_type=GeometryScriptTopologyConnectionType.GEOMETRIC) -> (DynamicMesh, new_selection=GeometryScriptMeshSelection)
+  get_mesh_selection_info :: X.get_mesh_selection_info(selection) -> (selection_type=GeometryScriptMeshSelectionType, num_selected=int32)
+  get_mesh_unique_selection_info :: X.get_mesh_unique_selection_info(target_mesh, selection) -> (selection_type=GeometryScriptMeshSelectionType, num_selected=int32)
+  invert_mesh_selection :: X.invert_mesh_selection(target_mesh, selection, only_to_connected=False) -> (DynamicMesh, new_selection=GeometryScriptMeshSelection)
+  select_mesh_boundary_edges :: X.select_mesh_boundary_edges(target_mesh) -> (DynamicMesh, selection=GeometryScriptMeshSelection)
+  select_mesh_elements_by_material_id :: X.select_mesh_elements_by_material_id(target_mesh, material_id, selection_type=GeometryScriptMeshSelectionType.TRIANGLES) -> (DynamicMesh, selection=GeometryScriptMeshSelection)
+  select_mesh_elements_by_normal_angle :: X.select_mesh_elements_by_normal_angle(target_mesh, normal=[0.000000, 0.000000, 1.000000], max_angle_deg=1.000000, selection_type=GeometryScriptMeshSelectionType.TRIANGLES, invert=False, min_num_triangle_points=3) -> (DynamicMesh, selection=GeometryScriptMeshSelection)
+  select_mesh_elements_by_polygroup :: X.select_mesh_elements_by_polygroup(target_mesh, group_layer, polygroup_id, selection_type=GeometryScriptMeshSelectionType.TRIANGLES) -> (DynamicMesh, selection=GeometryScriptMeshSelection)
+  select_mesh_elements_in_box :: X.select_mesh_elements_in_box(target_mesh, box, selection_type=GeometryScriptMeshSelectionType.TRIANGLES, invert=False, min_num_triangle_points=3) -> (DynamicMesh, selection=GeometryScriptMeshSelection)
+  select_mesh_elements_in_sphere :: X.select_mesh_elements_in_sphere(target_mesh, sphere_origin=[0.000000, 0.000000, 0.000000], sphere_radius=100.000000, selection_type=GeometryScriptMeshSelectionType.TRIANGLES, invert=False, min_num_triangle_points=3) -> (DynamicMesh, selection=GeometryScriptMeshSelection)
+  select_mesh_elements_inside_mesh :: X.select_mesh_elements_inside_mesh(target_mesh, selection_mesh, selection_mesh_transform, selection_type=GeometryScriptMeshSelectionType.TRIANGLES, invert=False, shell_distance=0.000000, winding_threshold=0.500000, min_num_triangle_points=3) -> (DynamicMesh, selection=GeometryScriptMeshSelection)
+  select_mesh_elements_with_plane :: X.select_mesh_elements_with_plane(target_mesh, plane_origin=[0.000000, 0.000000, 0.000000], plane_normal=[0.000000, 0.000000, 1.000000], selection_type=GeometryScriptMeshSelectionType.TRIANGLES, invert=False, min_num_triangle_points=3) -> (DynamicMesh, selection=GeometryScriptMeshSelection)
+  select_mesh_poly_group_boundary_edges :: X.select_mesh_poly_group_boundary_edges(target_mesh, group_layer, exclude_mesh_boundary_edges=False) -> (DynamicMesh, selection=GeometryScriptMeshSelection)
+  select_mesh_sharp_edges :: X.select_mesh_sharp_edges(target_mesh, min_angle_deg=20.000000) -> (DynamicMesh, selection=GeometryScriptMeshSelection)
+  select_mesh_split_normal_edges :: X.select_mesh_split_normal_edges(target_mesh) -> (DynamicMesh, selection=GeometryScriptMeshSelection)
+  select_mesh_uv_seam_edges :: X.select_mesh_uv_seam_edges(target_mesh, uv_channel, exclude_mesh_boundary_edges=False) -> (DynamicMesh, selection=GeometryScriptMeshSelection, have_valid_u_vs=bool)
+  select_selection_boundary_edges :: X.select_selection_boundary_edges(target_mesh, selection, exclude_mesh_boundary_edges=False) -> (DynamicMesh, boundary_selection=GeometryScriptMeshSelection)
+
+===== GeometryScript_PolyPath =====
+  acquire_editor_element_handle :: x.acquire_editor_element_handle(allow_create=True) -> ScriptTypedElementHandle
+  call_method :: call_method(self, name: str, *args: Tuple[object, ...], **kwargs: Mapping[str, object]) -> Any -- call a method on this object via Unreal reflection using the given ordered (a tuple passed as args) or named (a dict passed as kwargs) argument data - allows calling methods that don't have Python glue
+  cast :: cast(cls: Type[_T], object: object) -> _T -- cast the given object to this Unreal object type or raise an exception if the cast is not possible
+  conv_array_of_vector2d_to_geometry_script_poly_path :: X.conv_array_of_vector2d_to_geometry_script_poly_path(path_vertices) -> GeometryScriptPolyPath
+  conv_array_to_geometry_script_poly_path :: X.conv_array_to_geometry_script_poly_path(path_vertices) -> GeometryScriptPolyPath
+  conv_geometry_script_poly_path_to_array :: X.conv_geometry_script_poly_path_to_array(poly_path) -> Array[Vector]
+  conv_geometry_script_poly_path_to_array_of_vector2d :: X.conv_geometry_script_poly_path_to_array_of_vector2d(poly_path) -> Array[Vector2D]
+  convert_array_of_vector2d_to_poly_path :: X.convert_array_of_vector2d_to_poly_path(vertex_array) -> GeometryScriptPolyPath
+  convert_array_to_poly_path :: X.convert_array_to_poly_path(vertex_array) -> GeometryScriptPolyPath
+  convert_poly_path_to_array :: X.convert_poly_path_to_array(poly_path) -> Array[Vector]
+  convert_poly_path_to_array_of_vector2d :: X.convert_poly_path_to_array_of_vector2d(poly_path) -> Array[Vector2D]
+  convert_spline_to_poly_path :: X.convert_spline_to_poly_path(spline, sampling_options) -> GeometryScriptPolyPath
+  create_arc_path2d :: X.create_arc_path2d(center=[0.000000, 0.000000], radius=10.000000, num_points=10, start_angle=0.000000, end_angle=90.000000) -> GeometryScriptPolyPath
+  create_arc_path3d :: X.create_arc_path3d(transform, radius=10.000000, num_points=10, start_angle=0.000000, end_angle=90.000000) -> GeometryScriptPolyPath
+  create_circle_path2d :: X.create_circle_path2d(center=[0.000000, 0.000000], radius=10.000000, num_points=10) -> GeometryScriptPolyPath
+  create_circle_path3d :: X.create_circle_path3d(transform, radius=10.000000, num_points=10) -> GeometryScriptPolyPath
+  flatten_to2d_on_axis :: X.flatten_to2d_on_axis(poly_path, drop_axis=GeometryScriptAxis.Z) -> GeometryScriptPolyPath
+  get_class :: get_class(self) -> Class -- get the Unreal class of this instance
+  get_default_object :: get_default_object(cls: Type[_T]) -> _T -- get the Unreal class default object (CDO) of this type
+  get_editor_property :: get_editor_property(self, name: str) -> object -- get the value of any property visible to the editor
+  get_fname :: get_fname(self) -> Name -- get the name of this instance
+  get_full_name :: get_full_name(self) -> str -- get the full name (class name + full path) of this instance
+  get_name :: get_name(self) -> str -- get the name of this instance
+  get_nearest_vertex_index :: X.get_nearest_vertex_index(poly_path, point) -> int32
+  get_outer :: get_outer(self) -> Any -- get the outer object from this instance (if any)
+  get_outermost :: get_outermost(self) -> Package -- get the outermost object (the package) from this instance
+  get_package :: get_package(self) -> Package -- get the package directly associated with this instance
+  get_path_name :: get_path_name(self) -> str -- get the path name of this instance
+  get_poly_path_arc_length :: X.get_poly_path_arc_length(poly_path) -> double
+  get_poly_path_last_index :: X.get_poly_path_last_index(poly_path) -> int32
+  get_poly_path_num_vertices :: X.get_poly_path_num_vertices(poly_path) -> int32
+  get_poly_path_tangent :: X.get_poly_path_tangent(poly_path, index) -> (Vector, is_valid_index=bool)
+  get_poly_path_vertex :: X.get_poly_path_vertex(poly_path, index) -> (Vector, is_valid_index=bool)
+  get_typed_outer :: get_typed_outer(self, type: Union[Class, type]) -> Any -- get the first outer object of the given type from this instance (if any)
+  get_world :: get_world(self) -> Optional[World] -- get the world associated with this instance (if any)
+  is_editor_property_overridden :: x.is_editor_property_overridden(property_name) -> EditorPropertyValueState
+  is_package_external :: is_package_external(self) -> bool -- returns true if this instance has a different package than its outer's package
+  modify :: modify(self, always_mark_dirty: bool = True) -> bool -- inform that this instance is about to be modified (tracks changes for undo/redo if transactional)
+  rename :: rename(self, name: Union[Name, str]="None", outer: Optional[Object]=None) -> bool -- rename this instance and/or change its outer
+  reset_editor_property :: x.reset_editor_property(property_name, change_notify_mode=PropertyAccessChangeNotifyMode.DEFAULT) -> bool
+  sample_spline_to_transforms :: X.sample_spline_to_transforms(spline, sampling_options, relative_transform, include_scale=True) -> (frames=Array[Transform], frame_times=Array[double]) or None
+  set_editor_properties :: set_editor_properties(self, properties: Mapping[str, object]) -> None -- set the value of any properties visible to the editor (from a name->value dict), ensuring that the pre/post change notifications are called
+  set_editor_property :: set_editor_property(self, name: str, value: object, notify_mode: PropertyAccessChangeNotifyMode=PropertyAccessChangeNotifyMode.DEFAULT) -> None -- set the value of any property visible to the editor, ensuring that the pre/post change notifications are called
+  static_class :: static_class(cls) -> Class -- get the Unreal class of this type
+
+===== GeometryScript_MeshRepair =====
+  weld_mesh_edges :: X.weld_mesh_edges(target_mesh, weld_options, debug=None) -> DynamicMesh
+
+===== GeometryScript_MeshSubdivide =====
+  acquire_editor_element_handle :: x.acquire_editor_element_handle(allow_create=True) -> ScriptTypedElementHandle
+  apply_pn_tessellation :: X.apply_pn_tessellation(target_mesh, options, tessellation_level=3, debug=None) -> DynamicMesh
+  apply_selective_tessellation :: X.apply_selective_tessellation(target_mesh, selection, options, tessellation_level=1, pattern_type=SelectiveTessellatePatternType.CONCENTRIC_RINGS, debug=None) -> DynamicMesh
+  apply_uniform_tessellation :: X.apply_uniform_tessellation(target_mesh, tessellation_level=3, debug=None) -> DynamicMesh
+  call_method :: call_method(self, name: str, *args: Tuple[object, ...], **kwargs: Mapping[str, object]) -> Any -- call a method on this object via Unreal reflection using the given ordered (a tuple passed as args) or named (a dict passed as kwargs) argument data - allows calling methods that don't have Python glue
+  cast :: cast(cls: Type[_T], object: object) -> _T -- cast the given object to this Unreal object type or raise an exception if the cast is not possible
+  get_class :: get_class(self) -> Class -- get the Unreal class of this instance
+  get_default_object :: get_default_object(cls: Type[_T]) -> _T -- get the Unreal class default object (CDO) of this type
+  get_editor_property :: get_editor_property(self, name: str) -> object -- get the value of any property visible to the editor
+  get_fname :: get_fname(self) -> Name -- get the name of this instance
+  get_full_name :: get_full_name(self) -> str -- get the full name (class name + full path) of this instance
+  get_name :: get_name(self) -> str -- get the name of this instance
+  get_outer :: get_outer(self) -> Any -- get the outer object from this instance (if any)
+  get_outermost :: get_outermost(self) -> Package -- get the outermost object (the package) from this instance
+  get_package :: get_package(self) -> Package -- get the package directly associated with this instance
+  get_path_name :: get_path_name(self) -> str -- get the path name of this instance
+  get_typed_outer :: get_typed_outer(self, type: Union[Class, type]) -> Any -- get the first outer object of the given type from this instance (if any)
+  get_world :: get_world(self) -> Optional[World] -- get the world associated with this instance (if any)
+  is_editor_property_overridden :: x.is_editor_property_overridden(property_name) -> EditorPropertyValueState
+  is_package_external :: is_package_external(self) -> bool -- returns true if this instance has a different package than its outer's package
+  modify :: modify(self, always_mark_dirty: bool = True) -> bool -- inform that this instance is about to be modified (tracks changes for undo/redo if transactional)
+  rename :: rename(self, name: Union[Name, str]="None", outer: Optional[Object]=None) -> bool -- rename this instance and/or change its outer
+  reset_editor_property :: x.reset_editor_property(property_name, change_notify_mode=PropertyAccessChangeNotifyMode.DEFAULT) -> bool
+  set_editor_properties :: set_editor_properties(self, properties: Mapping[str, object]) -> None -- set the value of any properties visible to the editor (from a name->value dict), ensuring that the pre/post change notifications are called
+  set_editor_property :: set_editor_property(self, name: str, value: object, notify_mode: PropertyAccessChangeNotifyMode=PropertyAccessChangeNotifyMode.DEFAULT) -> None -- set the value of any property visible to the editor, ensuring that the pre/post change notifications are called
+  static_class :: static_class(cls) -> Class -- get the Unreal class of this type
+
+===== structs =====
+
+-- GeometryScriptPrimitiveOptions
+     .polygroup_mode
+     .flip_orientation
+     .uv_mode
+     .material_id
+   doc: Geometry Script Primitive Options
+   
+   **C++ Source:**
+   
+   - **Plugin**: GeometryScripting
+   - **Module**: GeometryScriptingCore
+   - **File**: MeshPrimitiveFunctions.h
+   
+   **Editor Properties:** (see get_editor_property/set_editor_property)
+   
+   - ``flip_orientation`` (bool):  [Read-Write]
+   - ``material_id`` (int32):  [Read-Write] Material ID to set on primitive mesh triangles
+   - ``polygroup_mode`` (GeometryScriptPrimitivePolygroupMode):  [Read-Write]
+   - ``uv_mode`` (GeometryScriptPrimitiveUVMode):  [Read-Write]
+
+-- GeometryScriptDisplaceFromTextureOptions
+     .magnitude
+     .uv_scale
+     .uv_offset
+     .center
+     .image_channel
+     .empty_behavior
+   doc: Geometry Script Displace from Texture Options
+   
+   **C++ Source:**
+   
+   - **Plugin**: GeometryScripting
+   - **Module**: GeometryScriptingCore
+   - **File**: MeshDeformFunctions.h
+   
+   **Editor Properties:** (see get_editor_property/set_editor_property)
+   
+   - ``center`` (float):  [Read-Write]
+   - ``empty_behavior`` (GeometryScriptEmptySelectionBehavior):  [Read-Write] EmptyBehavior Defines how an empty input selection should be interpreted
+   - ``image_channel`` (int32):  [Read-Write]
+   - ``magnitude`` (float):  [Read-Write]
+   - ``uv_offset`` (Vector2D):  [Read-Write]
+   - ``uv_scale`` (Vector2D):  [Read-Write]
+
+-- GeometryScriptSampleTextureOptions
+     .sampling_method
+     .wrap
+     .uv_scale
+     .uv_offset
+   doc: Geometry Script Sample Texture Options
+   
+   **C++ Source:**
+   
+   - **Plugin**: GeometryScripting
+   - **Module**: GeometryScriptingCore
+   - **File**: TextureMapFunctions.h
+   
+   **Editor Properties:** (see get_editor_property/set_editor_property)
+   
+   - ``sampling_method`` (GeometryScriptPixelSamplingMethod):  [Read-Write]
+   - ``uv_offset`` (Vector2D):  [Read-Write]
+   - ``uv_scale`` (Vector2D):  [Read-Write]
+   - ``wrap`` (bool):  [Read-Write]
+
+-- GeometryScriptCreateNewStaticMeshAssetOptions
+     .enable_recompute_normals
+     .enable_recompute_tangents
+     .enable_nanite
+     .nanite_settings
+     .nanite_proxy_triangle_percent
+     .enable_collision
+     .collision_mode
+     .use_original_vertex_order
+   doc: Geometry Script Create New Static Mesh Asset Options
+   
+   **C++ Source:**
+   
+   - **Plugin**: GeometryScripting
+   - **Module**: GeometryScriptingEditor
+   - **File**: CreateNewAssetUtilityFunctions.h
+   
+   **Editor Properties:** (see get_editor_property/set_editor_property)
+   
+   - ``collision_mode`` (CollisionTraceFlag):  [Read-Write]
+   - ``enable_collision`` (bool):  [Read-Write]
+   - ``enable_nanite`` (bool):  [Read-Write]
+   - ``enable_recompute_normals`` (bool):  [Read-Write]
+   - ``enable_recompute_tangents`` (bool):  [Read-Write]
+   - ``nanite_proxy_triangle_percent`` (float):  [Read-Write] Replaced NaniteProxyTrianglePercent with usage of Engine FMeshNaniteSettings, use NaniteSettings property instead
+   - ``nanite_settings`` (MeshNaniteSettings):  [Read-Write] Nanite settings to set on new StaticMesh Asset
+   - ``use_original_vertex_order`` (bool):  [Read-Write] Use the original vertex order found in the source data. This is useful if the inbound mesh was originally non-manifold, and needs to keep
+     the non-manifold structure when re-created.
+
+-- GeometryScriptCalculateNormalsOptions
+     .angle_weighted
+     .area_weighted
+   doc: Geometry Script Calculate Normals Options
+   
+   **C++ Source:**
+   
+   - **Plugin**: GeometryScripting
+   - **Module**: GeometryScriptingCore
+   - **File**: MeshNormalsFunctions.h
+   
+   **Editor Properties:** (see get_editor_property/set_editor_property)
+   
+   - ``angle_weighted`` (bool):  [Read-Write]
+   - ``area_weighted`` (bool):  [Read-Write]
+
+-- GeometryScriptNaniteOptions
+     .enabled
+     .fallback_percent_triangles
+     .fallback_relative_error
+   doc: Configuration settings for Nanite Rendering on StaticMesh Assets
+   
+   **C++ Source:**
+   
+   - **Plugin**: GeometryScripting
+   - **Module**: GeometryScriptingCore
+   - **File**: MeshAssetFunctions.h
+   
+   **Editor Properties:** (see get_editor_property/set_editor_property)
+   
+   - ``enabled`` (bool):  [Read-Write] Set Nanite to Enabled/Disabled
+   - ``fallback_percent_triangles`` (float):  [Read-Write] Percentage of triangles to maintain in Fallback Mesh used when Nanite is unavailable
+   - ``fallback_relative_error`` (float):  [Read-Write] Relative Error to maintain in Fallback Mesh used when Nanite is unavailable. Overrides FallbackPercentTriangles. Set to 0 to only use FallbackPercentTriangles (default).
+
+-- GeometryScriptRevolveOptions
+     .revolve_degrees
+     .degree_offset
+     .reverse_direction
+     .hard_normals
+     .hard_normal_angle
+     .profile_at_midpoint
+     .fill_partial_revolve_endcaps
+   doc: Geometry Script Revolve Options
+   
+   **C++ Source:**
+   
+   - **Plugin**: GeometryScripting
+   - **Module**: GeometryScriptingCore
+   - **File**: MeshPrimitiveFunctions.h
+   
+   **Editor Properties:** (see get_editor_property/set_editor_property)
+   
+   - ``degree_offset`` (float):  [Read-Write]
+   - ``fill_partial_revolve_endcaps`` (bool):  [Read-Write]
+   - ``hard_normal_angle`` (float):  [Read-Write]
+   - ``hard_normals`` (bool):  [Read-Write]
+   - ``profile_at_midpoint`` (bool):  [Read-Write]
+   - ``reverse_direction`` (bool):  [Read-Write]
+   - ``revolve_degrees`` (float):  [Read-Write]
+
+-- GeometryScriptSolidifyOptions
+     .grid_parameters
+     .custom_bounds
+     .winding_threshold
+     .solid_at_boundaries
+     .extend_bounds
+     .surface_search_steps
+     .thicken_shells
+     .shell_thickness
+   doc: Geometry Script Solidify Options
+   
+   **C++ Source:**
+   
+   - **Plugin**: GeometryScripting
+   - **Module**: GeometryScriptingCore
+   - **File**: MeshVoxelFunctions.h
+   
+   **Editor Properties:** (see get_editor_property/set_editor_property)
+   
+   - ``custom_bounds`` (Box):  [Read-Write] If valid, will be used to define the region of space to operate on.
+     Otherwise, standard bounds based on the input mesh will be computed.
+   - ``extend_bounds`` (float):  [Read-Write] Amount to extend bounds, applied to both min and max extents. Only applied to default input-mesh-based bounds, *not* Custom Bounds.
+   - ``grid_parameters`` (GeometryScript3DGridParameters):  [Read-Write]
+   - ``shell_thickness`` (double):  [Read-Write] Open Shells are Thickened by offsetting vertices along their averaged vertex normals by this amount. Dimension is but clamped to twice the grid cell size.
+   - ``solid_at_boundaries`` (bool):  [Read-Write] If the solid surface extends beyond the bounds provided, whether to close off the surface at that boundary or leave it open
+   - ``surface_search_steps`` (int32):  [Read-Write] Number of search steps to take when finding the marching cubes surface vertex positions.
+   - ``thicken_shells`` (bool):  [Read-Write] When enabled, regions of the input mesh that have open boundaries (ie "shells") are thickened by extruding them into closed solids. This may be expensive on large meshes.
+   - ``wind
+
+-- GeometryScriptMorphologyOptions
+     .sdf_grid_parameters
+     .use_separate_mesh_grid
+     .mesh_grid_parameters
+     .custom_bounds
+     .operation
+     .distance
+   doc: Geometry Script Morphology Options
+   
+   **C++ Source:**
+   
+   - **Plugin**: GeometryScripting
+   - **Module**: GeometryScriptingCore
+   - **File**: MeshVoxelFunctions.h
+   
+   **Editor Properties:** (see get_editor_property/set_editor_property)
+   
+   - ``custom_bounds`` (Box):  [Read-Write] If valid, will be used to define the region of space to operate on.
+     Otherwise, standard bounds based on the input mesh will be computed.
+   - ``distance`` (float):  [Read-Write]
+   - ``mesh_grid_parameters`` (GeometryScript3DGridParameters):  [Read-Write]
+   - ``operation`` (GeometryScriptMorphologicalOpType):  [Read-Write]
+   - ``sdf_grid_parameters`` (GeometryScript3DGridParameters):  [Read-Write]
+   - ``use_separate_mesh_grid`` (bool):  [Read-Write]
+
+-- GeometryScriptMeshBooleanOptions
+     .fill_holes
+     .simplify_output
+     .simplify_planar_tolerance
+     .allow_empty_result
+     .output_transform_space
+   doc: Geometry Script Mesh Boolean Options
+   
+   **C++ Source:**
+   
+   - **Plugin**: GeometryScripting
+   - **Module**: GeometryScriptingCore
+   - **File**: MeshBooleanFunctions.h
+   
+   **Editor Properties:** (see get_editor_property/set_editor_property)
+   
+   - ``allow_empty_result`` (bool):  [Read-Write] Whether to allow the Mesh Boolean operation to generate an empty mesh as its result
+   - ``fill_holes`` (bool):  [Read-Write]
+   - ``output_transform_space`` (GeometryScriptBooleanOutputSpace):  [Read-Write] The coordinate space to use for the result mesh
+   - ``simplify_output`` (bool):  [Read-Write]
+   - ``simplify_planar_tolerance`` (float):  [Read-Write]
+
+-- GeometryScriptPerlinNoiseOptions
+     .base_layer
+     .apply_along_normal
+     .normal_source
+     .empty_behavior
+   doc: Geometry Script Perlin Noise Options
+   
+   **C++ Source:**
+   
+   - **Plugin**: GeometryScripting
+   - **Module**: GeometryScriptingCore
+   - **File**: MeshDeformFunctions.h
+   
+   **Editor Properties:** (see get_editor_property/set_editor_property)
+   
+   - ``apply_along_normal`` (bool):  [Read-Write]
+   - ``base_layer`` (GeometryScriptPerlinNoiseLayerOptions):  [Read-Write]
+   - ``empty_behavior`` (GeometryScriptEmptySelectionBehavior):  [Read-Write] EmptyBehavior Defines how an empty input selection should be interpreted
+   - ``normal_source`` (GeometryScriptPerVertexNormalSource):  [Read-Write]
+
+-- GeometryScriptPerlinNoiseLayerOptions
+     .magnitude
+     .frequency
+     .frequency_shift
+     .random_seed
+   doc: Geometry Script Perlin Noise Layer Options
+   
+   **C++ Source:**
+   
+   - **Plugin**: GeometryScripting
+   - **Module**: GeometryScriptingCore
+   - **File**: MeshDeformFunctions.h
+   
+   **Editor Properties:** (see get_editor_property/set_editor_property)
+   
+   - ``frequency`` (float):  [Read-Write]
+   - ``frequency_shift`` (Vector):  [Read-Write]
+   - ``magnitude`` (float):  [Read-Write]
+   - ``random_seed`` (int32):  [Read-Write]
+
+-- MeshNaniteSettings
+     .enabled
+     .explicit_tangents
+     .lerp_u_vs
+     .separable
+     .voxel_ndf
+     .voxel_opacity
+     .shape_preservation
+     .b_preserve_area
+     .position_precision
+     .normal_precision
+     .tangent_precision
+     .bone_weight_precision
+     .keep_percent_triangles
+     .trim_relative_error
+     .generate_fallback
+     .fallback_target
+     .fallback_percent_triangles
+     .fallback_relative_error
+     .max_edge_length_factor
+     .num_rays
+     .voxel_level
+     .ray_back_up
+     .displacement_uv_channel
+   doc: Settings applied when building Nanite data.
+   
+   **C++ Source:**
+   
+   - **Module**: Engine
+   - **File**: EngineTypes.h
+   
+   **Editor Properties:** (see get_editor_property/set_editor_property)
+   
+   - ``bone_weight_precision`` (int32):  [Read-Write] Blend Weight Precision in bits. -1 is auto. 0 is rigid.
+   - ``displacement_maps`` (Array[MeshDisplacementMap]):  [Read-Write]
+   - ``displacement_uv_channel`` (int32):  [Read-Write] UV channel used to sample displacement maps
+   - ``enabled`` (bool):  [Read-Write] If true, Nanite data will be generated.
+   - ``explicit_tangents`` (bool):  [Read-Write] Whether to store explicit tangents instead of using the implicitly derived ones.
+   - ``fallback_percent_triangles`` (float):  [Read-Write] Percentage of triangles to keep from source mesh for fallback. 1.0 = no reduction, 0.0 = no triangles.
+   - ``fallback_relative_error`` (float):  [Read-Write] Reduce until at least this amount of error is reached relative to size of the mesh
+   - ``fallback_target`` (NaniteFallbackTarget):  [Read-Write] Which heuristic to use when generating the fallback mesh.
+   - ``generate_fallback`` (NaniteGenerateFallback):  [Read-Write] Whether fallback mesh should be generated.
+   - ``keep_percent_triangles`` (float):  [Read-Write] Percentage of triangles to keep from source mesh. 1.0 = no reduction, 0.0 = no triangles.
+   - ``lerp_u_vs`` (bool):  [Read-Write] Whether to interpolate UVs
+
+-- GeometryScriptIterativeMeshSmoothingOptions
+     .num_iterations
+     .alpha
+     .empty_behavior
+   doc: Geometry Script Iterative Mesh Smoothing Options
+   
+   **C++ Source:**
+   
+   - **Plugin**: GeometryScripting
+   - **Module**: GeometryScriptingCore
+   - **File**: MeshDeformFunctions.h
+   
+   **Editor Properties:** (see get_editor_property/set_editor_property)
+   
+   - ``alpha`` (float):  [Read-Write]
+   - ``empty_behavior`` (GeometryScriptEmptySelectionBehavior):  [Read-Write] EmptyBehavior Defines how an empty input selection should be interpreted
+   - ``num_iterations`` (int32):  [Read-Write]
+
+===== material fns =====
+
+===== MaterialEditingLibrary =====
+  acquire_editor_element_handle :: x.acquire_editor_element_handle(allow_create=True) -> ScriptTypedElementHandle
+  call_method :: call_method(self, name: str, *args: Tuple[object, ...], **kwargs: Mapping[str, object]) -> Any -- call a method on this object via Unreal reflection using the given ordered (a tuple passed as args) or named (a dict passed as kwargs) argument data - allows calling methods that don't have Python glue
+  cast :: cast(cls: Type[_T], object: object) -> _T -- cast the given object to this Unreal object type or raise an exception if the cast is not possible
+  clear_all_material_instance_parameters :: X.clear_all_material_instance_parameters(instance) -> None
+  connect_material_expressions :: X.connect_material_expressions(from_expression, from_output_name, to_expression, to_input_name) -> bool
+  connect_material_property :: X.connect_material_property(from_expression, from_output_name, property_) -> bool
+  create_material_expression :: X.create_material_expression(material, expression_class, node_pos_x=0, node_pos_y=0) -> MaterialExpression
+  create_material_expression_in_function :: X.create_material_expression_in_function(material_function, expression_class, node_pos_x=0, node_pos_y=0) -> MaterialExpression
+  delete_all_material_expressions :: X.delete_all_material_expressions(material) -> None
+  delete_all_material_expressions_in_function :: X.delete_all_material_expressions_in_function(material_function) -> None
+  delete_material_expression :: X.delete_material_expression(material, expression) -> None
+  delete_material_expression_in_function :: X.delete_material_expression_in_function(material_function, expression) -> None
+  delete_unused_expressions :: X.delete_unused_expressions(material) -> None
+  disconnect_material_expressions :: X.disconnect_material_expressions(to_expression, to_input_name) -> bool
+  disconnect_material_property :: X.disconnect_material_property(material, property_) -> bool
+  duplicate_material_expression :: X.duplicate_material_expression(material, material_function, expression) -> MaterialExpression
+  get_child_instances :: X.get_child_instances(parent) -> Array[AssetData]
+  get_class :: get_class(self) -> Class -- get the Unreal class of this instance
+  get_default_object :: get_default_object(cls: Type[_T]) -> _T -- get the Unreal class default object (CDO) of this type
+  get_editor_property :: get_editor_property(self, name: str) -> object -- get the value of any property visible to the editor
+  get_fname :: get_fname(self) -> Name -- get the name of this instance
+  get_full_name :: get_full_name(self) -> str -- get the full name (class name + full path) of this instance
+  get_input_node_output_name_for_material_expression :: X.get_input_node_output_name_for_material_expression(material_expression, input_node) -> str or None
+  get_inputs_for_material_expression :: X.get_inputs_for_material_expression(material, material_expression) -> Array[MaterialExpression]
+  get_inputs_for_material_function_expression :: X.get_inputs_for_material_function_expression(material_function, material_expression) -> Array[MaterialExpression]
+  get_material_default_scalar_parameter_value :: X.get_material_default_scalar_parameter_value(material, parameter_name) -> float
+  get_material_default_static_switch_parameter_value :: X.get_material_default_static_switch_parameter_value(material, parameter_name) -> bool
+  get_material_default_texture_parameter_value :: X.get_material_default_texture_parameter_value(material, parameter_name) -> Texture
+  get_material_default_vector_parameter_value :: X.get_material_default_vector_parameter_value(material, parameter_name) -> LinearColor
+  get_material_expression_input_names :: X.get_material_expression_input_names(material_expression) -> Array[str]
+  get_material_expression_input_types :: X.get_material_expression_input_types(material_expression) -> Array[int32]
+  get_material_expression_node_position :: X.get_material_expression_node_position(material_expression) -> (node_pos_x=int32, node_pos_y=int32)
+  get_material_expression_output_names :: X.get_material_expression_output_names(material_expression) -> Array[str]
+  get_material_expressions :: X.get_material_expressions(material) -> Array[MaterialExpression]
+  get_material_function_expressions :: X.get_material_function_expressions(material_function) -> Array[MaterialExpression]
+  get_material_instance_runtime_virtual_texture_parameter_value :: X.get_material_instance_runtime_virtual_texture_parameter_value(instance, parameter_name, association=MaterialParameterAssociation.GLOBAL_PARAMETER) -> RuntimeVirtualTexture
+  get_material_instance_scalar_parameter_value :: X.get_material_instance_scalar_parameter_value(instance, parameter_name, association=MaterialParameterAssociation.GLOBAL_PARAMETER) -> float
+  get_material_instance_sparse_volume_texture_parameter_value :: X.get_material_instance_sparse_volume_texture_parameter_value(instance, parameter_name, association=MaterialParameterAssociation.GLOBAL_PARAMETER) -> SparseVolumeTexture
+  get_material_instance_static_switch_parameter_value :: X.get_material_instance_static_switch_parameter_value(instance, parameter_name, association=MaterialParameterAssociation.GLOBAL_PARAMETER) -> bool
+  get_material_instance_texture_parameter_value :: X.get_material_instance_texture_parameter_value(instance, parameter_name, association=MaterialParameterAssociation.GLOBAL_PARAMETER) -> Texture
+  get_material_instance_vector_parameter_value :: X.get_material_instance_vector_parameter_value(instance, parameter_name, association=MaterialParameterAssociation.GLOBAL_PARAMETER) -> LinearColor
+  get_material_property_input_node :: X.get_material_property_input_node(material, property_) -> MaterialExpression
+  get_material_property_input_node_output_name :: X.get_material_property_input_node_output_name(material, property_) -> str
+  get_material_selected_nodes :: X.get_material_selected_nodes(material) -> Set[Object]
+  get_material_used_textures :: X.get_material_used_textures(material_interface) -> Array[Texture]
+  get_materials_referencing_function :: X.get_materials_referencing_function(function) -> Array[AssetData]
+  get_name :: get_name(self) -> str -- get the name of this instance
+  get_nanite_override_material :: X.get_nanite_override_material(material) -> MaterialInterface
+  get_num_material_expressions :: X.get_num_material_expressions(material) -> int32
+  get_num_material_expressions_in_function :: X.get_num_material_expressions_in_function(material_function) -> int32
+  get_num_shader_types :: X.get_num_shader_types(material) -> int32
+  get_outer :: get_outer(self) -> Any -- get the outer object from this instance (if any)
+  get_outermost :: get_outermost(self) -> Package -- get the outermost object (the package) from this instance
+  get_package :: get_package(self) -> Package -- get the package directly associated with this instance
+  get_path_name :: get_path_name(self) -> str -- get the path name of this instance
+  get_scalar_parameter_names :: X.get_scalar_parameter_names(material) -> Array[Name]
+  get_scalar_parameter_source :: X.get_scalar_parameter_source(material, parameter_name) -> SoftObjectPath or None
+  get_static_switch_parameter_names :: X.get_static_switch_parameter_names(material) -> Array[Name]
+  get_static_switch_parameter_source :: X.get_static_switch_parameter_source(material, parameter_name) -> SoftObjectPath or None
+  get_statistics :: X.get_statistics(material) -> MaterialStatistics
+  get_texture_parameter_names :: X.get_texture_parameter_names(material) -> Array[Name]
+  get_texture_parameter_source :: X.get_texture_parameter_source(material, parameter_name) -> SoftObjectPath or None
+  get_typed_outer :: get_typed_outer(self, type: Union[Class, type]) -> Any -- get the first outer object of the given type from this instance (if any)
+  get_used_textures :: X.get_used_textures(material) -> Array[Texture]
+  get_vector_parameter_names :: X.get_vector_parameter_names(material) -> Array[Name]
+  get_vector_parameter_source :: X.get_vector_parameter_source(material, parameter_name) -> SoftObjectPath or None
+  get_world :: get_world(self) -> Optional[World] -- get the world associated with this instance (if any)
+  has_material_usage :: X.has_material_usage(material, usage) -> bool
+  has_material_usage_override :: X.has_material_usage_override(material_instance, usage) -> bool
+  is_editor_property_overridden :: x.is_editor_property_overridden(property_name) -> EditorPropertyValueState
+  is_material_instance_parameter_overridden :: X.is_material_instance_parameter_overridden(instance, parameter_name, association=MaterialParameterAssociation.GLOBAL_PARAMETER) -> bool
+  is_package_external :: is_package_external(self) -> bool -- returns true if this instance has a different package than its outer's package
+  layout_material_expressions :: X.layout_material_expressions(material) -> None
+  layout_material_function_expressions :: X.layout_material_function_expressions(material_function) -> None
+  list_shaders :: X.list_shaders(material) -> Array[DebugShaderInfo]
+  modify :: modify(self, always_mark_dirty: bool = True) -> bool -- inform that this instance is about to be modified (tracks changes for undo/redo if transactional)
+  recompile_material :: X.recompile_material(material) -> Array[str]
+  refresh_material_editor :: X.refresh_material_editor(material) -> None
+  refresh_material_function_editor :: X.refresh_material_function_editor(material_function) -> None
+  refresh_material_instance_editor :: X.refresh_material_instance_editor(instance) -> None
+  rename :: rename(self, name: Union[Name, str]="None", outer: Optional[Object]=None) -> bool -- rename this instance and/or change its outer
+  rename_material_function_parameter_group :: X.rename_material_function_parameter_group(material_function, old_group_name, new_group_name) -> bool
+  rename_material_parameter_group :: X.rename_material_parameter_group(material, old_group_name, new_group_name) -> bool
+  reset_editor_property :: x.reset_editor_property(property_name, change_notify_mode=PropertyAccessChangeNotifyMode.DEFAULT) -> bool
+  set_base_material_usage :: X.set_base_material_usage(material, usage, value=True) -> None
+  set_editor_properties :: set_editor_properties(self, properties: Mapping[str, object]) -> None -- set the value of any properties visible to the editor (from a name->value dict), ensuring that the pre/post change notifications are called
+  set_editor_property :: set_editor_property(self, name: str, value: object, notify_mode: PropertyAccessChangeNotifyMode=PropertyAccessChangeNotifyMode.DEFAULT) -> None -- set the value of any property visible to the editor, ensuring that the pre/post change notifications are called
+  set_material_instance_parameter_override :: X.set_material_instance_parameter_override(instance, parameter_name, override, association=MaterialParameterAssociation.GLOBAL_PARAMETER) -> bool
+  set_material_instance_parent :: X.set_material_instance_parent(instance, new_parent) -> None
+  set_material_instance_runtime_virtual_texture_parameter_value :: X.set_material_instance_runtime_virtual_texture_parameter_value(instance, parameter_name, value, association=MaterialParameterAssociation.GLOBAL_PARAMETER) -> bool
+  set_material_instance_scalar_parameter_value :: X.set_material_instance_scalar_parameter_value(instance, parameter_name, value, association=MaterialParameterAssociation.GLOBAL_PARAMETER) -> bool
+  set_material_instance_sparse_volume_texture_parameter_value :: X.set_material_instance_sparse_volume_texture_parameter_value(instance, parameter_name, value, association=MaterialParameterAssociation.GLOBAL_PARAMETER) -> bool
+  set_material_instance_static_switch_parameter_value :: X.set_material_instance_static_switch_parameter_value(instance, parameter_name, value, association=MaterialParameterAssociation.GLOBAL_PARAMETER, update_material_instance=True) -> bool
+  set_material_instance_texture_parameter_value :: X.set_material_instance_texture_parameter_value(instance, parameter_name, value, association=MaterialParameterAssociation.GLOBAL_PARAMETER) -> bool
+  set_material_instance_vector_parameter_value :: X.set_material_instance_vector_parameter_value(instance, parameter_name, value, association=MaterialParameterAssociation.GLOBAL_PARAMETER) -> bool
+  set_material_usage :: X.set_material_usage(material, usage) -> bool or None
+  set_material_usage_override :: X.set_material_usage_override(material_instance, usage, override=True, value=True) -> None
+  static_class :: static_class(cls) -> Class -- get the Unreal class of this type
+  update_material_function :: X.update_material_function(material_function, preview_material=None) -> None
+  update_material_instance :: X.update_material_instance(instance) -> None

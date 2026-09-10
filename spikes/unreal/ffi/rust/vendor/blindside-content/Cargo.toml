@@ -1,0 +1,13 @@
+[package]
+name = "blindside-content"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "data-driven definitions: sensors, modules, chassis, ancients"
+
+# In blindside-sim's dependency tree, so DETERMINISM.md applies here too. `blake3` is the
+# content pack hasher (DETERMINISM.md: replays carry a content pack hash); pinned in the
+# workspace root.
+[dependencies]
+blake3 = { workspace = true }

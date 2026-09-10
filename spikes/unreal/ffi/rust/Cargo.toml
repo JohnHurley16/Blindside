@@ -1,0 +1,35 @@
+# Spike workspace: spikes/unreal/ffi.
+#
+# `vendor/` is a verbatim copy of crates/blindside-{sim,vm,content} from the branch
+# claude/harness-plus-induct (see vendor/VENDORED-FROM.txt for the commit). It is copied
+# rather than referenced because that branch is not checked out in this working tree and
+# the spike must not check it out over the top of one. Nothing in vendor/ is edited: the
+# whole point of the spike is that the FFI wraps the sim's real public surface unchanged.
+#
+# The [workspace.package] and [workspace.dependencies] tables below, and the [profile.release]
+# block, are copied from that branch's root Cargo.toml so the vendored crates build with the
+# same pins and the same overflow behaviour they do in CI. Diverging here would make any
+# hash this spike prints not the hash the harness prints.
+[workspace]
+resolver = "2"
+members = [
+    "vendor/blindside-sim",
+    "vendor/blindside-vm",
+    "vendor/blindside-content",
+    "crates/blindside-ffi",
+]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2021"
+license = "UNLICENSED"
+publish = false
+
+[workspace.dependencies]
+fixed = "=1.31.0"
+blake3 = "=1.8.7"
+
+[profile.release]
+debug = 1
+overflow-checks = true
+debug-assertions = true

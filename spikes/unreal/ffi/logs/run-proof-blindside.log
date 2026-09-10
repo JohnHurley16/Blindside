@@ -1,0 +1,54 @@
+﻿LogInit: Build: ++UE5+Release-5.6-CL-44394996
+LogInit: Build Configuration: Development
+LogInit: Command Line: -windowed -ResX=1400 -ResY=800 -ForceRes -ForcePanicAtTick=2000 -abslog=C:\Users\jackh\documents\programming\Blindside\spikes\unreal\ffi\logs\run-proof.log -game
+[2026.09.10-14.31.32:948][  0]LogInit: Display: Game Engine Initialized.
+[2026.09.10-14.31.33:390][  0]LogBlindside: Display: spawned a sim actor into Template_Default
+[2026.09.10-14.31.33:435][  0]LogBlindside: loaded C:/Users/jackh/Documents/programming/Blindside/spikes/unreal/ffi/rust/target/release/blindside_ffi.dll (abi 1, belief schema 1)
+[2026.09.10-14.31.33:435][  0]LogBlindside: Display: sim opened: seed 0xB11D51DE, 11500 belief points, 184072 bytes per snapshot, 20 Hz
+[2026.09.10-14.31.34:583][  1]LogBlindside: Display: tick 1  hash b42af8111359e718056a8f776b64d7fda6c1ebfcf3402afd33631d4317995a31  snapshot 184072 B (11500 pts, ticks_since_fix 1)  step 46.80 us  copy 9.60 us  hash 7.30 us
+[2026.09.10-14.31.39:556][222]LogBlindside: Display: tick 101  hash 31bf7017315f1652e20ec7f69a2d7bd22b995095ca004b4b46561297df267f85  snapshot 184072 B (11500 pts, ticks_since_fix 101)  step 49.61 us  copy 9.45 us  hash 10.25 us
+[2026.09.10-14.31.44:567][442]LogBlindside: Display: tick 201  hash fac66e00fd36714c5c5aaa1e91d2609e46ae45043208a45f60e0366e65faa855  snapshot 184072 B (11500 pts, ticks_since_fix 201)  step 53.12 us  copy 10.36 us  hash 11.89 us
+[2026.09.10-14.31.49:561][662]LogBlindside: Display: tick 301  hash e10e83852acf03f847329aa6441d164b80dd659c8e02560fd48ee0fc0adafae0  snapshot 184072 B (11500 pts, ticks_since_fix 301)  step 53.68 us  copy 9.91 us  hash 12.73 us
+[2026.09.10-14.31.54:557][873]LogBlindside: Display: tick 401  hash f9603a4d781034540af0efa2ccde712c76133d4de24c9a2cdbf52cc8f5c025a3  snapshot 184072 B (11500 pts, ticks_since_fix 401)  step 56.66 us  copy 10.70 us  hash 13.34 us
+[2026.09.10-14.31.59:568][ 91]LogBlindside: Display: tick 501  hash 411c965da4f9e62294df2fe1696afd5d3b2ee11fb4c41b9ba10536db8c1af8c5  snapshot 184072 B (11500 pts, ticks_since_fix 501)  step 56.37 us  copy 11.09 us  hash 12.17 us
+[2026.09.10-14.32.04:546][308]LogBlindside: Display: tick 601  hash 2592d774bfb13276389155e704eca56a5adb22eac2a389ac6ab83f997101770b  snapshot 184072 B (11500 pts, ticks_since_fix 601)  step 50.07 us  copy 12.28 us  hash 11.87 us
+[2026.09.10-14.32.09:547][525]LogBlindside: Display: tick 701  hash 870ccc90145688f682b7543ee0853ddb5579e1239e52d5836192d3d12bf039ca  snapshot 184072 B (11500 pts, ticks_since_fix 701)  step 56.10 us  copy 10.37 us  hash 12.75 us
+[2026.09.10-14.32.14:557][744]LogBlindside: Display: tick 801  hash de4f82f4fe28cc9728eb5115ef1ce201353bfaae5e43ceae4e1f22572c0bf5d1  snapshot 184072 B (11500 pts, ticks_since_fix 801)  step 58.36 us  copy 11.46 us  hash 12.85 us
+[2026.09.10-14.32.18:015][894]LogBlindside: Display: blindside_ffi.dll changed on disk
+[2026.09.10-14.32.18:015][894]LogBlindside: Display: reloading the Rust library
+[2026.09.10-14.32.18:047][894]LogBlindside: loaded C:/Users/jackh/Documents/programming/Blindside/spikes/unreal/ffi/rust/target/release/blindside_ffi.dll (abi 1, belief schema 1)
+[2026.09.10-14.32.18:047][894]LogBlindside: Display: sim opened: seed 0xB11D51DE, 11500 belief points, 184072 bytes per snapshot, 20 Hz
+[2026.09.10-14.32.18:047][894]LogBlindside: Display: hot reload #1: new blindside_ffi.dll, replayed 870 ticks in 32 ms
+[2026.09.10-14.32.18:066][896]LogBlindside: Display: tick 871  hash 47f1a8553f9691214101a60bd68d945aa5019e73df90ad63ebe5cb795a9b2d6f  snapshot 184072 B (11500 pts, ticks_since_fix 871)  step 55.00 us  copy 15.20 us  hash 33.60 us
+[2026.09.10-14.32.23:084][112]LogBlindside: Display: tick 971  hash 3dd97f4dff113dab572a45aa9aa09461b0943ff505ee01d25feeea38d47b76da  snapshot 184072 B (11500 pts, ticks_since_fix 971)  step 48.69 us  copy 10.24 us  hash 13.72 us
+[2026.09.10-14.32.28:090][327]LogBlindside: Display: tick 1071  hash a335cc9dfe1b04fb2798d5aa8ae61888fa3cbd5a02e17adb0f5b7636cee375c5  snapshot 184072 B (11500 pts, ticks_since_fix 1071)  step 51.22 us  copy 8.62 us  hash 11.69 us
+[2026.09.10-14.32.33:072][541]LogBlindside: Display: tick 1171  hash 11080c6e0df5824884d48299ad4da91187f29f44cb50925e484a2293a901acd8  snapshot 184072 B (11500 pts, ticks_since_fix 1171)  step 51.29 us  copy 8.86 us  hash 11.30 us
+[2026.09.10-14.32.38:077][757]LogBlindside: Display: tick 1271  hash adcf821807c8d49a5218acfc51bec8d1d52a3487e432b52c80c25e2932ccf5a0  snapshot 184072 B (11500 pts, ticks_since_fix 1271)  step 50.44 us  copy 9.02 us  hash 10.44 us
+[2026.09.10-14.32.43:073][973]LogBlindside: Display: tick 1371  hash 76245d0f2878067988b75d32042f1778d8da2bf35726c643addf8a20c57610e8  snapshot 184072 B (11500 pts, ticks_since_fix 1371)  step 50.28 us  copy 9.13 us  hash 11.53 us
+[2026.09.10-14.32.48:080][191]LogBlindside: Display: tick 1471  hash 2aebf21c976a46dd5ee836a880e2ff32b6894afeaa6c96a619762e6e64d2e4d5  snapshot 184072 B (11500 pts, ticks_since_fix 1471)  step 61.31 us  copy 10.13 us  hash 15.37 us
+[2026.09.10-14.32.53:083][412]LogBlindside: Display: tick 1571  hash 4d6fdfe10fc4606dabb2a3a7fa2157c6c7bd98df24f01e0afa5826fe93e3ee95  snapshot 184072 B (11500 pts, ticks_since_fix 1571)  step 55.57 us  copy 10.51 us  hash 12.77 us
+[2026.09.10-14.32.58:071][633]LogBlindside: Display: tick 1671  hash 117e4f0222a6c14cb5a8493701f83bc81f214d41b4ef7401dc97caf4319fc8c1  snapshot 184072 B (11500 pts, ticks_since_fix 1671)  step 58.92 us  copy 10.61 us  hash 12.73 us
+[2026.09.10-14.33.03:075][858]LogBlindside: Display: tick 1771  hash aa0711da06a4f9431fe4a986f53f7cc0b0d986eabefa741ce7c66511ab0e6274  snapshot 184072 B (11500 pts, ticks_since_fix 1771)  step 91.83 us  copy 20.31 us  hash 22.16 us
+[2026.09.10-14.33.08:067][ 84]LogBlindside: Display: tick 1871  hash 0cf5be0f310f32b7e3024b824ea1e459160d7fef031bfc6237eb325957d9390d  snapshot 184072 B (11500 pts, ticks_since_fix 1871)  step 99.42 us  copy 21.06 us  hash 24.75 us
+[2026.09.10-14.33.13:071][310]LogBlindside: Display: tick 1971  hash 96c770a4c85bc9816db8e51d1850544f42a417731d65591e8e5dfa589d0848ee  snapshot 184072 B (11500 pts, ticks_since_fix 1971)  step 105.11 us  copy 24.34 us  hash 28.40 us
+[2026.09.10-14.33.14:531][375]LogBlindside: Warning: forced panic returned -6 (panic caught at the FFI boundary; destroy this sim) -- still here
+[2026.09.10-14.33.18:066][533]LogBlindside: Display: tick 2071  hash 27c5edacdf537861cc17af4b5fb459b13b3dd00a6216b40eb05c8346101ab571  snapshot 184072 B (11500 pts, ticks_since_fix 2071)  step 110.26 us  copy 22.81 us  hash 30.44 us
+[2026.09.10-14.33.23:073][754]LogBlindside: Display: tick 2171  hash 5c0e594f00738875bfcd62546227ce0507d24adf4cc0239c809652a9d82cb8fa  snapshot 184072 B (11500 pts, ticks_since_fix 2171)  step 104.52 us  copy 22.92 us  hash 30.77 us
+[2026.09.10-14.33.28:073][971]LogBlindside: Display: tick 2271  hash b1a8d9dc5bc9b7ecca703f649dbcd4787533e04838c1258c6adf81ab45608a47  snapshot 184072 B (11500 pts, ticks_since_fix 2271)  step 102.84 us  copy 25.36 us  hash 33.71 us
+[2026.09.10-14.33.33:066][182]LogBlindside: Display: tick 2371  hash cbb1d9b71343932b9fa69b0d8582fa6baf83698935b49fca283a9d9e1d7837a1  snapshot 184072 B (11500 pts, ticks_since_fix 2371)  step 69.52 us  copy 14.02 us  hash 19.60 us
+[2026.09.10-14.33.38:070][387]LogBlindside: Display: tick 2471  hash 574174443fcca228259ee0bd6621ccdcd613765d368dd739f59516195ce88c3a  snapshot 184072 B (11500 pts, ticks_since_fix 2471)  step 51.55 us  copy 9.29 us  hash 12.65 us
+[2026.09.10-14.33.43:074][590]LogBlindside: Display: tick 2571  hash 6c0e96335aa2357f8bdf0dc2e134f076a1360b6ad85e194f7cb7654196f9820e  snapshot 184072 B (11500 pts, ticks_since_fix 2571)  step 55.25 us  copy 9.62 us  hash 11.14 us
+[2026.09.10-14.33.45:537][689]LogBlindside: Display: blindside_ffi.dll changed on disk
+[2026.09.10-14.33.45:537][689]LogBlindside: Display: reloading the Rust library
+[2026.09.10-14.33.45:582][689]LogBlindside: loaded C:/Users/jackh/Documents/programming/Blindside/spikes/unreal/ffi/rust/target/release/blindside_ffi.dll (abi 1, belief schema 1)
+[2026.09.10-14.33.45:583][689]LogBlindside: Display: sim opened: seed 0xB11D51DE, 11500 belief points, 184072 bytes per snapshot, 20 Hz
+[2026.09.10-14.33.45:583][689]LogBlindside: Display: hot reload #2: new blindside_ffi.dll, replayed 2620 ticks in 47 ms
+[2026.09.10-14.33.45:591][691]LogBlindside: Display: tick 2621  hash a7558b61adaa6a26f7313659eb11248c08e877e074aca03c5388f8e774449e1b  snapshot 184072 B (11500 pts, ticks_since_fix 2621)  step 56.60 us  copy 9.10 us  hash 15.20 us
+[2026.09.10-14.33.50:610][893]LogBlindside: Display: tick 2721  hash 2e68db789aeb0449d67d655f0c8f366270f3a4dcb43971d579ebc74d7e3421a9  snapshot 184072 B (11500 pts, ticks_since_fix 2721)  step 55.23 us  copy 8.84 us  hash 12.82 us
+[2026.09.10-14.33.55:606][ 91]LogBlindside: Display: tick 2821  hash eca85b2927b087236e23605b1b4bb262d70ce8392cf45b7a15c629f21c7dcd43  snapshot 184072 B (11500 pts, ticks_since_fix 2821)  step 56.66 us  copy 8.87 us  hash 12.40 us
+[2026.09.10-14.34.00:586][288]LogBlindside: Display: tick 2921  hash 125f0e2e99b1fafe7207c0fae9e9742cbf53391f63d33cedb99a9c9c18760452  snapshot 184072 B (11500 pts, ticks_since_fix 2921)  step 56.11 us  copy 8.78 us  hash 10.82 us
+[2026.09.10-14.34.05:599][485]LogBlindside: Display: tick 3021  hash 433fdadd26929b5ae07b093b4d03bddb047bf720eba1091b87918715ce9c6072  snapshot 184072 B (11500 pts, ticks_since_fix 3021)  step 50.35 us  copy 8.70 us  hash 10.83 us
+[2026.09.10-14.34.10:606][682]LogBlindside: Display: tick 3121  hash bb563319343bb16e17aaf9c96cd31bed68bc7c11bf48c1e887ba2d0bd74ec77f  snapshot 184072 B (11500 pts, ticks_since_fix 3121)  step 59.78 us  copy 10.12 us  hash 12.97 us
+[2026.09.10-14.34.15:594][881]LogBlindside: Display: tick 3221  hash 4f3872e890fb6842927ef8bb1ad4971a175ddebad8ca8409aaef101735e21504  snapshot 184072 B (11500 pts, ticks_since_fix 3221)  step 84.18 us  copy 20.09 us  hash 23.82 us
+[2026.09.10-14.34.20:606][ 83]LogBlindside: Display: tick 3321  hash b25d8de25dc7cc8fc999762abffb341b282ec3139d4bbea9e353918426f97bc0  snapshot 184072 B (11500 pts, ticks_since_fix 3321)  step 99.67 us  copy 26.76 us  hash 28.51 us
+[2026.09.10-14.34.25:598][283]LogBlindside: Display: tick 3421  hash 71b1f9920c3250fe966508e4337b6c57e9b6bafb475fe1f54337c24be72820b1  snapshot 184072 B (11500 pts, ticks_since_fix 3421)  step 102.74 us  copy 24.49 us  hash 29.66 us
